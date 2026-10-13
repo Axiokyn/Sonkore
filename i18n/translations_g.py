@@ -1,5 +1,17 @@
 # Strings added with the native PipeWire output and the linear-phase EQ.
 T = {
+"Converts PCM tracks to DSD with an 8th-order sigma-delta modulator and sends them through the DSD output above. EQ, convolution, ReplayGain and the digital volume are applied before the conversion. DSD512 runs the channels on separate cores.": (
+    "Convierte las pistas PCM a DSD con un modulador sigma-delta de 8.º orden y las envía por la salida DSD de arriba. El EQ, la convolución, ReplayGain y el volumen digital se aplican antes de la conversión. DSD512 reparte los canales en varios núcleos.",
+    "Converte as faixas PCM em DSD com um modulador sigma-delta de 8ª ordem e as envia pela saída DSD acima. O EQ, a convolução, o ReplayGain e o volume digital são aplicados antes da conversão. DSD512 distribui os canais em vários núcleos.",
+    "Convertit les pistes PCM en DSD avec un modulateur sigma-delta du 8e ordre et les envoie par la sortie DSD ci-dessus. L'égaliseur, la convolution, ReplayGain et le volume numérique s'appliquent avant la conversion. DSD512 répartit les canaux sur plusieurs cœurs.",
+    "Wandelt PCM-Titel mit einem Sigma-Delta-Modulator 8. Ordnung in DSD um und gibt sie über den DSD-Ausgang oben aus. EQ, Faltung, ReplayGain und die digitale Lautstärke werden vor der Umwandlung angewendet. DSD512 verteilt die Kanäle auf mehrere Kerne.",
+    "Converte i brani PCM in DSD con un modulatore sigma-delta dell'8º ordine e li invia all'uscita DSD qui sopra. EQ, convoluzione, ReplayGain e volume digitale si applicano prima della conversione. DSD512 distribuisce i canali su più core."),
+"Pitch / tempo (SoundTouch)": (
+    "Tono y tempo (SoundTouch)",
+    "Tom e tempo (SoundTouch)",
+    "Hauteur et tempo (SoundTouch)",
+    "Tonhöhe & Tempo (SoundTouch)",
+    "Intonazione e tempo (SoundTouch)"),
 " · PipeWire converts it to %1 kHz": (
     " · PipeWire lo convierte a %1 kHz",
     " · o PipeWire converte para %1 kHz",

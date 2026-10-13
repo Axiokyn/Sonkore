@@ -1,7 +1,6 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Dialogs
 import QtQuick.Layouts
 import Qt.labs.platform as Platform
 import Sonkore
@@ -394,11 +393,11 @@ ApplicationWindow {
         }
         function onNewPlaylistFromFolderRequested() {
             window.pendingPlaylistPaths = []
-            playlistFolderDialog.open()
+            dialogs.open("openPlaylistFolder")
         }
-        function onAddFolderRequested() { folderDialog.open() }
-        function onAddFilesRequested() { filesDialog.open() }
-        function onImportPlaylistRequested() { importPlaylistDialog.open() }
+        function onAddFolderRequested() { dialogs.open("openFolder") }
+        function onAddFilesRequested() { dialogs.open("openFiles") }
+        function onImportPlaylistRequested() { dialogs.open("openImportPlaylist") }
         function onRemoveFolderRequested(path) {
             removeFolderDialog.path = path
             removeFolderDialog.open()
@@ -491,32 +490,43 @@ ApplicationWindow {
             window.showToast(qsTr("“%1” removed from the library (the files stay on disk)").arg(path.split("/").pop()))
         }
     }
-    FolderDialog {
-        id: folderDialog
-        title: qsTr("Add music folder")
-        onAccepted: {
-            Library.addFolder(selectedFolder)
+    // The file and folder dialogs (MainDialogs.qml), loaded with their module
+    // the first time one is opened.
+    Loader {
+        id: dialogs
+        active: false
+        source: "MainDialogs.qml"
+        function open(which) {
+            active = true
+            item[which]()
+        }
+    }
+    Connections {
+        target: dialogs.item
+        function onFolderChosen(folder) {
+            Library.addFolder(folder)
             window.showToast(qsTr("Scanning folder…"))
         }
-    }
-    FileDialog {
-        id: filesDialog
-        title: qsTr("Add audio files")
-        fileMode: FileDialog.OpenFiles
-        nameFilters: [qsTr("Audio files (%1)").arg(Library.audioNameFilter), qsTr("All files (*)")]
-        onAccepted: {
-            Library.addUrls(selectedFiles)
-            DspController.playPaths(Library.audioPaths(selectedFiles), 0)
+        function onFilesChosen(files) {
+            Library.addUrls(files)
+            DspController.playPaths(Library.audioPaths(files), 0)
         }
-    }
-    FileDialog {
-        id: importPlaylistDialog
-        title: qsTr("Import playlist")
-        nameFilters: [qsTr("M3U playlist (*.m3u *.m3u8)")]
-        onAccepted: {
-            const name = Playlists.importM3u(selectedFile)
+        function onPlaylistFileChosen(file) {
+            const name = Playlists.importM3u(file)
             if (name.length > 0)
                 window.navigate("playlist", name)
+        }
+        function onPlaylistFolderChosen(folder) {
+            const paths = Library.expandAudioPaths([folder])
+            if (paths.length === 0) {
+                window.showToast(qsTr("No audio files in that folder"))
+                return
+            }
+            window.pendingPlaylistPaths = window.pendingPlaylistPaths.concat(paths)
+            const url = folder.toString()
+            newPlaylistDialog.suggest(decodeURIComponent(url.substring(url.lastIndexOf("/") + 1)))
+            if (!newPlaylistDialog.opened)
+                newPlaylistDialog.open()
         }
     }
     NameDialog {
@@ -526,7 +536,7 @@ ApplicationWindow {
         acceptText: qsTr("Create")
         note: window.pendingPlaylistPaths.length > 0
               ? qsTr("With %1.").arg(AppActions.tracksText(window.pendingPlaylistPaths.length)) : ""
-        onClosed: if (!playlistFolderDialog.visible && !created) window.pendingPlaylistPaths = []
+        onClosed: if (!(dialogs.item && dialogs.item.playlistFolderOpen) && !created) window.pendingPlaylistPaths = []
         property bool created: false
         onAboutToShow: created = false
         onAccepted: (name) => {
@@ -541,24 +551,6 @@ ApplicationWindow {
         }
     }
 
-    // A local folder's audio (sub-folders too) for the playlist being created;
-    // the folder's name is offered as the playlist's.
-    FolderDialog {
-        id: playlistFolderDialog
-        title: qsTr("Folder for the playlist")
-        onAccepted: {
-            const paths = Library.expandAudioPaths([selectedFolder])
-            if (paths.length === 0) {
-                window.showToast(qsTr("No audio files in that folder"))
-                return
-            }
-            window.pendingPlaylistPaths = window.pendingPlaylistPaths.concat(paths)
-            const url = selectedFolder.toString()
-            newPlaylistDialog.suggest(decodeURIComponent(url.substring(url.lastIndexOf("/") + 1)))
-            if (!newPlaylistDialog.opened)
-                newPlaylistDialog.open()
-        }
-    }
 
     // Created on first use and released when closed: a second window has its
     // own render thread and graphics resources.
@@ -582,7 +574,9 @@ ApplicationWindow {
     Platform.SystemTrayIcon {
         id: tray
         visible: Prefs.store.trayIcon && available
-        icon.source: "qrc:/icons/png/64.png"
+        // Only once shown: reading a PNG by URL makes Qt load every image
+        // plugin to detect the format, and they would stay for the session.
+        icon.source: visible ? "qrc:/icons/png/64.png" : ""
         tooltip: DspController.currentTrack.title
                  ? DspController.currentTrack.title + " — " + (DspController.currentTrack.artist || "")
                  : "Sonkore"

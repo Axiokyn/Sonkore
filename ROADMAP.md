@@ -18,8 +18,8 @@ Objetivo: un reproductor Hi-Fi a la altura de Roon y JRiver en todo lo que piden
 - [ ] **Volumen por hardware** en macOS (volumen del dispositivo en CoreAudio).
 - [x] **DSD nativo y DoP** en Linux: DSF y DSDIFF sin pasar a PCM (ALSA DSD_U32_BE/LE, DoP de 24 bits), hasta la frecuencia máxima del DAC.
 - [x] **DSD nativo** en Windows: salida ASIO (modo DSD de ASIO 2.2), también PCM bit-perfect en el formato propio del driver.
-- [x] **DST** (DSD comprimido en DSDIFF): se decodifica con FFmpeg y se reproduce como PCM.
-- [ ] DST enviado como DSD nativo (hace falta un decodificador DST propio: el de FFmpeg entrega PCM); DSD nativo en macOS.
+- [x] **DST** (DSD comprimido en DSDIFF, el formato de los SACD): decodificador propio (ISO/IEC 14496-3 subparte 10) que devuelve los bits exactos, así que va como DSD nativo o DoP; como PCM lo decodifica FFmpeg.
+- [ ] DSD nativo en macOS.
 - [x] **Signal path**: cada etapa (archivo → decodificador → DSP → dispositivo) con formato, bits, frecuencia y calidad.
 - [x] **Reproducción desde RAM**: el archivo completo en RAM (bloqueado si el sistema lo permite) antes de reproducir; la siguiente pista se carga en segundo plano.
 - [x] **Prioridad de tiempo real** del hilo de audio (rtkit).
@@ -32,12 +32,11 @@ Objetivo: un reproductor Hi-Fi a la altura de Roon y JRiver en todo lo que piden
 - [x] **Crossfeed** para auriculares (diseño Bauer / bs2b, MIT).
 - [x] **Remuestreo con filtros a elegir** (fase lineal, intermedia, mínima o lineal abrupto, SoX VHQ) y **upsampling** ×2 / ×4 / máximo del DAC.
 - [x] **Dither con noise shaping** (F-weighted de 9 coeficientes).
-- [x] **Upsampling PCM → DSD** (DSD64–DSD256) con modulador sigma-delta de 7.º orden; DSD512 cuando haya un DAC que lo acepte para probarlo.
+- [x] **Upsampling PCM → DSD** (DSD64–DSD512) con modulador sigma-delta de 8.º orden (~113 dB de SNR en DSD64), un hilo por canal.
 - [x] **Gestión de headroom** antes del DSP, con detector de clipping.
 - [x] **Ecualizador de fase lineal**: la curva del EQ como FIR (convolución por FFT), activable en plena reproducción sin cortes.
 - [x] **Salida nativa de PipeWire** con cambio de frecuencia por pista: bit-perfect (hasta 24 bits) sin tomar el DAC en exclusiva.
-- [ ] Modulador PCM→DSD de mayor orden y DSD512 en varios hilos.
-- [ ] Señales de prueba (bit-perfect, frecuencia del DAC, canales) desde la app.
+- [x] **Señales de prueba** desde la app: frecuencia del DAC (PCM y DSD), canales y bit-perfect (DTS).
 
 ## Calidad
 

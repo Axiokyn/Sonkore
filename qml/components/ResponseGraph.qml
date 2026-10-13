@@ -68,6 +68,7 @@ Item {
         id: canvas
         anchors.fill: parent
         renderStrategy: Canvas.Cooperative
+        antialiasing: true // the curve is a 2 px line: smooth with every renderer
         onPaint: {
             const ctx = getContext("2d")
             ctx.reset()

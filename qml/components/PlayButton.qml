@@ -30,15 +30,19 @@ AbstractButton {
     background: Item {
         Rectangle {
             anchors.fill: parent
-            anchors.margins: button.tile ? 2 : 0
+            // The round face grows a little under the pointer and shrinks when
+            // pressed: by its size, not a scale transform, so its edge is
+            // rasterised again (anti-aliased) at each size with every
+            // renderer, the software one included (which scales a drawn
+            // circle without smoothing).
+            anchors.margins: button.tile ? 2 : button.round && button.pressed ? 1 : button.round && button.hovered ? -1 : 0
             radius: button.tile ? Math.round(Math.min(width, height) * 0.3) : width / 2
             color: button.round ? button.face
                  : button.pressed ? Theme.border : button.hovered ? Theme.hover
                  : button.tile ? Theme.surfaceHi : "transparent"
             border.width: button.style === "outline" ? 1.5 : 0
             border.color: button.hovered ? Theme.accent : Theme.text
-            scale: button.round && button.pressed ? 0.94 : (button.round && button.hovered ? 1.05 : 1.0)
-            Behavior on scale { NumberAnimation { duration: 100 } }
+            Behavior on anchors.margins { NumberAnimation { duration: 100 } }
             Behavior on color { ColorAnimation { duration: 120 } }
         }
     }

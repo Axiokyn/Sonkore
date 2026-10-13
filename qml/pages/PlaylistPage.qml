@@ -1,6 +1,5 @@
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Dialogs
 import QtQuick.Layouts
 import Sonkore
 
@@ -27,13 +26,21 @@ Item {
         acceptText: qsTr("Rename")
         onAccepted: (newName) => AppActions.navigate("playlist", Playlists.rename(page.name, newName))
     }
-    FileDialog {
-        id: exportDialog
-        title: qsTr("Export playlist")
-        fileMode: FileDialog.SaveFile
-        defaultSuffix: "m3u8"
-        nameFilters: [qsTr("M3U playlist (*.m3u8 *.m3u)")]
-        onAccepted: AppActions.toast(Playlists.exportM3u(page.name, selectedFile) ? qsTr("Playlist exported") : qsTr("Export failed"))
+    // The file dialogs (PlaylistDialogs.qml), loaded the first time one opens.
+    Loader {
+        id: dialogs
+        active: false
+        source: "PlaylistDialogs.qml"
+        function open(which) {
+            active = true
+            item[which]()
+        }
+    }
+    Connections {
+        target: dialogs.item
+        function onExportChosen(file) { AppActions.toast(Playlists.exportM3u(page.name, file) ? qsTr("Playlist exported") : qsTr("Export failed")) }
+        function onFolderChosen(folder) { page.addPaths(Library.expandAudioPaths([folder])) }
+        function onFilesChosen(files) { page.addPaths(Library.audioPaths(files)) }
     }
 
     function addPaths(paths) {
@@ -43,19 +50,6 @@ Item {
         }
         Playlists.addTracks(page.name, paths)
         AppActions.toast(qsTr("Added %1 to “%2”").arg(AppActions.tracksText(paths.length)).arg(page.name))
-    }
-    // A local folder (sub-folders too) or loose files, in or out of the library.
-    FolderDialog {
-        id: addFolderDialog
-        title: qsTr("Add a folder to the playlist")
-        onAccepted: page.addPaths(Library.expandAudioPaths([selectedFolder]))
-    }
-    FileDialog {
-        id: addFilesDialog
-        title: qsTr("Add files to the playlist")
-        fileMode: FileDialog.OpenFiles
-        nameFilters: [qsTr("Audio files (%1)").arg(Library.audioNameFilter), qsTr("All files (*)")]
-        onAccepted: page.addPaths(Library.audioPaths(selectedFiles))
     }
 
     ColumnLayout {
@@ -122,10 +116,10 @@ Item {
                             DspController.playPaths(paths, Math.floor(Math.random() * paths.length))
                         }
                     }
-                    IconButton { iconName: "folder-plus"; tip: qsTr("Add a folder…"); onClicked: addFolderDialog.open() }
-                    IconButton { iconName: "file-plus"; tip: qsTr("Add files…"); onClicked: addFilesDialog.open() }
+                    IconButton { iconName: "folder-plus"; tip: qsTr("Add a folder…"); onClicked: dialogs.open("openAddFolder") }
+                    IconButton { iconName: "file-plus"; tip: qsTr("Add files…"); onClicked: dialogs.open("openAddFiles") }
                     IconButton { iconName: "edit"; tip: qsTr("Rename"); onClicked: renameDialog.ask(page.name) }
-                    IconButton { iconName: "download"; tip: qsTr("Export as M3U"); onClicked: exportDialog.open() }
+                    IconButton { iconName: "download"; tip: qsTr("Export as M3U"); onClicked: dialogs.open("openExport") }
                     IconButton {
                         iconName: "trash"
                         tip: qsTr("Delete playlist")
@@ -165,8 +159,8 @@ Item {
                 RowLayout {
                     Layout.alignment: Qt.AlignHCenter
                     spacing: 8
-                    PillButton { primary: true; iconName: "folder-plus"; text: qsTr("Add a folder…"); onClicked: addFolderDialog.open() }
-                    PillButton { iconName: "file-plus"; text: qsTr("Add files…"); onClicked: addFilesDialog.open() }
+                    PillButton { primary: true; iconName: "folder-plus"; text: qsTr("Add a folder…"); onClicked: dialogs.open("openAddFolder") }
+                    PillButton { iconName: "file-plus"; text: qsTr("Add files…"); onClicked: dialogs.open("openAddFiles") }
                 }
             }
 

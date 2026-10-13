@@ -1,7 +1,6 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Dialogs
 import QtQuick.Layouts
 import QtQuick.Shapes
 import Sonkore
@@ -44,6 +43,22 @@ Item {
         if (backend === "ASIO") return qsTr("The DAC's own ASIO driver — direct, bit-perfect capable, and native DSD where the driver offers it.")
         if (backend === "Core Audio") return qsTr("macOS — the device switches to the track's sample rate.")
         return ""
+    }
+
+    // The file dialogs (SettingsDialogs.qml), loaded the first time one opens.
+    Loader {
+        id: dialogs
+        active: false
+        source: "SettingsDialogs.qml"
+        function open(which) {
+            active = true
+            item[which]()
+        }
+    }
+    Connections {
+        target: dialogs.item
+        function onImpulseChosen(file) { DspController.loadConvolution(file) }
+        function onSkipFolderChosen(folder) { Library.addExcludedFolder(folder) }
     }
 
     component SettingsCard: Card {
@@ -861,6 +876,15 @@ Item {
     }
 
     // Shown next to settings that only apply after a restart.
+    // Play / Stop of one test signal row (Settings › Output › Test signals).
+    component TestButton: PillButton {
+        property string row
+        readonly property bool on: testCard.anyRunning && testCard.running === row
+        primary: on
+        iconName: on ? "stop" : "play"
+        text: on ? qsTr("Stop") : qsTr("Play")
+    }
+
     component RestartButton: PillButton {
         property bool needed: App.restartRequired
         visible: needed
@@ -1763,8 +1787,10 @@ Item {
                     }
                 }
 
+                // A direct card (hw:, ASIO) or WASAPI in exclusive mode: the
+                // system has no sound from it while Sonkore holds it.
                 SettingRow {
-                    visible: page.directSelected
+                    visible: page.directSelected || DspController.outputExclusiveCapable
                     title: qsTr("DAC control")
                     description: DspController.outputReserved ? qsTr("In use by Sonkore only.") : qsTr("Taken when playback starts.")
                     details: DspController.outputReserved
@@ -1777,7 +1803,7 @@ Item {
                     }
                 }
                 SettingRow {
-                    visible: page.directSelected
+                    visible: page.directSelected || DspController.outputExclusiveCapable
                     title: qsTr("Give the DAC back when paused")
                     details: qsTr("After a minute paused or stopped, so other apps can play again. Pressing play takes it back.")
                     LSwitch { checked: DspController.releaseWhenIdle; onToggled: DspController.releaseWhenIdle = checked }
@@ -1943,12 +1969,102 @@ Item {
                 SettingRow {
                     visible: DspController.dsdMode !== 0
                     title: qsTr("PCM to DSD")
-                    details: qsTr("Converts PCM tracks to DSD with a 7th-order sigma-delta modulator and sends them through the DSD output above. EQ, convolution, ReplayGain and the digital volume are applied before the conversion.")
+                    details: qsTr("Converts PCM tracks to DSD with an 8th-order sigma-delta modulator and sends them through the DSD output above. EQ, convolution, ReplayGain and the digital volume are applied before the conversion. DSD512 runs the channels on separate cores.")
                     LComboBox {
+                        // Listed in rate order; stored as the PcmToDsd values (DSD512 came last).
+                        readonly property var modes: [0, 1, 2, 3, 5, 4]
                         implicitWidth: 160
-                        model: [qsTr("Off"), "DSD64", "DSD128", "DSD256", qsTr("Highest the DAC takes")]
-                        currentIndex: DspController.pcmToDsd
-                        onActivated: (index) => DspController.pcmToDsd = index
+                        model: [qsTr("Off"), "DSD64", "DSD128", "DSD256", "DSD512", qsTr("Highest the DAC takes (up to DSD256)")]
+                        currentIndex: Math.max(0, modes.indexOf(DspController.pcmToDsd))
+                        onActivated: (index) => DspController.pcmToDsd = modes[index]
+                    }
+                }
+            }
+
+            // --- Test signals ------------------------------------------------------
+            SettingsCard {
+                tab: "audio"
+                title: qsTr("Test signals")
+                iconName: "wave"
+                subtitle: qsTr("Tones made on the spot, played through the same path as the music to check the DAC and the speakers. What was playing resumes afterwards.")
+                id: testCard
+                property string running // which row's signal plays
+                readonly property bool anyRunning: DspController.testSignalPlaying
+                onAnyRunningChanged: if (!anyRunning) running = ""
+
+                SettingRow {
+                    title: qsTr("DAC sample rate")
+                    description: qsTr("A 1 kHz tone at −20 dBFS at the chosen rate: a DAC with a display should show that rate.")
+                    details: qsTr("If the display shows another rate, something between Sonkore and the DAC converts it: a fixed output rate above, a shared output (PipeWire or WASAPI shared) or the DAC's own limit. The signal path (▣ in the player bar) tells what Sonkore sends.")
+                    RowLayout {
+                        spacing: 8
+                        LComboBox {
+                            id: rateBox
+                            implicitWidth: 130
+                            readonly property var choices: [
+                                { kind: "tone", rate: 44100, text: "44.1 kHz" }, { kind: "tone", rate: 48000, text: "48 kHz" },
+                                { kind: "tone", rate: 88200, text: "88.2 kHz" }, { kind: "tone", rate: 96000, text: "96 kHz" },
+                                { kind: "tone", rate: 176400, text: "176.4 kHz" }, { kind: "tone", rate: 192000, text: "192 kHz" },
+                                { kind: "tone", rate: 352800, text: "352.8 kHz" }, { kind: "tone", rate: 384000, text: "384 kHz" },
+                                { kind: "dsd", rate: 64, text: "DSD64" }, { kind: "dsd", rate: 128, text: "DSD128" }, { kind: "dsd", rate: 256, text: "DSD256" }]
+                            model: choices.map(c => c.text)
+                            currentIndex: 0
+                        }
+                        TestButton {
+                            row: "rate"
+                            onClicked: {
+                                if (on) {
+                                    DspController.stopTestSignal()
+                                } else {
+                                    testCard.running = row
+                                    const c = rateBox.choices[rateBox.currentIndex]
+                                    DspController.playTestSignal(c.kind, c.rate, 2)
+                                }
+                            }
+                        }
+                    }
+                }
+                SettingRow {
+                    title: qsTr("Speakers")
+                    description: qsTr("The tone on each channel in turn: front left, front right, then centre, LFE, back left, back right, side left, side right.")
+                    details: qsTr("Multichannel files reach the DAC in this order (the DAC or the receiver places them). A channel that sounds from the wrong speaker is wired or configured the other way round.")
+                    RowLayout {
+                        spacing: 8
+                        LComboBox {
+                            id: channelsBox
+                            implicitWidth: 130
+                            readonly property var counts: [2, 6, 8]
+                            model: [qsTr("Stereo"), "5.1", "7.1"]
+                            currentIndex: 0
+                        }
+                        TestButton {
+                            row: "channels"
+                            onClicked: {
+                                if (on) {
+                                    DspController.stopTestSignal()
+                                } else {
+                                    testCard.running = row
+                                    DspController.playTestSignal("channels", 48000, channelsBox.counts[channelsBox.currentIndex])
+                                }
+                            }
+                        }
+                    }
+                }
+                SettingRow {
+                    visible: DspController.dtsTestAvailable
+                    title: qsTr("Bit-perfect (DTS)")
+                    description: qsTr("A DTS stream inside a CD-quality WAV: a receiver that decodes DTS plays a tone only if every bit arrives untouched, and noise otherwise.")
+                    details: qsTr("Turn the amplifier down first: anything that changes the samples on the way (a volume below 100 %, EQ, resampling, dither, a shared output) turns the stream into loud noise. For an AV receiver on S/PDIF or HDMI; a plain DAC plays noise either way.")
+                    TestButton {
+                        row: "dts"
+                        onClicked: {
+                            if (on) {
+                                DspController.stopTestSignal()
+                            } else {
+                                testCard.running = row
+                                DspController.playTestSignal("dts", 44100, 2)
+                            }
+                        }
                     }
                 }
             }
@@ -1974,14 +2090,8 @@ Item {
                             checked: DspController.convolutionEnabled
                             onToggled: DspController.convolutionEnabled = checked
                         }
-                        PillButton { text: DspController.convolutionFile.length > 0 ? qsTr("Change…") : qsTr("Load…"); onClicked: irDialog.open() }
+                        PillButton { text: DspController.convolutionFile.length > 0 ? qsTr("Change…") : qsTr("Load…"); onClicked: dialogs.open("openImpulse") }
                         PillButton { visible: DspController.convolutionFile.length > 0; text: qsTr("Remove"); onClicked: DspController.clearConvolution() }
-                    }
-                    FileDialog {
-                        id: irDialog
-                        title: qsTr("Impulse response")
-                        nameFilters: [qsTr("Impulse responses (*.wav *.flac *.aif *.aiff)"), qsTr("All files (*)")]
-                        onAccepted: DspController.loadConvolution(selectedFile)
                     }
                 }
                 SettingRow {
@@ -2170,13 +2280,7 @@ Item {
                 PillButton {
                     iconName: "plus"
                     text: qsTr("Skip a folder…")
-                    onClicked: skipFolderDialog.open()
-                    FolderDialog {
-                        id: skipFolderDialog
-                        title: qsTr("Folder to skip")
-                        currentFolder: Library.folders.length > 0 ? "file://" + Library.folders[0] : ""
-                        onAccepted: Library.addExcludedFolder(selectedFolder)
-                    }
+                    onClicked: dialogs.open("openSkipFolder")
                 }
                 SettingRow {
                     title: qsTr("Skip short files")

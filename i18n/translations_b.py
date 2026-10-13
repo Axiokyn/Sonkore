@@ -95,7 +95,6 @@ T = {
 "Peak": ("Pico", "Pico", "Crête", "Peak", "Picco"),
 "Pick something from your library": ("Elige algo de tu biblioteca", "Escolha algo da sua biblioteca", "Choisissez quelque chose dans votre bibliothèque", "Wähle etwas aus deiner Mediathek", "Scegli qualcosa dalla tua libreria"),
 "Pitch": ("Tono", "Tom", "Hauteur", "Tonhöhe", "Intonazione"),
-"Pitch / tempo (%1)": ("Tono / tempo (%1)", "Tom / tempo (%1)", "Hauteur / tempo (%1)", "Tonhöhe / Tempo (%1)", "Intonazione / tempo (%1)"),
 "Pitch · Tempo · Rate": ("Tono · Tempo · Velocidad", "Tom · Tempo · Taxa", "Hauteur · Tempo · Vitesse", "Tonhöhe · Tempo · Rate", "Intonazione · Tempo · Velocità"),
 "Play": ("Reproducir", "Tocar", "Lire", "Abspielen", "Riproduci"),
 "Play / pause": ("Reproducir / pausa", "Tocar / pausar", "Lecture / pause", "Wiedergabe / Pause", "Riproduci / pausa"),

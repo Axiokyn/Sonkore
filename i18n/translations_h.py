@@ -1,0 +1,105 @@
+# Strings added with the test signals, DSD512 and the DST decoder.
+T = {
+"Test signals": (
+    "Señales de prueba",
+    "Sinais de teste",
+    "Signaux de test",
+    "Testsignale",
+    "Segnali di prova"),
+"Tones made on the spot, played through the same path as the music to check the DAC and the speakers. What was playing resumes afterwards.": (
+    "Tonos generados al momento, reproducidos por el mismo camino que la música, para comprobar el DAC y los parlantes. Lo que sonaba sigue después.",
+    "Tons gerados na hora, tocados pelo mesmo caminho que a música, para verificar o DAC e as caixas. O que tocava continua depois.",
+    "Des sons générés sur le moment, joués par le même chemin que la musique, pour vérifier le DAC et les enceintes. Ce qui jouait reprend ensuite.",
+    "Auf der Stelle erzeugte Töne, über denselben Weg wie die Musik abgespielt, um DAC und Lautsprecher zu prüfen. Was gerade lief, geht danach weiter.",
+    "Toni generati al momento, riprodotti sullo stesso percorso della musica, per controllare DAC e diffusori. Ciò che suonava riprende dopo."),
+"DAC sample rate": (
+    "Frecuencia de muestreo del DAC",
+    "Taxa de amostragem do DAC",
+    "Fréquence d'échantillonnage du DAC",
+    "Abtastrate des DACs",
+    "Frequenza di campionamento del DAC"),
+"A 1 kHz tone at −20 dBFS at the chosen rate: a DAC with a display should show that rate.": (
+    "Un tono de 1 kHz a −20 dBFS a la frecuencia elegida: un DAC con pantalla debería mostrar esa frecuencia.",
+    "Um tom de 1 kHz a −20 dBFS na taxa escolhida: um DAC com visor deve mostrar essa taxa.",
+    "Un son de 1 kHz à −20 dBFS à la fréquence choisie : un DAC avec afficheur doit indiquer cette fréquence.",
+    "Ein 1-kHz-Ton mit −20 dBFS bei der gewählten Rate: ein DAC mit Anzeige sollte diese Rate zeigen.",
+    "Un tono a 1 kHz a −20 dBFS alla frequenza scelta: un DAC con display dovrebbe mostrare quella frequenza."),
+"If the display shows another rate, something between Sonkore and the DAC converts it: a fixed output rate above, a shared output (PipeWire or WASAPI shared) or the DAC's own limit. The signal path (▣ in the player bar) tells what Sonkore sends.": (
+    "Si la pantalla muestra otra frecuencia, algo entre Sonkore y el DAC la convierte: una frecuencia de salida fija (más arriba), una salida compartida (PipeWire o WASAPI compartido) o el límite del propio DAC. El signal path (▣ en la barra de reproducción) dice qué envía Sonkore.",
+    "Se o visor mostra outra taxa, algo entre o Sonkore e o DAC a converte: uma taxa de saída fixa (acima), uma saída compartilhada (PipeWire ou WASAPI compartilhado) ou o limite do próprio DAC. O signal path (▣ na barra do player) diz o que o Sonkore envia.",
+    "Si l'afficheur indique une autre fréquence, quelque chose entre Sonkore et le DAC la convertit : une fréquence de sortie fixe (ci-dessus), une sortie partagée (PipeWire ou WASAPI partagé) ou la limite du DAC lui-même. Le signal path (▣ dans la barre de lecture) indique ce que Sonkore envoie.",
+    "Zeigt die Anzeige eine andere Rate, wandelt etwas zwischen Sonkore und dem DAC um: eine feste Ausgaberate (oben), ein geteilter Ausgang (PipeWire oder WASAPI geteilt) oder die Grenze des DACs selbst. Der Signalpfad (▣ in der Player-Leiste) zeigt, was Sonkore sendet.",
+    "Se il display mostra un'altra frequenza, qualcosa tra Sonkore e il DAC la converte: una frequenza di uscita fissa (sopra), un'uscita condivisa (PipeWire o WASAPI condiviso) o il limite del DAC stesso. Il signal path (▣ nella barra del player) dice cosa invia Sonkore."),
+"Speakers": (
+    "Parlantes",
+    "Caixas de som",
+    "Enceintes",
+    "Lautsprecher",
+    "Diffusori"),
+"The tone on each channel in turn: front left, front right, then centre, LFE, back left, back right, side left, side right.": (
+    "El tono en cada canal por turno: frontal izquierdo, frontal derecho, luego central, LFE, trasero izquierdo, trasero derecho, lateral izquierdo, lateral derecho.",
+    "O tom em cada canal por vez: frontal esquerdo, frontal direito, depois central, LFE, traseiro esquerdo, traseiro direito, lateral esquerdo, lateral direito.",
+    "Le son sur chaque canal à tour de rôle : avant gauche, avant droit, puis centre, LFE, arrière gauche, arrière droit, latéral gauche, latéral droit.",
+    "Der Ton nacheinander auf jedem Kanal: vorne links, vorne rechts, dann Center, LFE, hinten links, hinten rechts, seitlich links, seitlich rechts.",
+    "Il tono su ogni canale a turno: anteriore sinistro, anteriore destro, poi centrale, LFE, posteriore sinistro, posteriore destro, laterale sinistro, laterale destro."),
+"Multichannel files reach the DAC in this order (the DAC or the receiver places them). A channel that sounds from the wrong speaker is wired or configured the other way round.": (
+    "Los archivos multicanal llegan al DAC en este orden (el DAC o el receptor los ubica). Un canal que suena por el parlante equivocado está cableado o configurado al revés.",
+    "Os arquivos multicanal chegam ao DAC nesta ordem (o DAC ou o receiver os posiciona). Um canal que soa na caixa errada está ligado ou configurado ao contrário.",
+    "Les fichiers multicanaux arrivent au DAC dans cet ordre (le DAC ou l'ampli les place). Un canal qui sort de la mauvaise enceinte est câblé ou configuré à l'envers.",
+    "Mehrkanaldateien erreichen den DAC in dieser Reihenfolge (der DAC oder der Receiver ordnet sie zu). Ein Kanal aus dem falschen Lautsprecher ist vertauscht verkabelt oder eingestellt.",
+    "I file multicanale arrivano al DAC in quest'ordine (il DAC o il sintoamplificatore li posiziona). Un canale che suona dal diffusore sbagliato è cablato o configurato al contrario."),
+"Bit-perfect (DTS)": (
+    "Bit-perfect (DTS)",
+    "Bit-perfect (DTS)",
+    "Bit-perfect (DTS)",
+    "Bit-perfect (DTS)",
+    "Bit-perfect (DTS)"),
+"A DTS stream inside a CD-quality WAV: a receiver that decodes DTS plays a tone only if every bit arrives untouched, and noise otherwise.": (
+    "Un stream DTS dentro de un WAV con calidad de CD: un receptor que decodifica DTS reproduce un tono solo si cada bit llega intacto, y ruido si no.",
+    "Um stream DTS dentro de um WAV com qualidade de CD: um receiver que decodifica DTS toca um tom só se cada bit chega intacto, e ruído caso contrário.",
+    "Un flux DTS dans un WAV qualité CD : un ampli qui décode le DTS joue un son seulement si chaque bit arrive intact, du bruit sinon.",
+    "Ein DTS-Strom in einer WAV mit CD-Qualität: ein Receiver, der DTS dekodiert, spielt nur dann einen Ton, wenn jedes Bit unverändert ankommt, sonst Rauschen.",
+    "Un flusso DTS dentro un WAV di qualità CD: un sintoamplificatore che decodifica DTS riproduce un tono solo se ogni bit arriva intatto, altrimenti rumore."),
+"Turn the amplifier down first: anything that changes the samples on the way (a volume below 100 %, EQ, resampling, dither, a shared output) turns the stream into loud noise. For an AV receiver on S/PDIF or HDMI; a plain DAC plays noise either way.": (
+    "Bajá el amplificador antes: cualquier cosa que cambie las muestras en el camino (un volumen por debajo del 100 %, EQ, remuestreo, dither, una salida compartida) convierte el stream en ruido fuerte. Para un receptor AV por S/PDIF o HDMI; un DAC común reproduce ruido de todos modos.",
+    "Abaixe o amplificador antes: qualquer coisa que altere as amostras no caminho (um volume abaixo de 100 %, EQ, reamostragem, dither, uma saída compartilhada) transforma o stream em ruído alto. Para um receiver AV por S/PDIF ou HDMI; um DAC comum toca ruído de qualquer forma.",
+    "Baissez d'abord l'amplificateur : tout ce qui modifie les échantillons en chemin (un volume sous 100 %, l'égaliseur, un rééchantillonnage, le dither, une sortie partagée) transforme le flux en bruit fort. Pour un ampli AV en S/PDIF ou HDMI ; un simple DAC joue du bruit dans tous les cas.",
+    "Zuerst den Verstärker leiser stellen: alles, was die Samples unterwegs verändert (Lautstärke unter 100 %, EQ, Resampling, Dither, ein geteilter Ausgang), macht aus dem Strom lautes Rauschen. Für einen AV-Receiver an S/PDIF oder HDMI; ein einfacher DAC spielt in jedem Fall Rauschen.",
+    "Abbassa prima l'amplificatore: qualsiasi cosa modifichi i campioni lungo il percorso (un volume sotto il 100 %, EQ, ricampionamento, dither, un'uscita condivisa) trasforma il flusso in rumore forte. Per un sintoamplificatore AV su S/PDIF o HDMI; un semplice DAC riproduce rumore in ogni caso."),
+"1 kHz tone · %1 kHz": (
+    "Tono de 1 kHz · %1 kHz",
+    "Tom de 1 kHz · %1 kHz",
+    "Son de 1 kHz · %1 kHz",
+    "1-kHz-Ton · %1 kHz",
+    "Tono a 1 kHz · %1 kHz"),
+"1 kHz tone · DSD%1": (
+    "Tono de 1 kHz · DSD%1",
+    "Tom de 1 kHz · DSD%1",
+    "Son de 1 kHz · DSD%1",
+    "1-kHz-Ton · DSD%1",
+    "Tono a 1 kHz · DSD%1"),
+"Channel check · %1 channels": (
+    "Prueba de canales · %1 canales",
+    "Teste de canais · %1 canais",
+    "Test des canaux · %1 canaux",
+    "Kanaltest · %1 Kanäle",
+    "Prova dei canali · %1 canali"),
+"Bit-perfect check (DTS)": (
+    "Prueba bit-perfect (DTS)",
+    "Teste bit-perfect (DTS)",
+    "Test bit-perfect (DTS)",
+    "Bit-perfect-Test (DTS)",
+    "Prova bit-perfect (DTS)"),
+"Could not make the test signal: %1": (
+    "No se pudo generar la señal de prueba: %1",
+    "Não foi possível gerar o sinal de teste: %1",
+    "Impossible de générer le signal de test : %1",
+    "Das Testsignal konnte nicht erzeugt werden: %1",
+    "Impossibile generare il segnale di prova: %1"),
+"Highest the DAC takes (up to DSD256)": (
+    "El máximo que acepte el DAC (hasta DSD256)",
+    "O máximo que o DAC aceitar (até DSD256)",
+    "Le maximum accepté par le DAC (jusqu'à DSD256)",
+    "Das Höchste, das der DAC annimmt (bis DSD256)",
+    "Il massimo che il DAC accetta (fino a DSD256)"),
+}

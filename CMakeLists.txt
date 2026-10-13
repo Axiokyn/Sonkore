@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 3.21)
 
 project(Sonkore
-    VERSION 1.1.0
-    DESCRIPTION "Hi-Fi music player: bit-perfect output, Rubber Band / SoundTouch, SuperEQ"
+    VERSION 1.2.0
+    DESCRIPTION "Hi-Fi music player: bit-perfect output, SoundTouch, SuperEQ"
     LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
@@ -39,8 +39,12 @@ add_library(sonkore_audio STATIC
     src/audio/CueSheet.cpp
     src/audio/DsdDecoder.hpp
     src/audio/DsdDecoder.cpp
+    src/audio/DstDecoder.hpp
+    src/audio/DstDecoder.cpp
     src/audio/SigmaDelta.hpp
     src/audio/SigmaDelta.cpp
+    src/audio/TestSignals.hpp
+    src/audio/TestSignals.cpp
     src/audio/FilePreload.hpp
     src/audio/FilePreload.cpp
     src/audio/SampleConvert.hpp
@@ -71,7 +75,7 @@ endif()
 target_include_directories(sonkore_audio PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src/audio)
 target_link_libraries(sonkore_audio
     PUBLIC  sonkore::miniaudio sonkore::dr_flac sonkore::ffmpeg
-    PRIVATE sonkore::soundtouch sonkore::rubberband sonkore::soxr sonkore::hdcd sonkore::pocketfft Threads::Threads)
+    PRIVATE sonkore::soundtouch sonkore::soxr sonkore::hdcd sonkore::pocketfft Threads::Threads)
 
 # Strict IEEE-754 semantics in our own DSP code. Fast-math would break the
 # exact "is this parameter neutral?" comparisons that gate the bit-perfect
@@ -145,6 +149,7 @@ qt_add_qml_module(Sonkore
     VERSION 1.0
     QML_FILES
         qml/Main.qml
+        qml/MainDialogs.qml
         qml/AppActions.qml
         qml/Clock.qml
         qml/EditSoundtouch.qml
@@ -197,10 +202,13 @@ qt_add_qml_module(Sonkore
         qml/components/Brand.qml
         qml/pages/AlbumsPage.qml
         qml/pages/BrowsePage.qml
+        qml/pages/EqualizerDialogs.qml
         qml/pages/EqualizerPage.qml
         qml/pages/FoldersPage.qml
+        qml/pages/PlaylistDialogs.qml
         qml/pages/PlaylistPage.qml
         qml/pages/QueuePage.qml
+        qml/pages/SettingsDialogs.qml
         qml/pages/SettingsPage.qml
         qml/pages/TracksPage.qml
     RESOURCES

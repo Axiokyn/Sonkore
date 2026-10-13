@@ -3,11 +3,10 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import Sonkore
 
-// Floating DSP window: pitch / tempo / rate with micro-decimal precision, the
-// engine choice (Rubber Band by default, or SoundTouch) and each engine's
-// advanced settings. Every control writes straight to DspController (C++
-// double / int / bool); the engine picks the change up at the next
-// ~1024-frame block boundary.
+// Floating DSP window: pitch / tempo / rate with micro-decimal precision and
+// SoundTouch's advanced settings. Every control writes straight to
+// DspController (C++ double / int / bool); the engine picks the change up at
+// the next ~1024-frame block boundary.
 AppWindow {
     id: win
 
@@ -29,8 +28,6 @@ AppWindow {
     minimumHeight: Math.min(360, fullHeight)
     maximumWidth: 760
     maximumHeight: fullHeight
-
-    readonly property bool rubberBand: DspController.pitchEngine === DspController.RubberBand
 
     readonly property var stepOptions: [0.000001, 0.00001, 0.0001, 0.001, 0.01, 0.1, 1.0]
     readonly property real fineStep: stepOptions[stepBox.currentIndex]
@@ -96,35 +93,11 @@ AppWindow {
                 Layout.topMargin: 4
                 Layout.leftMargin: 16
                 Layout.rightMargin: 16
-                title: DspController.pitchEngineName
+                title: "SoundTouch"
                 subtitle: DspController.loaded ? DspController.outputDescription : qsTr("No track loaded")
                 checked: DspController.soundTouchEnabled
                 onToggled: (on) => DspController.soundTouchEnabled = on
                 tip: checked ? qsTr("Turn pitch & tempo off (the values are kept)") : qsTr("Turn pitch & tempo on")
-            }
-
-            // --- Engine -----------------------------------------------------------
-            Section {
-                title: qsTr("Engine")
-                RowLayout {
-                    Layout.fillWidth: true
-                    spacing: 12
-                    LComboBox {
-                        Layout.fillWidth: true
-                        model: ["Rubber Band", "SoundTouch"]
-                        currentIndex: DspController.pitchEngine
-                        onActivated: (index) => DspController.pitchEngine = index
-                    }
-                }
-                Label {
-                    Layout.fillWidth: true
-                    wrapMode: Text.Wrap
-                    font.pixelSize: Theme.fontSmall
-                    color: Theme.textDim
-                    text: win.rubberBand
-                          ? qsTr("Phase vocoder: clean on complex mixes, vocals and bass; can keep the voice's timbre.")
-                          : qsTr("WSOLA time-stretch: very little CPU, fine for small changes.")
-                }
             }
 
             // --- Pitch / Tempo / Rate ---------------------------------------------
@@ -198,127 +171,9 @@ AppWindow {
                 }
             }
 
-            // --- Advanced: Rubber Band ------------------------------------------------
-            Section {
-                title: qsTr("Advanced Rubber Band")
-                visible: win.rubberBand
-                enabled: DspController.soundTouchEnabled // off: shown dimmed, values kept
-                opacity: enabled ? 1 : 0.45
-
-                // R2 in real time with crisp or mixed transients resets phase on
-                // steady tones too: held notes warble and the stereo smears.
-                RowLayout {
-                    Layout.fillWidth: true
-                    visible: !DspController.rubberBandFiner && DspController.transients !== 2
-                    spacing: 8
-                    Icon {
-                        glyph: "info"
-                        size: 16
-                        color: Theme.warn
-                    }
-                    Label {
-                        Layout.fillWidth: true
-                        wrapMode: Text.Wrap
-                        font.pixelSize: Theme.fontSmall
-                        color: Theme.warn
-                        text: qsTr("With the R2 engine, crisp and mixed transients make held notes warble. Use the R3 engine, or smooth transients.")
-                    }
-                }
-                LSwitch {
-                    text: qsTr("R3 “finer” engine (best quality, more CPU)")
-                    checked: DspController.rubberBandFiner
-                    onToggled: DspController.rubberBandFiner = checked
-                }
-                LSwitch {
-                    text: qsTr("Preserve formants (natural voices when shifting pitch)")
-                    checked: DspController.preserveFormants
-                    onToggled: DspController.preserveFormants = checked
-                }
-                LSwitch {
-                    text: qsTr("Centred stereo image (mono-compatible)")
-                    checked: DspController.channelsTogether
-                    onToggled: DspController.channelsTogether = checked
-                }
-
-                GridLayout {
-                    Layout.fillWidth: true
-                    Layout.topMargin: 4
-                    columns: 2
-                    columnSpacing: 12
-                    rowSpacing: 8
-
-                    Label { text: qsTr("Pitch method"); color: Theme.text }
-                    LComboBox {
-                        Layout.fillWidth: true
-                        model: [qsTr("Quality (fixed shift)"), qsTr("Consistency (no clicks while editing)"), qsTr("Speed (least CPU)")]
-                        currentIndex: DspController.pitchMethod
-                        onActivated: (index) => DspController.pitchMethod = index
-                    }
-                    Label { text: qsTr("Window"); color: Theme.text }
-                    LComboBox {
-                        Layout.fillWidth: true
-                        model: [qsTr("Standard"), qsTr("Short (less delay and CPU)"), qsTr("Long (smoother, R2 only)")]
-                        currentIndex: DspController.rubberBandWindow
-                        onActivated: (index) => DspController.rubberBandWindow = index
-                    }
-                }
-
-                // R2 only: shown dimmed while R3 is on.
-                SectionLabel { text: qsTr("R2 engine only"); Layout.topMargin: 8 }
-                GridLayout {
-                    Layout.fillWidth: true
-                    columns: 2
-                    columnSpacing: 12
-                    rowSpacing: 8
-                    enabled: !DspController.rubberBandFiner
-                    opacity: enabled ? 1 : 0.45
-
-                    Label { text: qsTr("Transients"); color: Theme.text }
-                    LComboBox {
-                        Layout.fillWidth: true
-                        model: [qsTr("Crisp"), qsTr("Mixed"), qsTr("Smooth (no warble on steady tones)")]
-                        currentIndex: DspController.transients
-                        onActivated: (index) => DspController.transients = index
-                    }
-                    Label { text: qsTr("Transient detector"); color: Theme.text }
-                    LComboBox {
-                        Layout.fillWidth: true
-                        model: [qsTr("Compound (general)"), qsTr("Percussive"), qsTr("Soft (e.g. piano)")]
-                        currentIndex: DspController.detector
-                        onActivated: (index) => DspController.detector = index
-                    }
-                    LSwitch {
-                        Layout.columnSpan: 2
-                        text: qsTr("Independent phase (softer, phasier)")
-                        checked: DspController.phaseIndependent
-                        onToggled: DspController.phaseIndependent = checked
-                    }
-                    LSwitch {
-                        Layout.columnSpan: 2
-                        text: qsTr("Time-domain smoothing (softer, artifacts at attacks)")
-                        checked: DspController.rubberBandSmoothing
-                        onToggled: DspController.rubberBandSmoothing = checked
-                    }
-                }
-                Hint {
-                    Layout.leftMargin: 0
-                    Layout.fillWidth: true
-                    wrapMode: Text.Wrap
-                    visible: DspController.rubberBandFiner
-                    text: qsTr("Turn off the R3 engine to use these.")
-                }
-                PillButton {
-                    Layout.topMargin: 4
-                    iconName: "refresh"
-                    text: qsTr("Recommended engine settings")
-                    onClicked: DspController.resetRubberBand()
-                }
-            }
-
             // --- Advanced: SoundTouch --------------------------------------------------
             Section {
                 title: qsTr("Advanced SoundTouch")
-                visible: !win.rubberBand
                 enabled: DspController.soundTouchEnabled // off: shown dimmed, values kept
                 opacity: enabled ? 1 : 0.45
 

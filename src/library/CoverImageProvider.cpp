@@ -3,6 +3,7 @@
 #include "Metadata.hpp"
 
 #include <QBuffer>
+#include <QFile>
 #include <QFileInfo>
 #include <QImageReader>
 #include <QPainter>
@@ -14,10 +15,36 @@
 
 namespace {
 
+// The image format from the first bytes, so the reader opens that one
+// decoder instead of asking every image plugin in turn (its default even
+// when a format is given). Empty: let it detect.
+QByteArray formatOf(QIODevice* device)
+{
+    if (!device)
+        return {};
+    const QByteArray head = device->peek(16);
+    if (head.startsWith("\xFF\xD8\xFF"))
+        return "jpeg";
+    if (head.startsWith("\x89PNG\r\n\x1a\n"))
+        return "png";
+    if (head.startsWith("GIF8"))
+        return "gif";
+    if (head.startsWith("BM"))
+        return "bmp";
+    if (head.startsWith("RIFF") && head.mid(8, 4) == "WEBP")
+        return "webp";
+    return {};
+}
+
 // Decodes `reader` so that its shorter side is at least `side` pixels,
 // without decoding the full-size picture when the format can scale.
 QImage readAtLeast(QImageReader& reader, int side)
 {
+    if (reader.format().isEmpty())
+        if (const QByteArray format = formatOf(reader.device()); !format.isEmpty()) {
+            reader.setFormat(format);
+            reader.setAutoDetectImageFormat(false);
+        }
     reader.setAutoTransform(true);
     const QSize full = reader.size();
     if (full.isValid() && std::min(full.width(), full.height()) > side) {
@@ -42,7 +69,10 @@ QImage loadSource(const QString& path, int side)
     const QString folderImage = sonkore::Metadata::folderCover(QFileInfo(path).absolutePath());
     if (folderImage.isEmpty())
         return {};
-    QImageReader reader(folderImage);
+    QFile file(folderImage);
+    if (!file.open(QIODevice::ReadOnly))
+        return {};
+    QImageReader reader(&file);
     return readAtLeast(reader, side);
 }
 

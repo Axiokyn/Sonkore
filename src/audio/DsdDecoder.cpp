@@ -2,7 +2,9 @@
 
 #include <algorithm>
 #include <array>
+#include <cstdio>
 #include <cstring>
+#include <string>
 
 namespace sonkore {
 
@@ -70,6 +72,11 @@ struct Layout {
     bool lsbFirst = false;
     uint64_t dataStart = 0;
     uint32_t blockSize = 0;
+    // DST-compressed DSDIFF: the frame chunks and, when present, the index.
+    bool dst = false;
+    uint64_t dstStart = 0, dstEnd = 0;
+    uint32_t frameCount = 0;
+    uint64_t indexOffset = 0, indexSize = 0;
 };
 
 // DSF (Sony): little-endian chunks "DSD ", "fmt ", "data"; per channel blocks
@@ -106,7 +113,9 @@ bool parseDsf(std::FILE* f, Layout& out)
 
 // DSDIFF (Philips): big-endian "FRM8"/"DSD " form; "PROP"/"SND " holds the
 // rate ("FS  "), channels ("CHNL") and compression ("CMPR"); the "DSD "
-// chunk holds the samples, one byte per channel in turn, MSB first.
+// chunk holds the samples, one byte per channel in turn, MSB first. A
+// DST-compressed file has a "DST " chunk instead: "FRTE" (frame count and
+// rate) then a "DSTF" chunk per frame, and may carry a "DSTI" index.
 bool parseDff(std::FILE* f, Layout& out)
 {
     uint8_t h[16];
@@ -117,6 +126,20 @@ bool parseDff(std::FILE* f, Layout& out)
     bool compressed = false;
     uint64_t pos = 16;
     while (pos + 12 <= end) {
+        if (out.dst && pos >= out.dstEnd) {
+            // Past the frames: only the index chunk is of interest.
+            uint8_t c[12];
+            if (!seekTo(f, pos) || !readExact(f, c, sizeof c))
+                break;
+            const uint64_t size = be(c + 4, 8);
+            if (std::memcmp(c, "DSTI", 4) == 0) {
+                out.indexOffset = pos + 12;
+                out.indexSize = size;
+                break;
+            }
+            pos += 12 + size + (size & 1);
+            continue;
+        }
         uint8_t c[12];
         if (!seekTo(f, pos) || !readExact(f, c, sizeof c))
             return false;
@@ -146,11 +169,25 @@ bool parseDff(std::FILE* f, Layout& out)
             out.format = {rate, channels, size / channels};
             return true;
         } else if (std::memcmp(c, "DST ", 4) == 0) {
-            return false;
+            // DST frames: the rate counts in bits, the frame holds
+            // 588 * rate / 44100 of them per channel.
+            uint8_t frte[12 + 6];
+            if (channels == 0 || channels > DstDecoder::kMaxChannels || rate < 2822400 || rate % 44100 != 0
+                || !seekTo(f, body) || !readExact(f, frte, sizeof frte) || std::memcmp(frte, "FRTE", 4) != 0)
+                return false;
+            const uint32_t frames = static_cast<uint32_t>(be(frte + 12, 4));
+            const uint64_t frteSize = be(frte + 4, 8);
+            out.dsf = false;
+            out.lsbFirst = false;
+            out.dst = true;
+            out.dstStart = body + 12 + frteSize + (frteSize & 1);
+            out.dstEnd = body + size;
+            out.frameCount = frames;
+            out.format = {rate, channels, static_cast<uint64_t>(frames) * (DstDecoder::samplesPerFrame(rate) / 8)};
         }
         pos = body + size + (size & 1);
     }
-    return false;
+    return out.dst;
 }
 
 bool parse(std::FILE* f, Layout& out)
@@ -204,7 +241,7 @@ std::unique_ptr<DsdDecoder> DsdDecoder::open(const std::filesystem::path& path, 
     Layout layout;
     if (!d->m_file || !parse(d->m_file, layout)) {
         if (error)
-            *error = "Not an uncompressed DSF / DSDIFF file";
+            *error = "Not a DSF / DSDIFF file";
         return nullptr;
     }
     d->m_packing = packing;
@@ -213,6 +250,15 @@ std::unique_ptr<DsdDecoder> DsdDecoder::open(const std::filesystem::path& path, 
     d->m_lsbFirst = layout.lsbFirst;
     d->m_dataStart = layout.dataStart;
     d->m_blockSize = layout.blockSize;
+    if (layout.dst) {
+        d->m_dst = true;
+        d->m_frameBytes = DstDecoder::samplesPerFrame(layout.format.dsdRate) / 8;
+        d->m_dstEnd = layout.dstEnd;
+        d->m_scanPos = layout.dstStart;
+        d->m_dstDecoder = std::make_unique<DstDecoder>();
+        if (layout.indexSize > 0)
+            d->loadIndex(layout.indexOffset, layout.indexSize, layout.frameCount);
+    }
 
     const uint32_t bytesPerFrame = packing == DsdPacking::Dop ? 2 : 4;
     StreamInfo& info = d->m_info;
@@ -223,9 +269,89 @@ std::unique_ptr<DsdDecoder> DsdDecoder::open(const std::filesystem::path& path, 
     info.lossless = true;
     info.dsdRate = layout.format.dsdRate;
     info.dsd = packing == DsdPacking::Dop ? StreamInfo::Dsd::Dop : StreamInfo::Dsd::Native;
-    info.codec = rateLabel(layout.format.dsdRate) + (packing == DsdPacking::Dop ? " DoP" : " native");
-    info.decoder = "DSD reader";
+    info.codec = rateLabel(layout.format.dsdRate) + (layout.dst ? " DST" : "") + (packing == DsdPacking::Dop ? " DoP" : " native");
+    info.decoder = layout.dst ? "DST decoder" : "DSD reader";
     return d;
+}
+
+// The DSTI chunk: for every frame, its offset in the file (of the frame
+// chunk, or of the frame itself) and its length. Anything that does not add
+// up is ignored: the frames are then found by walking the chunks.
+bool DsdDecoder::loadIndex(uint64_t offset, uint64_t size, uint32_t frames)
+{
+    const uint64_t count = std::min<uint64_t>(size / 12, frames);
+    if (count == 0)
+        return false;
+    std::vector<uint8_t> raw(static_cast<std::size_t>(count) * 12);
+    if (!seekTo(m_file, offset) || !readExact(m_file, raw.data(), raw.size()))
+        return false;
+    // Does an entry point at a chunk header or at the frame bytes?
+    uint8_t probe[4];
+    const uint64_t first = be(raw.data(), 8);
+    if (!seekTo(m_file, first) || !readExact(m_file, probe, 4))
+        return false;
+    const uint64_t skip = std::memcmp(probe, "DSTF", 4) == 0 ? 12 : 0;
+    std::vector<uint64_t> offsets;
+    std::vector<uint32_t> sizes;
+    offsets.reserve(count);
+    sizes.reserve(count);
+    for (uint64_t i = 0; i < count; ++i) {
+        const uint64_t at = be(raw.data() + i * 12, 8) + skip;
+        const auto length = static_cast<uint32_t>(be(raw.data() + i * 12 + 8, 4));
+        if (at < m_scanPos || at + length > m_dstEnd || length == 0)
+            return false;
+        offsets.push_back(at);
+        sizes.push_back(length);
+    }
+    m_frameOffsets = std::move(offsets);
+    m_frameSizes = std::move(sizes);
+    return true;
+}
+
+// The frame's place in the file, walking the frame chunks from where the
+// last walk stopped (the CRC chunks between them are skipped).
+bool DsdDecoder::locateFrame(uint64_t index, uint64_t& offset, uint32_t& size)
+{
+    while (index >= m_frameOffsets.size()) {
+        uint8_t c[12];
+        if (m_scanPos + 12 > m_dstEnd || !seekTo(m_file, m_scanPos) || !readExact(m_file, c, sizeof c))
+            return false;
+        const uint64_t chunkSize = be(c + 4, 8);
+        if (std::memcmp(c, "DSTF", 4) == 0) {
+            m_frameOffsets.push_back(m_scanPos + 12);
+            m_frameSizes.push_back(static_cast<uint32_t>(std::min<uint64_t>(chunkSize, UINT32_MAX)));
+        }
+        m_scanPos += 12 + chunkSize + (chunkSize & 1);
+    }
+    offset = m_frameOffsets[index];
+    size = m_frameSizes[index];
+    return true;
+}
+
+const uint8_t* DsdDecoder::dstFrame(uint64_t index)
+{
+    for (const Cached& c : m_cache)
+        if (c.index == index)
+            return c.bytes.data();
+    uint64_t offset;
+    uint32_t size;
+    if (!locateFrame(index, offset, size))
+        return nullptr;
+    m_packet.resize(size);
+    if (!seekTo(m_file, offset) || !readExact(m_file, m_packet.data(), size))
+        return nullptr;
+    Cached& slot = m_cache[m_cacheNext];
+    m_cacheNext = (m_cacheNext + 1) % 2;
+    slot.index = ~uint64_t(0);
+    slot.bytes.resize(m_frameBytes * m_format.channels);
+    std::string error;
+    if (!m_dstDecoder->decode(m_packet.data(), size, m_format.channels, m_frameBytes * 8, slot.bytes.data(), &error)) {
+        if (!m_dstError)
+            std::fprintf(stderr, "Sonkore: frame %llu: %s\n", static_cast<unsigned long long>(index), error.c_str());
+        m_dstError = true;
+    }
+    slot.index = index;
+    return slot.bytes.data();
 }
 
 DsdDecoder::~DsdDecoder()
@@ -262,6 +388,20 @@ bool DsdDecoder::readBytes(uint64_t first, std::size_t count)
             for (uint32_t c = 0; c < ch; ++c)
                 for (std::size_t i = 0; i < valid; ++i)
                     m_bytes[c * count + i] = reverseBits(m_bytes[c * count + i]);
+        return true;
+    }
+    if (m_dst) {
+        // Decoded frames, each `m_frameBytes` per channel.
+        std::size_t done = 0;
+        while (done < valid) {
+            const uint64_t at = first + done;
+            const std::size_t offset = static_cast<std::size_t>(at % m_frameBytes);
+            const std::size_t n = std::min(valid - done, m_frameBytes - offset);
+            if (const uint8_t* planar = dstFrame(at / m_frameBytes))
+                for (uint32_t c = 0; c < ch; ++c)
+                    std::copy_n(planar + c * m_frameBytes + offset, n, m_bytes.data() + c * count + done);
+            done += n;
+        }
         return true;
     }
     // DSDIFF: one byte per channel in turn.

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Builds the test corpus for engine_test: deterministic signals in every
 # format the engine reads, a gapless album, a CD image with its sheet, DSD,
-# multichannel and damaged files. Needs sox, flac, ffmpeg and python3.
+# multichannel and damaged files. Needs sox, flac, ffmpeg and python3 with numpy.
 #   tests/make_corpus.sh <output dir>
 set -euo pipefail
 export LC_ALL=C.UTF-8
@@ -68,6 +68,15 @@ CUE
 
 python3 "$here/mkdsf.py" DSD/dsd64.dsf 2 2822400
 python3 "$here/mkdsf.py" DSD/dsd128.dsf 1 5644800
+# The same DSD64 audio as plain DSDIFF and DST-compressed (one file with an
+# uncompressed frame inside the DST stream). FFmpeg must decode the DST file
+# exactly like the plain one: the encoder is checked against an independent
+# decoder, and engine_test then checks the engine's decoder against the
+# encoder's input.
+python3 "$here/mkdst.py" DSD/dsd64.dsf DSD/dsd64.dff plain
+python3 "$here/mkdst.py" DSD/dsd64.dsf DSD/dsd64-dst.dff
+python3 "$here/mkdst.py" DSD/dsd64.dsf DSD/dsd64-dst-mixed.dff mixed
+cmp <(ffmpeg -nostdin -loglevel error -i DSD/dsd64.dff -f f32le -) <(ffmpeg -nostdin -loglevel error -i DSD/dsd64-dst.dff -f f32le -)
 
 : > Rotos/vacio.flac
 head -c 80000 "Álbum Uno/01 - Pista número 1.flac" > Rotos/truncado.flac # past the padding: some frames, then nothing

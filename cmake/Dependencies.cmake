@@ -93,7 +93,7 @@ target_include_directories(sonkore_pocketfft SYSTEM INTERFACE ${pocketfft_SOURCE
 target_compile_definitions(sonkore_pocketfft INTERFACE POCKETFFT_NO_MULTITHREADING)
 add_library(sonkore::pocketfft ALIAS sonkore_pocketfft)
 
-# --- SoundTouch ---------------------------------------------------------------
+# --- SoundTouch (pitch / tempo / rate) ----------------------------------------
 add_library(sonkore_soundtouch INTERFACE)
 add_library(sonkore::soundtouch ALIAS sonkore_soundtouch)
 
@@ -115,40 +115,6 @@ else()
     FetchContent_MakeAvailable(soundtouch)
 
     target_link_libraries(sonkore_soundtouch INTERFACE SoundTouch)
-endif()
-
-# --- Rubber Band (pitch / tempo, default engine) ------------------------------
-# Built from its single-file compilation unit (built-in FFT and resampler, vDSP
-# on Apple), so no FFTW or libsamplerate is needed.
-option(SONKORE_USE_SYSTEM_RUBBERBAND "Link the system Rubber Band (pkg-config) instead of fetching it" OFF)
-
-add_library(sonkore_rubberband INTERFACE)
-add_library(sonkore::rubberband ALIAS sonkore_rubberband)
-
-if(SONKORE_USE_SYSTEM_RUBBERBAND)
-    find_package(PkgConfig REQUIRED)
-    pkg_check_modules(RUBBERBAND REQUIRED IMPORTED_TARGET rubberband>=3.0)
-    target_link_libraries(sonkore_rubberband INTERFACE PkgConfig::RUBBERBAND)
-else()
-    FetchContent_Declare(rubberband
-        URL      https://breakfastquay.com/files/releases/rubberband-4.0.0.tar.bz2
-        URL_HASH SHA256=af050313ee63bc18b35b2e064e5dce05b276aaf6d1aa2b8a82ced1fe2f8028e9
-        SOURCE_SUBDIR _single_file_)
-    FetchContent_MakeAvailable(rubberband)
-
-    add_library(sonkore_rubberband_single STATIC ${rubberband_SOURCE_DIR}/single/RubberBandSingle.cpp)
-    target_include_directories(sonkore_rubberband_single SYSTEM PUBLIC ${rubberband_SOURCE_DIR})
-    set_target_properties(sonkore_rubberband_single PROPERTIES POSITION_INDEPENDENT_CODE ON)
-    if(MSVC)
-        target_compile_definitions(sonkore_rubberband_single PRIVATE _USE_MATH_DEFINES NOMINMAX)
-        target_compile_options(sonkore_rubberband_single PRIVATE /W0)
-    else()
-        target_compile_options(sonkore_rubberband_single PRIVATE -w)
-    endif()
-    if(APPLE)
-        target_link_libraries(sonkore_rubberband_single PUBLIC "-framework Accelerate")
-    endif()
-    target_link_libraries(sonkore_rubberband INTERFACE sonkore_rubberband_single)
 endif()
 
 # --- SoX Resampler (only used when the device refuses the track's rate) -------

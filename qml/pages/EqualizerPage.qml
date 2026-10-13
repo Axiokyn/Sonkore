@@ -1,7 +1,6 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Dialogs
 import QtQuick.Layouts
 import Sonkore
 
@@ -19,19 +18,20 @@ Item {
         placeholder: qsTr("e.g. My headphones — warm")
         onAccepted: (name) => AppActions.toast(qsTr("Saved “%1”").arg(Equalizer.saveProfile(name)))
     }
-    FileDialog {
-        id: importDialog
-        title: qsTr("Import parametric EQ profile")
-        nameFilters: [qsTr("Parametric EQ (*.txt)"), qsTr("All files (*)")]
-        onAccepted: Equalizer.importFile(selectedFile)
+    // The profile file dialogs (EqualizerDialogs.qml), loaded the first time one opens.
+    Loader {
+        id: dialogs
+        active: false
+        source: "EqualizerDialogs.qml"
+        function open(which) {
+            active = true
+            item[which]()
+        }
     }
-    FileDialog {
-        id: exportDialog
-        title: qsTr("Export EQ profile")
-        fileMode: FileDialog.SaveFile
-        defaultSuffix: "txt"
-        nameFilters: [qsTr("Parametric EQ (*.txt)")]
-        onAccepted: AppActions.toast(Equalizer.exportFile(selectedFile) ? qsTr("Profile exported") : qsTr("Export failed"))
+    Connections {
+        target: dialogs.item
+        function onImportChosen(file) { Equalizer.importFile(file) }
+        function onExportChosen(file) { AppActions.toast(Equalizer.exportFile(file) ? qsTr("Profile exported") : qsTr("Export failed")) }
     }
     Connections {
         target: Equalizer
@@ -165,8 +165,8 @@ Item {
                     onClicked: Equalizer.deleteProfile(Equalizer.currentProfile)
                 }
                 Item { Layout.fillWidth: true }
-                PillButton { iconName: "upload"; text: qsTr("Import"); onClicked: importDialog.open() }
-                PillButton { iconName: "download"; text: qsTr("Export"); onClicked: exportDialog.open() }
+                PillButton { iconName: "upload"; text: qsTr("Import"); onClicked: dialogs.open("openImport") }
+                PillButton { iconName: "download"; text: qsTr("Export"); onClicked: dialogs.open("openExport") }
                 PillButton { iconName: "refresh"; text: qsTr("Reset"); onClicked: Equalizer.reset() }
             }
 

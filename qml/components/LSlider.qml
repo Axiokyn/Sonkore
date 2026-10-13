@@ -141,6 +141,7 @@ Slider {
         property color tint
         property var peaks: []
         renderStrategy: Canvas.Cooperative
+        antialiasing: true // fractional peak heights end in a soft pixel, not a step
         onPeaksChanged: requestPaint()
         onTintChanged: requestPaint()
         onWidthChanged: requestPaint()

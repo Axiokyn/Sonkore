@@ -62,7 +62,7 @@ RowLayout {
     }
     LSwitch {
         Layout.rightMargin: 4
-        scale: 0.8
+        size: 0.8
         checked: levels.shown
         onToggled: levels.shownToggled(checked)
     }

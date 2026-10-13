@@ -9,6 +9,7 @@
 #include "DSPManager.hpp"
 #include "Decoder.hpp"
 #include "DsdDecoder.hpp"
+#include "TestSignals.hpp"
 #include "LinearPhaseEq.hpp"
 #include "PipeWireOutput.hpp"
 #include "SampleConvert.hpp"
@@ -484,11 +485,10 @@ void timeStretch()
 {
     const fs::path path = corpus("Formatos/hires-24-96.flac");
     const auto ref = trimmed(decodeAll(path), 2);
-    for (auto engine : {TimeStretch::Engine::RubberBand, TimeStretch::Engine::SoundTouch}) {
+    {
         for (double tempo : {1.25, 0.8}) {
-            g_test = std::string("tempo ") + std::to_string(tempo) + (engine == TimeStretch::Engine::RubberBand ? " RubberBand" : " SoundTouch");
+            g_test = std::string("tempo ") + std::to_string(tempo);
             Engine e;
-            e.dsp.timeStretch().setEngine(engine);
             e.dsp.timeStretch().setEnabled(true);
             e.dsp.timeStretch().setTempo(tempo);
             CHECK(e.load(path));
@@ -502,7 +502,6 @@ void timeStretch()
         }
         g_test = "pitch +2 st";
         Engine e;
-        e.dsp.timeStretch().setEngine(engine);
         e.dsp.timeStretch().setEnabled(true);
         e.dsp.timeStretch().setPitchSemiTones(2.0);
         CHECK(e.load(path));
@@ -516,16 +515,14 @@ void timeStretch()
 // Pitch / tempo above 192 kHz (SoundTouch used to throw there).
 void timeStretchHighRate()
 {
-    for (auto engine : {TimeStretch::Engine::SoundTouch, TimeStretch::Engine::RubberBand})
-        for (const char* f : {"DSD/dsd64.dsf", "Formatos/hires-24-192.wav"}) {
-            Engine e;
-            e.dsp.timeStretch().setEngine(engine);
-            e.dsp.timeStretch().setEnabled(true);
-            e.dsp.timeStretch().setTempo(1.1);
-            CHECK(e.load(corpus(f)));
-            CHECK(e.playToEnd(40s));
-            CHECK(!trimmed(e.capture.take(), 2).empty());
-        }
+    for (const char* f : {"DSD/dsd64.dsf", "Formatos/hires-24-192.wav"}) {
+        Engine e;
+        e.dsp.timeStretch().setEnabled(true);
+        e.dsp.timeStretch().setTempo(1.1);
+        CHECK(e.load(corpus(f)));
+        CHECK(e.playToEnd(40s));
+        CHECK(!trimmed(e.capture.take(), 2).empty());
+    }
 }
 
 void dsd()
@@ -583,7 +580,7 @@ void dsd()
     }
     {
         g_test = "PCM to DSD modulator";
-        for (int multiple : {64, 128, 256}) {
+        for (int multiple : {64, 128, 256, 512}) {
             SigmaDelta sd;
             sd.setup(multiple, 2, DsdPacking::NativeU32BE);
             const uint32_t rate = 44100u * multiple;
@@ -611,6 +608,168 @@ void dsd()
             CHECK_MSG(loud.resets() == 0, "DSD%d unstable at full scale (%llu resets)", multiple, static_cast<unsigned long long>(loud.resets()));
         }
     }
+}
+
+// DST-compressed DSDIFF: the engine's decoder gives back the bits the
+// encoder (tests/mkdst.py) was given; the corpus script checks the same files
+// against FFmpeg's decoder, so the two decoders agree on the format.
+void dst()
+{
+    const auto readAll = [](DsdDecoder& d) {
+        const uint32_t ch = d.info().channels;
+        std::vector<int32_t> out, buf(static_cast<std::size_t>(1000) * ch);
+        for (;;) {
+            const uint64_t n = d.readS32(buf.data(), 1000);
+            if (n == 0)
+                break;
+            out.insert(out.end(), buf.begin(), buf.begin() + static_cast<std::ptrdiff_t>(n * ch));
+        }
+        return out;
+    };
+    for (const char* f : {"DSD/dsd64-dst.dff", "DSD/dsd64-dst-mixed.dff"})
+        for (DsdPacking packing : {DsdPacking::NativeU32BE, DsdPacking::NativeU32LE, DsdPacking::Dop}) {
+            g_test = std::string(f) + (packing == DsdPacking::Dop ? " DoP" : " native");
+            auto plain = DsdDecoder::open(corpus("DSD/dsd64.dff"), packing, nullptr);
+            auto coded = DsdDecoder::open(corpus(f), packing, nullptr);
+            CHECK(plain != nullptr && coded != nullptr);
+            if (!plain || !coded)
+                continue;
+            CHECK(coded->info().dsdRate == 2822400 && coded->info().channels == 2);
+            CHECK(coded->info().codec.find("DST") != std::string::npos);
+            CHECK(coded->info().decoder == "DST decoder");
+            const auto a = readAll(*plain), b = readAll(*coded);
+            CHECK_MSG(b.size() >= a.size() && b.size() < a.size() + 2 * 4704 * 2, "%zu words from DST, %zu plain", b.size(), a.size());
+            const auto mismatch = std::mismatch(a.begin(), a.end(), b.begin());
+            CHECK_MSG(mismatch.first == a.end(), "the DST decoder's bits differ from the file's at word %td", mismatch.first - a.begin());
+            // Whatever completes the last frame is DSD silence.
+            if (b.size() > a.size() && packing != DsdPacking::Dop)
+                CHECK(b.back() == DsdDecoder::silence(packing, false));
+            // A seek lands on the same bits (the frames before it are walked).
+            auto again = DsdDecoder::open(corpus(f), packing, nullptr);
+            const uint64_t at = plain->info().totalFrames * 2 / 3;
+            CHECK(plain->seek(at) && again->seek(at));
+            std::vector<int32_t> x(2000 * 2), y(2000 * 2);
+            const uint64_t nx = plain->readS32(x.data(), 2000), ny = again->readS32(y.data(), 2000);
+            CHECK_MSG(nx == 2000 && ny == 2000 && x == y, "after a seek: %llu and %llu frames", (unsigned long long)nx, (unsigned long long)ny);
+        }
+    {
+        // As PCM, the file goes through FFmpeg's decoder like any other DSD.
+        g_test = "DST as PCM";
+        Engine e;
+        CHECK(e.load(corpus("DSD/dsd64-dst.dff")));
+        CHECK_MSG(std::abs(e.dsp.durationSeconds() - 2.0) < 0.02, "duration %.3f", e.dsp.durationSeconds());
+        CHECK(e.playToEnd());
+        CHECK(e.dsp.positionSeconds() > 1.9);
+    }
+}
+
+// The test signals: made on the spot, read back through the engine's
+// decoders, and carrying what they say they carry.
+void testSignals()
+{
+    namespace ts = testsignals;
+    const fs::path dir = fs::temp_directory_path() / "sonkore-test-signals";
+    std::string error;
+    // A 1 kHz tone at 96 kHz, 24 bits: the rate, the length and the frequency
+    // (zero crossings) come back right.
+    {
+        g_test = "tone";
+        const fs::path f = dir / "tone-96k.wav";
+        CHECK_MSG(ts::writeTone(f, 96000, 2, 1.0, 1000.0, -20.0, &error), "%s", error.c_str());
+        StreamInfo info;
+        const auto pcm = decodeAll(f, &info);
+        CHECK(info.sampleRate == 96000 && info.channels == 2 && info.bitsPerSample == 24);
+        CHECK_MSG(pcm.size() == 96000 * 2, "%zu samples", pcm.size());
+        std::size_t crossings = 0;
+        for (std::size_t i = 2; i < pcm.size(); i += 2)
+            crossings += (pcm[i] >= 0) != (pcm[i - 2] >= 0);
+        CHECK_MSG(std::abs(static_cast<int>(crossings) - 2000) <= 2, "%zu zero crossings", crossings);
+        int32_t peak = 0;
+        for (int32_t v : pcm)
+            peak = std::max(peak, std::abs(v));
+        const double dbfs = 20.0 * std::log10(peak / 2147483648.0);
+        CHECK_MSG(std::abs(dbfs + 20.0) < 0.1, "peak %.2f dBFS", dbfs);
+        // ...and it goes through the engine untouched.
+        Engine e;
+        CHECK(e.load(f));
+        CHECK(e.playToEnd());
+        CHECK(trimmed(e.capture.take(), 2) == trimmed(pcm, 2));
+    }
+    // Each channel in turn, 5.1 at 48 kHz: the tone is on one channel at a
+    // time, in order.
+    {
+        g_test = "channels";
+        const fs::path f = dir / "channels-51.wav";
+        CHECK_MSG(ts::writeChannelSequence(f, 48000, 6, 1000.0, -20.0, &error), "%s", error.c_str());
+        StreamInfo info;
+        const auto pcm = decodeAll(f, &info);
+        CHECK(info.channels == 6 && info.sampleRate == 48000);
+        const std::size_t slot = 48000 + 48000 * 3 / 10;
+        for (uint32_t c = 0; c < 6; ++c)
+            for (uint32_t other = 0; other < 6; ++other) {
+                int64_t energy = 0;
+                for (std::size_t i = c * slot; i < c * slot + 48000; ++i)
+                    energy += std::abs(static_cast<int64_t>(pcm[i * 6 + other]));
+                CHECK_MSG((energy > 0) == (other == c), "channel %u sounds during channel %u's turn", other, c);
+            }
+        CHECK(std::string(ts::channelName(6, 3)) == "LFE (subwoofer)");
+    }
+    // DSD64 and DSD128 tones: valid DSF files the DSD reader opens, at the
+    // right rate, with the loop stable (the density of ones follows a sine).
+    for (int multiple : {64, 128}) {
+        g_test = "dsd tone " + std::to_string(multiple);
+        const fs::path f = dir / ("tone-dsd" + std::to_string(multiple) + ".dsf");
+        CHECK_MSG(ts::writeDsdTone(f, multiple, 2, 0.5, 1000.0, -20.0, &error), "%s", error.c_str());
+        DsdDecoder::Format format;
+        CHECK(DsdDecoder::probe(f, format));
+        CHECK(format.dsdRate == 44100u * multiple && format.channels == 2);
+        auto d = DsdDecoder::open(f, DsdPacking::NativeU32BE, nullptr);
+        CHECK(d != nullptr);
+        if (!d)
+            continue;
+        CHECK_MSG(std::abs(static_cast<double>(d->info().totalFrames) * 32 / format.dsdRate - 0.5) < 0.01, "%llu frames",
+                  static_cast<unsigned long long>(d->info().totalFrames));
+        std::vector<int32_t> words(d->info().totalFrames * 2);
+        const uint64_t got = d->readS32(words.data(), d->info().totalFrames);
+        std::size_t ones = 0;
+        for (uint64_t i = 0; i < got; ++i)
+            ones += static_cast<std::size_t>(std::popcount(static_cast<uint32_t>(words[i * 2])));
+        const double density = static_cast<double>(ones) / static_cast<double>(got * 32);
+        CHECK_MSG(std::abs(density - 0.5) < 0.01, "density of ones %.4f", density);
+        // Played as PCM (FFmpeg converts), it sounds.
+        Engine e;
+        if (e.load(f)) {
+            CHECK(e.playToEnd());
+            CHECK(soundingFrames(e.capture.take(), 2) > 0);
+        }
+    }
+    // The DTS bit-perfect test: a 16-bit 44.1 kHz stereo WAV whose samples
+    // are a DTS stream (its sync word at the start of every 2048-byte frame),
+    // and the engine passes it on untouched.
+    if (ts::dtsAvailable()) {
+        g_test = "dts";
+        const fs::path f = dir / "bitperfect-dts.wav";
+        CHECK_MSG(ts::writeDtsTest(f, &error), "%s", error.c_str());
+        StreamInfo info;
+        const auto pcm = decodeAll(f, &info);
+        CHECK(info.sampleRate == 44100 && info.channels == 2 && info.bitsPerSample == 16);
+        // The 16-bit samples, as bytes: 7F FE 80 01 begins each DTS frame.
+        std::size_t frames = 0;
+        for (std::size_t i = 0; i + 1 < pcm.size(); i += 2) {
+            const uint32_t a = static_cast<uint32_t>(pcm[i]) >> 16, b = static_cast<uint32_t>(pcm[i + 1]) >> 16;
+            if (a == 0xFE7F && b == 0x0180) // little-endian 16-bit words of the big-endian stream
+                ++frames;
+        }
+        CHECK_MSG(frames > 400 && frames < 600, "%zu DTS sync words", frames); // 6 s * 44100 / 512
+        Engine e;
+        CHECK(e.load(f));
+        CHECK(e.playToEnd());
+        CHECK(trimmed(e.capture.take(), 2) == trimmed(pcm, 2));
+    } else {
+        std::printf("  (no DTS encoder in this FFmpeg: the DTS test signal is not checked)\n");
+    }
+    std::error_code ec;
+    fs::remove_all(dir, ec);
 }
 
 void brokenFiles()
@@ -682,7 +841,6 @@ void stress(unsigned seed, int steps)
         }
         case 11:
             e.dsp.timeStretch().setEnabled(pick(2));
-            e.dsp.timeStretch().setEngine(pick(2) ? TimeStretch::Engine::RubberBand : TimeStretch::Engine::SoundTouch);
             e.dsp.timeStretch().setTempo(pick(2) ? 1.0 : std::uniform_real_distribution<double>(0.5, 2.0)(rng));
             e.dsp.timeStretch().setPitchSemiTones(pick(2) ? 0.0 : std::uniform_real_distribution<double>(-12.0, 12.0)(rng));
             break;
@@ -1419,6 +1577,8 @@ int main(int argc, char** argv)
         {"timeStretch", timeStretch},
         {"timeStretchHighRate", timeStretchHighRate},
         {"dsd", dsd},
+        {"dst", dst},
+        {"testSignals", testSignals},
         {"brokenFiles", brokenFiles},
         {"failedLoadWhilePlaying", failedLoadWhilePlaying},
         {"stress", [] { stress(1234, 400); stress(98765, 400); }},

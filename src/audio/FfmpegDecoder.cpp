@@ -31,10 +31,12 @@ namespace {
 
 #define SONKORE_AVUTIL(X) X(av_log_set_level) X(av_dict_set) X(av_dict_free) X(av_dict_get) \
     X(av_get_packed_sample_fmt) X(av_sample_fmt_is_planar) X(av_get_bytes_per_sample) \
-    X(av_rescale_q) X(av_rescale) X(av_frame_alloc) X(av_frame_free) X(av_frame_unref)
+    X(av_rescale_q) X(av_rescale) X(av_frame_alloc) X(av_frame_free) X(av_frame_unref) \
+    X(av_frame_get_buffer) X(av_channel_layout_default)
 #define SONKORE_AVCODEC(X) X(avcodec_descriptor_get) X(avcodec_get_name) X(avcodec_alloc_context3) \
     X(avcodec_parameters_to_context) X(avcodec_open2) X(avcodec_free_context) X(avcodec_receive_frame) \
-    X(avcodec_send_packet) X(avcodec_flush_buffers) X(av_packet_alloc) X(av_packet_free) X(av_packet_unref)
+    X(avcodec_send_packet) X(avcodec_flush_buffers) X(av_packet_alloc) X(av_packet_free) X(av_packet_unref) \
+    X(avcodec_find_encoder_by_name) X(avcodec_send_frame) X(avcodec_receive_packet)
 #define SONKORE_AVFORMAT(X) X(avformat_open_input) X(avformat_find_stream_info) X(av_find_best_stream) \
     X(av_read_frame) X(av_seek_frame) X(avformat_close_input)
 
@@ -491,6 +493,76 @@ std::string version()
     // Built against this ABI; reading the loaded library's version would load
     // FFmpeg just to show it.
     return "(libavcodec " + std::to_string(LIBAVCODEC_VERSION_MAJOR) + ")";
+}
+
+bool dtsEncoderAvailable()
+{
+    return api() && ff().avcodec_find_encoder_by_name("dca") != nullptr;
+}
+
+bool encodeDts(const int32_t* interleaved, std::size_t frames, uint32_t channels, uint32_t rate, std::vector<uint8_t>& out,
+               std::string* error)
+{
+    const auto fail = [&](const std::string& why) {
+        if (error)
+            *error = why;
+        return false;
+    };
+    if (!api())
+        return fail("FFmpeg is not installed");
+    const AVCodec* codec = ff().avcodec_find_encoder_by_name("dca");
+    if (!codec)
+        return fail("This FFmpeg has no DTS encoder");
+    AVCodecContext* ctx = ff().avcodec_alloc_context3(codec);
+    if (!ctx)
+        return fail("FFmpeg: out of memory");
+    ctx->sample_rate = static_cast<int>(rate);
+    ctx->sample_fmt = AV_SAMPLE_FMT_S32;
+    ff().av_channel_layout_default(&ctx->ch_layout, static_cast<int>(channels));
+    ctx->bit_rate = 1411200; // the DTS CD rate: the stream fits a 44.1 kHz 16-bit stereo WAV exactly
+    ctx->strict_std_compliance = FF_COMPLIANCE_EXPERIMENTAL; // the encoder is marked experimental
+    if (ff().avcodec_open2(ctx, codec, nullptr) < 0) {
+        ff().avcodec_free_context(&ctx);
+        return fail("FFmpeg: the DTS encoder refused the format");
+    }
+    AVFrame* frame = ff().av_frame_alloc();
+    AVPacket* packet = ff().av_packet_alloc();
+    bool ok = frame && packet;
+    const std::size_t block = static_cast<std::size_t>(std::max(ctx->frame_size, 512));
+    const auto drain = [&] {
+        while (ff().avcodec_receive_packet(ctx, packet) == 0) {
+            out.insert(out.end(), packet->data, packet->data + packet->size);
+            ff().av_packet_unref(packet);
+        }
+    };
+    for (std::size_t done = 0; ok && done < frames; done += block) {
+        const std::size_t n = std::min(block, frames - done);
+        frame->nb_samples = static_cast<int>(block); // the encoder wants whole frames: the last is padded with silence
+        frame->format = AV_SAMPLE_FMT_S32;
+        frame->sample_rate = ctx->sample_rate;
+        ff().av_channel_layout_default(&frame->ch_layout, static_cast<int>(channels));
+        if (ff().av_frame_get_buffer(frame, 0) < 0) {
+            ok = false;
+            break;
+        }
+        std::memset(frame->data[0], 0, block * channels * sizeof(int32_t));
+        std::memcpy(frame->data[0], interleaved + done * channels, n * channels * sizeof(int32_t));
+        ok = ff().avcodec_send_frame(ctx, frame) >= 0;
+        drain();
+        ff().av_frame_unref(frame);
+    }
+    if (ok) {
+        ff().avcodec_send_frame(ctx, nullptr);
+        drain();
+    }
+    if (packet)
+        ff().av_packet_free(&packet);
+    if (frame)
+        ff().av_frame_free(&frame);
+    ff().avcodec_free_context(&ctx);
+    if (!ok)
+        return fail("FFmpeg: DTS encoding failed");
+    return !out.empty();
 }
 
 std::unique_ptr<Decoder> open(const std::filesystem::path& path, std::string* error)

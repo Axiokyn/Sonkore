@@ -232,6 +232,30 @@
         <translation>El DAC lo está usando %1 y no lo liberó.</translation>
     </message>
     <message>
+        <source>1 kHz tone · %1 kHz</source>
+        <translation>Tono de 1 kHz · %1 kHz</translation>
+    </message>
+    <message>
+        <source>1 kHz tone · DSD%1</source>
+        <translation>Tono de 1 kHz · DSD%1</translation>
+    </message>
+    <message>
+        <source>Channel check · %1 channels</source>
+        <translation>Prueba de canales · %1 canales</translation>
+    </message>
+    <message>
+        <source>Bit-perfect check (DTS)</source>
+        <translation>Prueba bit-perfect (DTS)</translation>
+    </message>
+    <message>
+        <source>Could not make the test signal: %1</source>
+        <translation>No se pudo generar la señal de prueba: %1</translation>
+    </message>
+    <message>
+        <source>Test signals</source>
+        <translation>Señales de prueba</translation>
+    </message>
+    <message>
         <source>Output idle</source>
         <translation>Salida inactiva</translation>
     </message>
@@ -424,8 +448,8 @@
         <translation>PCM → DSD</translation>
     </message>
     <message>
-        <source>SoX VHQ, %1 · %2 kHz → %3 MHz · 7th-order sigma-delta modulator</source>
-        <translation>SoX VHQ, %1 · %2 kHz → %3 MHz · modulador sigma-delta de 7.º orden</translation>
+        <source>SoX VHQ, %1 · %2 kHz → %3 MHz · 8th-order sigma-delta modulator</source>
+        <translation>SoX VHQ, %1 · %2 kHz → %3 MHz · modulador sigma-delta de 8.º orden</translation>
     </message>
     <message>
         <source>Modulator</source>
@@ -571,124 +595,8 @@
         <translation>Encender tono y tempo</translation>
     </message>
     <message>
-        <source>Engine</source>
-        <translation>Motor</translation>
-    </message>
-    <message>
-        <source>Phase vocoder: clean on complex mixes, vocals and bass; can keep the voice's timbre.</source>
-        <translation>Vocoder de fase: limpio con mezclas complejas, voces y graves; puede conservar el timbre de la voz.</translation>
-    </message>
-    <message>
-        <source>WSOLA time-stretch: very little CPU, fine for small changes.</source>
-        <translation>Time-stretch WSOLA: muy poca CPU, bien para cambios chicos.</translation>
-    </message>
-    <message>
         <source>± step</source>
         <translation>± paso</translation>
-    </message>
-    <message>
-        <source>Advanced Rubber Band</source>
-        <translation>Rubber Band avanzado</translation>
-    </message>
-    <message>
-        <source>With the R2 engine, crisp and mixed transients make held notes warble. Use the R3 engine, or smooth transients.</source>
-        <translation>Con el motor R2, los transitorios nítidos y mixtos hacen temblar las notas sostenidas. Usa el motor R3, o transitorios suaves.</translation>
-    </message>
-    <message>
-        <source>R3 “finer” engine (best quality, more CPU)</source>
-        <translation>Motor R3 «finer» (máxima calidad, más CPU)</translation>
-    </message>
-    <message>
-        <source>Preserve formants (natural voices when shifting pitch)</source>
-        <translation>Conservar formantes (voces naturales al cambiar el tono)</translation>
-    </message>
-    <message>
-        <source>Centred stereo image (mono-compatible)</source>
-        <translation>Imagen estéreo centrada (compatible con mono)</translation>
-    </message>
-    <message>
-        <source>Pitch method</source>
-        <translation>Método de tono</translation>
-    </message>
-    <message>
-        <source>Quality (fixed shift)</source>
-        <translation>Calidad (cambio fijo)</translation>
-    </message>
-    <message>
-        <source>Consistency (no clicks while editing)</source>
-        <translation>Continuidad (sin clics al editar)</translation>
-    </message>
-    <message>
-        <source>Speed (least CPU)</source>
-        <translation>Velocidad (mínima CPU)</translation>
-    </message>
-    <message>
-        <source>Window</source>
-        <translation>Ventana</translation>
-    </message>
-    <message>
-        <source>Standard</source>
-        <translation>Estándar</translation>
-    </message>
-    <message>
-        <source>Short (less delay and CPU)</source>
-        <translation>Corta (menos retardo y CPU)</translation>
-    </message>
-    <message>
-        <source>Long (smoother, R2 only)</source>
-        <translation>Larga (más suave, solo R2)</translation>
-    </message>
-    <message>
-        <source>R2 engine only</source>
-        <translation>Solo motor R2</translation>
-    </message>
-    <message>
-        <source>Transients</source>
-        <translation>Transitorios</translation>
-    </message>
-    <message>
-        <source>Crisp</source>
-        <translation>Nítidos</translation>
-    </message>
-    <message>
-        <source>Mixed</source>
-        <translation>Mixtos</translation>
-    </message>
-    <message>
-        <source>Smooth (no warble on steady tones)</source>
-        <translation>Suaves (sin temblor en notas sostenidas)</translation>
-    </message>
-    <message>
-        <source>Transient detector</source>
-        <translation>Detector de transitorios</translation>
-    </message>
-    <message>
-        <source>Compound (general)</source>
-        <translation>Compuesto (general)</translation>
-    </message>
-    <message>
-        <source>Percussive</source>
-        <translation>Percusivo</translation>
-    </message>
-    <message>
-        <source>Soft (e.g. piano)</source>
-        <translation>Suave (p. ej. piano)</translation>
-    </message>
-    <message>
-        <source>Independent phase (softer, phasier)</source>
-        <translation>Fase independiente (más suave, más fase)</translation>
-    </message>
-    <message>
-        <source>Time-domain smoothing (softer, artifacts at attacks)</source>
-        <translation>Suavizado en el tiempo (más suave, artefactos en los ataques)</translation>
-    </message>
-    <message>
-        <source>Turn off the R3 engine to use these.</source>
-        <translation>Desactiva el motor R3 para usarlas.</translation>
-    </message>
-    <message>
-        <source>Recommended engine settings</source>
-        <translation>Ajustes recomendados del motor</translation>
     </message>
     <message>
         <source>Advanced SoundTouch</source>
@@ -1081,32 +989,8 @@
         <translation>“%1” se quitó de la biblioteca (los archivos siguen en el disco)</translation>
     </message>
     <message>
-        <source>Add music folder</source>
-        <translation>Agregar carpeta de música</translation>
-    </message>
-    <message>
         <source>Scanning folder…</source>
         <translation>Escaneando carpeta…</translation>
-    </message>
-    <message>
-        <source>Add audio files</source>
-        <translation>Agregar archivos de audio</translation>
-    </message>
-    <message>
-        <source>All files (*)</source>
-        <translation>Todos los archivos (*)</translation>
-    </message>
-    <message>
-        <source>Audio files (%1)</source>
-        <translation>Archivos de audio (%1)</translation>
-    </message>
-    <message>
-        <source>Import playlist</source>
-        <translation>Importar lista</translation>
-    </message>
-    <message>
-        <source>M3U playlist (*.m3u *.m3u8)</source>
-        <translation>Lista M3U (*.m3u *.m3u8)</translation>
     </message>
     <message>
         <source>New playlist</source>
@@ -1127,10 +1011,6 @@
     <message>
         <source>Added %1 to “%2”</source>
         <translation>Se agregaron %1 a «%2»</translation>
-    </message>
-    <message>
-        <source>Folder for the playlist</source>
-        <translation>Carpeta para la lista</translation>
     </message>
     <message>
         <source>No audio files in that folder</source>
@@ -1214,6 +1094,37 @@
     </message>
 </context>
 <context>
+    <name>MainDialogs</name>
+    <message>
+        <source>Add music folder</source>
+        <translation>Agregar carpeta de música</translation>
+    </message>
+    <message>
+        <source>Add audio files</source>
+        <translation>Agregar archivos de audio</translation>
+    </message>
+    <message>
+        <source>Audio files (%1)</source>
+        <translation>Archivos de audio (%1)</translation>
+    </message>
+    <message>
+        <source>All files (*)</source>
+        <translation>Todos los archivos (*)</translation>
+    </message>
+    <message>
+        <source>Import playlist</source>
+        <translation>Importar lista</translation>
+    </message>
+    <message>
+        <source>M3U playlist (*.m3u *.m3u8)</source>
+        <translation>Lista M3U (*.m3u *.m3u8)</translation>
+    </message>
+    <message>
+        <source>Folder for the playlist</source>
+        <translation>Carpeta para la lista</translation>
+    </message>
+</context>
+<context>
     <name>MiniPlayer</name>
     <message>
         <source>Nothing playing</source>
@@ -1252,6 +1163,10 @@
         <translation>Repetir una</translation>
     </message>
     <message>
+        <source>Pitch / tempo (SoundTouch)</source>
+        <translation>Tono y tempo (SoundTouch)</translation>
+    </message>
+    <message>
         <source>Volume fixed at 100 %: set it on the DAC or the amplifier. Click to choose how the volume is set.</source>
         <translation>Volumen fijo al 100 %: ajústalo en el DAC o el amplificador. Haz clic para elegir cómo se controla el volumen.</translation>
     </message>
@@ -1278,10 +1193,6 @@
     <message>
         <source>Equalizer off — click to open</source>
         <translation>Ecualizador apagado — clic para abrir</translation>
-    </message>
-    <message>
-        <source>Pitch / tempo (%1)</source>
-        <translation>Tono / tempo (%1)</translation>
     </message>
     <message>
         <source>Hide play queue</source>
@@ -1430,8 +1341,8 @@
         <translation>Repetir una</translation>
     </message>
     <message>
-        <source>Pitch / tempo (%1)</source>
-        <translation>Tono / tempo (%1)</translation>
+        <source>Pitch / tempo (SoundTouch)</source>
+        <translation>Tono y tempo (SoundTouch)</translation>
     </message>
     <message>
         <source>Equalizer on — click to open</source>
@@ -1920,10 +1831,6 @@ Haz doble clic en cualquier pista, álbum o lista — o arrastra pistas aquí.</
         <translation>PCM a DSD</translation>
     </message>
     <message>
-        <source>Converts PCM tracks to DSD with a 7th-order sigma-delta modulator and sends them through the DSD output above. EQ, convolution, ReplayGain and the digital volume are applied before the conversion.</source>
-        <translation>Convierte las pistas PCM a DSD con un modulador sigma-delta de 7.º orden y las envía por la salida DSD de arriba. El ecualizador, la convolución, ReplayGain y el volumen digital se aplican antes de la conversión.</translation>
-    </message>
-    <message>
         <source>Linear phase</source>
         <translation>Fase lineal</translation>
     </message>
@@ -2160,6 +2067,14 @@ Haz doble clic en cualquier pista, álbum o lista — o arrastra pistas aquí.</
         <translation>El mini reproductor usa la apariencia de la vista completa, salvo lo que cambies aquí para él.</translation>
     </message>
     <message>
+        <source>Stop</source>
+        <translation>Detener</translation>
+    </message>
+    <message>
+        <source>Play</source>
+        <translation>Reproducir</translation>
+    </message>
+    <message>
         <source>List only</source>
         <translation>Solo la lista</translation>
     </message>
@@ -2266,6 +2181,62 @@ Haz doble clic en cualquier pista, álbum o lista — o arrastra pistas aquí.</
     <message>
         <source>DSD</source>
         <translation>DSD</translation>
+    </message>
+    <message>
+        <source>Converts PCM tracks to DSD with an 8th-order sigma-delta modulator and sends them through the DSD output above. EQ, convolution, ReplayGain and the digital volume are applied before the conversion. DSD512 runs the channels on separate cores.</source>
+        <translation>Convierte las pistas PCM a DSD con un modulador sigma-delta de 8.º orden y las envía por la salida DSD de arriba. El EQ, la convolución, ReplayGain y el volumen digital se aplican antes de la conversión. DSD512 reparte los canales en varios núcleos.</translation>
+    </message>
+    <message>
+        <source>Highest the DAC takes (up to DSD256)</source>
+        <translation>El máximo que acepte el DAC (hasta DSD256)</translation>
+    </message>
+    <message>
+        <source>Test signals</source>
+        <translation>Señales de prueba</translation>
+    </message>
+    <message>
+        <source>Tones made on the spot, played through the same path as the music to check the DAC and the speakers. What was playing resumes afterwards.</source>
+        <translation>Tonos generados al momento, reproducidos por el mismo camino que la música, para comprobar el DAC y los parlantes. Lo que sonaba sigue después.</translation>
+    </message>
+    <message>
+        <source>DAC sample rate</source>
+        <translation>Frecuencia de muestreo del DAC</translation>
+    </message>
+    <message>
+        <source>A 1 kHz tone at −20 dBFS at the chosen rate: a DAC with a display should show that rate.</source>
+        <translation>Un tono de 1 kHz a −20 dBFS a la frecuencia elegida: un DAC con pantalla debería mostrar esa frecuencia.</translation>
+    </message>
+    <message>
+        <source>If the display shows another rate, something between Sonkore and the DAC converts it: a fixed output rate above, a shared output (PipeWire or WASAPI shared) or the DAC's own limit. The signal path (▣ in the player bar) tells what Sonkore sends.</source>
+        <translation>Si la pantalla muestra otra frecuencia, algo entre Sonkore y el DAC la convierte: una frecuencia de salida fija (más arriba), una salida compartida (PipeWire o WASAPI compartido) o el límite del propio DAC. El signal path (▣ en la barra de reproducción) dice qué envía Sonkore.</translation>
+    </message>
+    <message>
+        <source>Speakers</source>
+        <translation>Parlantes</translation>
+    </message>
+    <message>
+        <source>The tone on each channel in turn: front left, front right, then centre, LFE, back left, back right, side left, side right.</source>
+        <translation>El tono en cada canal por turno: frontal izquierdo, frontal derecho, luego central, LFE, trasero izquierdo, trasero derecho, lateral izquierdo, lateral derecho.</translation>
+    </message>
+    <message>
+        <source>Multichannel files reach the DAC in this order (the DAC or the receiver places them). A channel that sounds from the wrong speaker is wired or configured the other way round.</source>
+        <translation>Los archivos multicanal llegan al DAC en este orden (el DAC o el receptor los ubica). Un canal que suena por el parlante equivocado está cableado o configurado al revés.</translation>
+    </message>
+    <message>
+        <source>Stereo</source>
+        <translation>Estéreo</translation>
+    </message>
+    <message>
+        <source>Bit-perfect (DTS)</source>
+        <translation>Bit-perfect (DTS)</translation>
+    </message>
+    <message>
+        <source>A DTS stream inside a CD-quality WAV: a receiver that decodes DTS plays a tone only if every bit arrives untouched, and noise otherwise.</source>
+        <translation>Un stream DTS dentro de un WAV con calidad de CD: un receptor que decodifica DTS reproduce un tono solo si cada bit llega intacto, y ruido si no.</translation>
+    </message>
+    <message>
+        <source>Turn the amplifier down first: anything that changes the samples on the way (a volume below 100 %, EQ, resampling, dither, a shared output) turns the stream into loud noise. For an AV receiver on S/PDIF or HDMI; a plain DAC plays noise either way.</source>
+        <translation>Bajá el amplificador antes: cualquier cosa que cambie las muestras en el camino (un volumen por debajo del 100 %, EQ, remuestreo, dither, una salida compartida) convierte el stream en ruido fuerte. Para un receptor AV por S/PDIF o HDMI; un DAC común reproduce ruido de todos modos.</translation>
     </message>
     <message>
         <source>Sound processing</source>

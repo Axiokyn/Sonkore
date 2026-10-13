@@ -2,6 +2,7 @@
 #include "TrackSort.hpp"
 #include "SettingsLock.hpp"
 #include "AppPaths.hpp"
+#include "TestSignals.hpp"
 
 #include "DSPManager.hpp"
 #include "LibraryModel.hpp"
@@ -153,6 +154,7 @@ DspController::DspController(sonkore::DSPManager& engine, QObject* parent)
     m_idleReleaseTimer.setInterval(60 * 1000);
     connect(&m_idleReleaseTimer, &QTimer::timeout, this, &DspController::releaseOutput);
     connect(this, &DspController::stateChanged, this, &DspController::updateIdleRelease);
+    connect(this, &DspController::outputStatusChanged, this, &DspController::updateIdleRelease);
     connect(&m_reservation, &DeviceReservation::releaseRequested, this, [this] {
         releaseOutput();
         emit outputTakenByOther();
@@ -199,7 +201,16 @@ DspController::~DspController()
 
 void DspController::closeOutput()
 {
-    if (loaded()) {
+    if (!m_previewPath.isEmpty()) {
+        // The test signal is dropped; the queue is remembered where it was.
+        m_previewPath.clear();
+        m_currentIndex = m_previewIndex;
+        m_currentPath = m_currentIndex >= 0 && m_currentIndex < m_queue.size() ? m_queue[m_currentIndex] : QString();
+        m_currentTrack = m_currentPath.isEmpty() ? QVariantMap{} : trackInfo(m_currentPath);
+        m_resumePosition = m_previewPosition;
+        m_engine.unload();
+        emit trackChanged();
+    } else if (loaded()) {
         m_resumePosition = m_engine.positionSeconds();
         m_engine.unload();
     }
@@ -254,118 +265,6 @@ void DspController::setRate(double ratio)
     m_engine.timeStretch().setRate(ratio);
     emit rateChanged();
     emit soundTouchActiveChanged();
-    scheduleSave();
-}
-
-// --- Engine choice -------------------------------------------------------------
-
-int DspController::pitchEngine() const { return static_cast<int>(m_engine.timeStretch().engine()); }
-
-QString DspController::pitchEngineName() const
-{
-    return pitchEngine() == SoundTouch ? QStringLiteral("SoundTouch") : QStringLiteral("Rubber Band");
-}
-
-void DspController::setPitchEngine(int engine)
-{
-    engine = std::clamp(engine, static_cast<int>(RubberBand), static_cast<int>(SoundTouch));
-    if (engine == pitchEngine())
-        return;
-    m_engine.timeStretch().setEngine(static_cast<sonkore::TimeStretch::Engine>(engine));
-    emit pitchEngineChanged();
-    scheduleSave();
-}
-
-// --- Rubber Band ----------------------------------------------------------------
-
-bool DspController::rubberBandFiner() const { return m_engine.timeStretch().rubberBandSettings().finer; }
-bool DspController::preserveFormants() const { return m_engine.timeStretch().rubberBandSettings().preserveFormants; }
-bool DspController::channelsTogether() const { return m_engine.timeStretch().rubberBandSettings().channelsTogether; }
-int DspController::pitchMethod() const { return m_engine.timeStretch().rubberBandSettings().pitchMethod; }
-int DspController::rubberBandWindow() const { return m_engine.timeStretch().rubberBandSettings().window; }
-int DspController::transients() const { return m_engine.timeStretch().rubberBandSettings().transients; }
-int DspController::detector() const { return m_engine.timeStretch().rubberBandSettings().detector; }
-bool DspController::phaseIndependent() const { return m_engine.timeStretch().rubberBandSettings().phaseIndependent; }
-bool DspController::rubberBandSmoothing() const { return m_engine.timeStretch().rubberBandSettings().smoothing; }
-
-void DspController::setRubberBandFiner(bool on)
-{
-    if (on == rubberBandFiner())
-        return;
-    m_engine.timeStretch().setRubberBandFiner(on);
-    emit rubberBandSettingsChanged();
-    scheduleSave();
-}
-
-void DspController::setPreserveFormants(bool on)
-{
-    if (on == preserveFormants())
-        return;
-    m_engine.timeStretch().setPreserveFormants(on);
-    emit rubberBandSettingsChanged();
-    scheduleSave();
-}
-
-void DspController::setPitchMethod(int method)
-{
-    if (method == pitchMethod())
-        return;
-    m_engine.timeStretch().setPitchMethod(method);
-    emit rubberBandSettingsChanged();
-    scheduleSave();
-}
-
-void DspController::setRubberBandWindow(int window)
-{
-    if (window == rubberBandWindow())
-        return;
-    m_engine.timeStretch().setRubberBandWindow(window);
-    emit rubberBandSettingsChanged();
-    scheduleSave();
-}
-
-void DspController::setTransients(int transients)
-{
-    if (transients == this->transients())
-        return;
-    m_engine.timeStretch().setTransients(transients);
-    emit rubberBandSettingsChanged();
-    scheduleSave();
-}
-
-void DspController::setDetector(int detector)
-{
-    if (detector == this->detector())
-        return;
-    m_engine.timeStretch().setDetector(detector);
-    emit rubberBandSettingsChanged();
-    scheduleSave();
-}
-
-void DspController::setPhaseIndependent(bool on)
-{
-    if (on == phaseIndependent())
-        return;
-    m_engine.timeStretch().setPhaseIndependent(on);
-    emit rubberBandSettingsChanged();
-    scheduleSave();
-}
-
-void DspController::setRubberBandSmoothing(bool on)
-{
-    if (on == rubberBandSmoothing())
-        return;
-    m_engine.timeStretch().setRubberBandSmoothing(on);
-    emit rubberBandSettingsChanged();
-    scheduleSave();
-}
-
-void DspController::setChannelsTogether(bool on)
-{
-    if (on == channelsTogether())
-        return;
-    m_engine.timeStretch().setChannelsTogether(on);
-    emit rubberBandSettingsChanged();
     scheduleSave();
 }
 
@@ -444,21 +343,6 @@ void DspController::resetSoundTouch()
     setSequenceMs(defaults.sequenceMs);
     setSeekWindowMs(defaults.seekWindowMs);
     setOverlapMs(defaults.overlapMs);
-    resetRubberBand();
-}
-
-void DspController::resetRubberBand()
-{
-    const sonkore::TimeStretch::RubberBandSettings rb;
-    setRubberBandFiner(rb.finer);
-    setPreserveFormants(rb.preserveFormants);
-    setChannelsTogether(rb.channelsTogether);
-    setPitchMethod(rb.pitchMethod);
-    setRubberBandWindow(rb.window);
-    setTransients(rb.transients);
-    setDetector(rb.detector);
-    setPhaseIndependent(rb.phaseIndependent);
-    setRubberBandSmoothing(rb.smoothing);
 }
 
 // --- Output -----------------------------------------------------------------
@@ -840,6 +724,7 @@ void DspController::setExclusiveMode(bool on)
     cfg.exclusiveMode = on;
     m_engine.setOutputConfig(cfg);
     emit exclusiveModeChanged();
+    emit outputStatusChanged(); // outputExclusiveCapable
     scheduleSave();
     updateMixer(); // Windows: exclusive mode is what makes the output direct
     reopenCurrent();
@@ -882,7 +767,7 @@ void DspController::setDsdMode(int mode)
 
 void DspController::setPcmToDsd(int mode)
 {
-    mode = std::clamp(mode, 0, 4);
+    mode = std::clamp(mode, 0, 5);
     if (mode == m_pcmToDsd)
         return;
     m_pcmToDsd = mode;
@@ -1093,11 +978,30 @@ void DspController::releaseOutput()
     poll();
 }
 
+bool DspController::outputReserved() const
+{
+    return m_reservation.held() || m_engine.outputHeld();
+}
+
+bool DspController::outputExclusiveCapable() const
+{
+    if (m_deviceKey.startsWith(QLatin1String("alsa|")) || m_deviceKey.startsWith(QLatin1String("asio|")))
+        return true;
+#if defined(_WIN32)
+    // The system default is a WASAPI device on Windows.
+    return m_exclusive && (m_deviceKey.isEmpty() || m_deviceKey.startsWith(QLatin1String("wasapi|")));
+#else
+    return false;
+#endif
+}
+
 void DspController::updateIdleRelease()
 {
-    // A direct DAC is handed back to the desktop; PipeWire gets its own
-    // rate back (it was held at the track's).
-    const bool holding = m_reservation.held() || (m_followTrackRate && m_engine.outputStatus().backend == "PipeWire");
+    // A DAC the system cannot share (a reserved card, WASAPI exclusive, ASIO)
+    // is handed back to it; PipeWire gets its own rate back (it was held at
+    // the track's). Re-judged whenever the state or the output changes, so an
+    // output opened without playing (loading a track) counts too.
+    const bool holding = outputReserved() || (m_followTrackRate && m_engine.outputStatus().backend == "PipeWire");
     if (holding && m_releaseWhenIdle && !playing())
         m_idleReleaseTimer.start();
     else
@@ -1112,6 +1016,111 @@ void DspController::setReleaseWhenIdle(bool on)
     updateIdleRelease();
     emit preferencesChanged();
     scheduleSave();
+}
+
+// --- Test signals ----------------------------------------------------------------
+
+bool DspController::dtsTestAvailable() const
+{
+    return sonkore::testsignals::dtsAvailable();
+}
+
+void DspController::playTestSignal(const QString& kind, int rate, int channels)
+{
+    namespace ts = sonkore::testsignals;
+    const QDir dir(sonkore::paths::cacheDir() + QStringLiteral("/test-signals"));
+    channels = std::clamp(channels, 1, 8);
+    QString name, title;
+    std::string error;
+    bool ok = false;
+    // Kept once made (they are deterministic), named by what they hold.
+    const auto have = [&](const QString& n) { return QFileInfo(dir.filePath(n)).size() > 0; };
+    if (kind == QLatin1String("tone")) {
+        rate = std::clamp(rate, 8000, 768000);
+        name = QStringLiteral("tone-1khz-%1-%2ch.wav").arg(rate).arg(channels);
+        title = tr("1 kHz tone · %1 kHz").arg(rate / 1000.0, 0, 'g', 6);
+        ok = have(name) || ts::writeTone(toFsPath(dir.filePath(name)), static_cast<uint32_t>(rate), static_cast<uint32_t>(channels), 10.0, 1000.0, -20.0, &error);
+    } else if (kind == QLatin1String("dsd")) {
+        rate = rate >= 256 ? 256 : rate >= 128 ? 128 : 64;
+        name = QStringLiteral("tone-1khz-dsd%1-%2ch.dsf").arg(rate).arg(channels);
+        title = tr("1 kHz tone · DSD%1").arg(rate);
+        ok = have(name) || ts::writeDsdTone(toFsPath(dir.filePath(name)), rate, static_cast<uint32_t>(channels), 5.0, 1000.0, -20.0, &error);
+    } else if (kind == QLatin1String("channels")) {
+        rate = std::clamp(rate, 8000, 768000);
+        name = QStringLiteral("channels-%1-%2ch.wav").arg(rate).arg(channels);
+        title = tr("Channel check · %1 channels").arg(channels);
+        ok = have(name) || ts::writeChannelSequence(toFsPath(dir.filePath(name)), static_cast<uint32_t>(rate), static_cast<uint32_t>(channels), 1000.0, -20.0, &error);
+    } else if (kind == QLatin1String("dts")) {
+        name = QStringLiteral("bit-perfect-dts.wav");
+        title = tr("Bit-perfect check (DTS)");
+        ok = have(name) || ts::writeDtsTest(toFsPath(dir.filePath(name)), &error);
+    } else {
+        return;
+    }
+    if (!ok) {
+        reportError(tr("Could not make the test signal: %1").arg(QString::fromStdString(error)));
+        return;
+    }
+
+    if (m_previewPath.isEmpty()) { // where the music was
+        m_previewIndex = m_currentIndex;
+        m_previewPosition = loaded() ? m_engine.positionSeconds() : m_resumePosition;
+        m_previewPlaying = playing();
+    }
+    const QString path = dir.filePath(name);
+    bool justTaken = false;
+    if (!reserveOutput(&justTaken))
+        return;
+    ok = m_engine.load(toFsPath(path), &error, 1.0);
+    for (int i = 0; justTaken && !ok && i < 40; ++i) { // the sound server lets the card go a moment later
+        QThread::msleep(50);
+        ok = m_engine.load(toFsPath(path), &error, 1.0);
+    }
+    if (!ok) {
+        reportError(QString::fromStdString(error));
+        return;
+    }
+    m_previewPath = path;
+    m_currentPath = path;
+    m_currentTrack = QVariantMap{{"path", path}, {"title", title}, {"artist", QStringLiteral("Sonkore")}, {"album", tr("Test signals")}};
+    m_armedPath.clear();
+    armGapless(); // nothing queued after it
+    m_engine.setGains(1.0, 1.0); // no ReplayGain on a test signal
+    m_engine.play();
+    m_lastError.clear();
+    emit errorOccurred();
+    emit trackChanged();
+    emit stateChanged();
+    emit outputStatusChanged();
+    poll();
+}
+
+void DspController::stopTestSignal()
+{
+    if (!m_previewPath.isEmpty())
+        endPreview(m_previewPlaying);
+}
+
+// Back to the queue where it was (playing again if it was).
+void DspController::endPreview(bool resumePlaying)
+{
+    if (m_previewPath.isEmpty())
+        return;
+    m_previewPath.clear();
+    const int index = m_previewIndex;
+    const double position = m_previewPosition;
+    m_previewIndex = -1;
+    if (index >= 0 && index < m_queue.size()) {
+        openIndex(index, resumePlaying, position);
+        return;
+    }
+    m_engine.unload();
+    m_currentPath.clear();
+    m_currentTrack.clear();
+    m_resumePosition = 0.0;
+    emit trackChanged();
+    emit stateChanged();
+    emit outputStatusChanged();
 }
 
 // Re-opens the current track on the (new) output, keeping position and state.
@@ -1498,6 +1507,7 @@ bool DspController::openIndex(int index, bool autoplay, double startAt)
 {
     if (index < 0 || index >= m_queue.size())
         return false;
+    m_previewPath.clear(); // a track chosen while a test signal plays replaces it
     m_currentIndex = index;
     const QString path = m_queue[index];
     m_currentPath = path;
@@ -1574,6 +1584,13 @@ int DspController::upcomingIndex() const
 
 void DspController::armGapless()
 {
+    if (!m_previewPath.isEmpty()) { // nothing follows a test signal
+        if (!m_armedPath.isEmpty()) {
+            m_armedPath.clear();
+            m_engine.setNext({}, 1.0);
+        }
+        return;
+    }
     const int next = loaded() ? upcomingIndex() : -1;
     const QString path = next >= 0 ? m_queue[next] : QString();
     if (path == m_armedPath)
@@ -1686,6 +1703,10 @@ void DspController::togglePlayPause()
 
 void DspController::stop()
 {
+    if (!m_previewPath.isEmpty()) {
+        endPreview(false);
+        return;
+    }
     m_engine.stop();
     emit stateChanged();
     poll();
@@ -1780,8 +1801,12 @@ void DspController::poll()
         m_signalPath = std::move(path);
         emit signalPathChanged();
     }
-    if (playing() && m_engine.reachedEnd())
-        advance(false);
+    if (playing() && m_engine.reachedEnd()) {
+        if (!m_previewPath.isEmpty())
+            endPreview(m_previewPlaying); // the test signal is over: back to the music
+        else
+            advance(false);
+    }
 }
 
 QVariantList DspController::buildSignalPath() const
@@ -1832,7 +1857,7 @@ QVariantList DspController::buildSignalPath() const
             add(tr("Headroom"), (m_headroomAuto ? tr("%1 dB ahead of the DSP (automatic)") : tr("%1 dB ahead of the DSP"))
                                     .arg(signedDb(m_effectiveHeadroomDb)), "high");
         if (!st.isNeutral())
-            add(tr("Pitch / tempo"), tr("%1 · pitch %2 st · tempo %3%").arg(pitchEngineName()).arg(signedDb(st.pitchSemiTones()))
+            add(tr("Pitch / tempo"), tr("%1 · pitch %2 st · tempo %3%").arg(QStringLiteral("SoundTouch")).arg(signedDb(st.pitchSemiTones()))
                                          .arg(st.tempo() * st.rate() * 100.0, 0, 'f', 1), "enhanced");
         sonkore::SuperEQ& eq = m_engine.equalizer();
         if (!eq.isNeutral())
@@ -1852,7 +1877,7 @@ QVariantList DspController::buildSignalPath() const
             add(tr("Volume"), m_engine.volume() > 0.0 ? tr("Digital · %1 dB").arg(signedDb(20.0 * std::log10(m_engine.volume()))) : tr("Digital · muted"), "high");
         if (s.pcmToDsdRate) {
             const QString filters[] = {tr("linear phase"), tr("intermediate phase"), tr("minimum phase"), tr("linear phase, steep")};
-            add(tr("PCM → DSD"), tr("SoX VHQ, %1 · %2 kHz → %3 MHz · 7th-order sigma-delta modulator")
+            add(tr("PCM → DSD"), tr("SoX VHQ, %1 · %2 kHz → %3 MHz · 8th-order sigma-delta modulator")
                                      .arg(filters[m_resampleFilter]).arg(s.sourceSampleRate / 1000.0, 0, 'g', 6).arg(s.pcmToDsdRate / 1e6, 0, 'g', 6), "enhanced");
             if (s.modulatorResets)
                 add(tr("Modulator"), tr("%1 overloads: lower the headroom").arg(s.modulatorResets), "low");
@@ -1976,7 +2001,7 @@ void DspController::loadSettings()
     st.setSequenceMs(s.value("sequenceMs", defaults.sequenceMs).toInt());
     st.setSeekWindowMs(s.value("seekWindowMs", defaults.seekWindowMs).toInt());
     st.setOverlapMs(s.value("overlapMs", defaults.overlapMs).toInt());
-    // Older versions kept the ratios here, when SoundTouch was the only engine.
+    // Older versions kept the ratios here, before the "pitch" group.
     const QVariant legacyPitch = s.value("pitch"), legacyTempo = s.value("tempo"), legacyRate = s.value("rate");
     const QVariant legacyEnabled = s.value("enabled", false); // a fresh install starts bit-perfect
     s.remove("pitch");
@@ -1985,29 +2010,10 @@ void DspController::loadSettings()
     s.remove("enabled");
     s.endGroup();
 
-    s.beginGroup("rubberband");
-    const sonkore::TimeStretch::RubberBandSettings rb;
-    st.setRubberBandFiner(s.value("finer", rb.finer).toBool());
-    st.setPreserveFormants(s.value("preserveFormants", rb.preserveFormants).toBool());
-    st.setChannelsTogether(s.value("channelsTogether", rb.channelsTogether).toBool());
-    // Before the pitch method there was only "smooth pitch changes" (consistency).
-    const int legacyMethod = s.value("smoothPitchChanges", false).toBool() ? sonkore::TimeStretch::PitchConsistency
-                                                                           : rb.pitchMethod;
-    s.remove("smoothPitchChanges");
-    st.setPitchMethod(s.value("pitchMethod", legacyMethod).toInt());
-    st.setRubberBandWindow(s.value("window", rb.window).toInt());
-    // "transients" held the library's default (crisp) before smooth became
-    // Sonkore's: read under a new name so that default reaches everyone.
-    s.remove("transients");
-    st.setTransients(s.value("r2Transients", rb.transients).toInt());
-    st.setDetector(s.value("detector", rb.detector).toInt());
-    st.setPhaseIndependent(s.value("phaseIndependent", rb.phaseIndependent).toBool());
-    st.setRubberBandSmoothing(s.value("smoothing", rb.smoothing).toBool());
-    s.endGroup();
+    s.remove("rubberband"); // the Rubber Band engine of older versions
 
     s.beginGroup("pitch");
-    const int engine = s.value("engine", static_cast<int>(RubberBand)).toInt();
-    st.setEngine(engine == SoundTouch ? sonkore::TimeStretch::Engine::SoundTouch : sonkore::TimeStretch::Engine::RubberBand);
+    s.remove("engine"); // (Rubber Band or SoundTouch, in older versions)
     st.setPitchSemiTones(exactValue(s.value("pitch", legacyPitch), 0.0));
     st.setTempo(exactValue(s.value("tempo", legacyTempo), 1.0));
     st.setRate(exactValue(s.value("rate", legacyRate), 1.0));
@@ -2100,24 +2106,10 @@ void DspController::savePreferences() const
 
     const sonkore::TimeStretch& st = m_engine.timeStretch();
     s.beginGroup("pitch");
-    s.setValue("engine", static_cast<int>(st.engine()));
     s.setValue("pitch", exactText(st.pitchSemiTones()));
     s.setValue("tempo", exactText(st.tempo()));
     s.setValue("rate", exactText(st.rate()));
     s.setValue("enabled", st.enabled());
-    s.endGroup();
-
-    const sonkore::TimeStretch::RubberBandSettings rb = st.rubberBandSettings();
-    s.beginGroup("rubberband");
-    s.setValue("finer", rb.finer);
-    s.setValue("preserveFormants", rb.preserveFormants);
-    s.setValue("channelsTogether", rb.channelsTogether);
-    s.setValue("pitchMethod", rb.pitchMethod);
-    s.setValue("window", rb.window);
-    s.setValue("r2Transients", rb.transients);
-    s.setValue("detector", rb.detector);
-    s.setValue("phaseIndependent", rb.phaseIndependent);
-    s.setValue("smoothing", rb.smoothing);
     s.endGroup();
 
     s.beginGroup("soundtouch");
@@ -2135,8 +2127,9 @@ void DspController::saveSession() const
 {
     QJsonObject session;
     session.insert("queue", QJsonArray::fromStringList(m_queue));
-    session.insert("index", m_currentIndex);
-    session.insert("position", loaded() ? m_engine.positionSeconds() : m_resumePosition);
+    const bool preview = !m_previewPath.isEmpty(); // a test signal plays: the queue's place is kept
+    session.insert("index", preview ? m_previewIndex : m_currentIndex);
+    session.insert("position", preview ? m_previewPosition : loaded() ? m_engine.positionSeconds() : m_resumePosition);
     const QByteArray json = QJsonDocument(session).toJson(QJsonDocument::Compact);
     if (json == m_savedSession)
         return;

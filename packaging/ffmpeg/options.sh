@@ -13,5 +13,6 @@ ffmpeg_options=(
     --disable-everything --enable-protocol=file --enable-bsf=null
     --enable-decoder='pcm_*,flac,alac,aac,aac_latm,mp1,mp1float,mp2,mp2float,mp3,mp3float,opus,vorbis,wavpack,ape,tta,tak,mpc7,mpc8,dsd_lsbf,dsd_lsbf_planar,dsd_msbf,dsd_msbf_planar,dst,wmav1,wmav2,wmapro,wmalossless,ac3,eac3,dca,truehd,mlp'
     --enable-demuxer=aac,ac3,aiff,ape,asf,au,caf,dsf,dts,eac3,flac,iff,matroska,mlp,mov,mp3,mpc,mpc8,ogg,tak,truehd,tta,w64,wav,wv
+    --enable-encoder=dca # the bit-perfect test signal (a DTS stream in a WAV)
     --enable-parser=aac,aac_latm,ac3,dca,flac,mlp,mpegaudio,opus,tak,vorbis
 )

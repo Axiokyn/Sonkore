@@ -41,7 +41,7 @@ namespace sonkore {
 //
 //   ┌──────────────────── worker thread (not real-time) ─────────────────────┐   ┌─ RT callback ─┐
 //   decoder s32 ─┬─ bypass (bit-perfect) ───────────────────────────────────┬─▶ ring<int32> ─▶ device (s32)
-//                └─ s32→f32 → Rubber Band / SoundTouch → f64 → SuperEQ → vol ┘
+//                └─ s32→f32 → SoundTouch → f64 → SuperEQ → vol ─────────────┘
 //                   → [soxr, only if the device refuses the source rate]
 //                   → quantise (grid of device bit depth, optional TPDF)
 //
@@ -72,10 +72,10 @@ public:
     // 352.8 kHz), converted with SoX VHQ: Max takes the highest the device
     // accepts (up to 8x / 768 kHz).
     enum class Upsampling { Off, Double, Quadruple, Max };
-    // PCM converted to DSD (7th-order sigma-delta) and sent as DSD through
+    // PCM converted to DSD (8th-order sigma-delta) and sent as DSD through
     // the DSD output (native or DoP): DSD64 / 128 / 256, or the highest of
     // them the DAC takes.
-    enum class PcmToDsd { Off, Dsd64, Dsd128, Dsd256, Max };
+    enum class PcmToDsd { Off, Dsd64, Dsd128, Dsd256, Max, Dsd512 }; // Max: the highest the DAC takes, up to DSD256
 
     struct OutputConfig {
         std::string deviceKey;              // "" = system default (see DeviceInfo::key)
@@ -179,6 +179,10 @@ public:
     State state() const { return m_state.load(std::memory_order_relaxed); }
     TrackInfo trackInfo() const { return m_track; }
     OutputStatus outputStatus() const;
+    // The open output is Sonkore's alone (WASAPI exclusive, ASIO, an ALSA hw:
+    // device, native DSD): other programs get no sound from it until it is
+    // closed, so an idle player should let go of it.
+    bool outputHeld() const { return outputOpen() && m_status.exclusive; }
     double durationSeconds() const;
     double positionSeconds() const;
     bool reachedEnd() const;

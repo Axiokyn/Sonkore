@@ -9,10 +9,11 @@
   <description>
     <p>Minimal, fast music player for FLAC, ALAC, WAV, AIFF, MP3, AAC, Opus, Vorbis, WavPack,
     APE, DSD and more, with bit-perfect ALSA/WASAPI output, a 32-band parametric equalizer
-    with AutoEQ headphone profiles, high-quality pitch and tempo control (Rubber Band or
-    SoundTouch) and a watched-folder library.</p>
+    with AutoEQ headphone profiles, pitch and tempo control (SoundTouch) and a
+    watched-folder library.</p>
   </description>
   <releases>
+    <release version="1.2.0" date="2026-10-13"/>
     <release version="1.1.0" date="2026-10-13"/>
     <release version="1.0.0" date="2026-10-05"/>
   </releases>

@@ -532,7 +532,7 @@ Rectangle {
             visible: mini.showStrip
             iconName: "wave"
             active: DspController.soundTouchActive
-            tip: qsTr("Pitch / tempo (%1)").arg(DspController.pitchEngineName)
+            tip: qsTr("Pitch / tempo (SoundTouch)")
             onClicked: AppActions.openSoundTouch()
         }
         StripButton {

@@ -8,27 +8,22 @@ components below, which keep their own licenses.
 
 | Component | Author | License | Source |
 |---|---|---|---|
-| [Rubber Band Library](https://breakfastquay.com/rubberband/) 4.0.0 — pitch, tempo and rate (default engine) | Particular Programs Ltd. (Chris Cannam) | GPL-2.0-or-later, used here under GPL-3.0-or-later ([LICENSE](LICENSE)) | https://breakfastquay.com/rubberband/ |
-| [SoundTouch](https://codeberg.org/soundtouch/soundtouch) 2.3.3 — pitch, tempo and rate (alternative engine) | Olli Parviainen | LGPL-2.1-or-later ([licenses/LGPL-2.1.txt](licenses/LGPL-2.1.txt)) | https://codeberg.org/soundtouch/soundtouch |
+| [SoundTouch](https://codeberg.org/soundtouch/soundtouch) 2.3.3 — pitch, tempo and rate | Olli Parviainen | LGPL-2.1-or-later ([licenses/LGPL-2.1.txt](licenses/LGPL-2.1.txt)) | https://codeberg.org/soundtouch/soundtouch |
 | [SoX Resampler (libsoxr)](https://sourceforge.net/projects/soxr/) 0.1.3 — sample-rate conversion when the device refuses the track's rate | Rob Sykes | LGPL-2.1-or-later ([licenses/LGPL-2.1.txt](licenses/LGPL-2.1.txt)); includes PFFFT (below) | https://sourceforge.net/projects/soxr/ |
 | [miniaudio](https://miniaud.io) 0.11.21 — audio output (ALSA, PipeWire/PulseAudio, JACK, WASAPI, Core Audio) | David Reid | Public domain (Unlicense) or MIT-0, at your choice | https://github.com/mackron/miniaudio |
 | [dr_libs](https://github.com/mackron/dr_libs) (dr_flac, dr_wav, dr_mp3) — FLAC, WAV and MP3 decoding | David Reid | Public domain (Unlicense) or MIT-0, at your choice | https://github.com/mackron/dr_libs |
 | [libebur128](https://github.com/jiixyj/libebur128) 1.2.6 — EBU R128 loudness and true peak for ReplayGain analysis | Jan Kokemüller | MIT (below) | https://github.com/jiixyj/libebur128 |
 | [libhdcd](https://github.com/bp0/libhdcd) 1.4 — HDCD decoding (based on foo_hdcd) | Burt P and others; Chris Moeller | BSD-2-Clause (below) | https://github.com/bp0/libhdcd |
+| DST decoder (`src/audio/DstDecoder.cpp`), written after ISO/IEC 14496-3 subpart 10 and the layout read by FFmpeg's `dstdec.c` | Peter Ross (FFmpeg) for the reference implementation | LGPL-2.1-or-later ([licenses/LGPL-2.1.txt](licenses/LGPL-2.1.txt)), used under the GPL | https://ffmpeg.org |
 | Headphone crossfeed (`src/audio/Crossfeed.hpp`), after [bs2b](https://bs2b.sourceforge.net) — Bauer stereophonic-to-binaural filter, same coefficients and presets | Boris Mikhaylov | MIT (below) | https://bs2b.sourceforge.net |
 | [pocketfft](https://github.com/mreineck/pocketfft) (C++, header-only) — double-precision FFT for the convolution engine | Max-Planck-Society (Martin Reinecke) | BSD-3-Clause (below) | https://github.com/mreineck/pocketfft |
 | Interface icons, based on [Feather Icons](https://feathericons.com) | Cole Bemis | MIT (below) | https://github.com/feathericons/feather |
 
-Rubber Band, SoundTouch, libsoxr, libebur128, libhdcd and pocketfft are compiled from their unmodified
-upstream sources (see `cmake/Dependencies.cmake`); each can also be linked from
-the system with `-DSONKORE_USE_SYSTEM_RUBBERBAND=ON`, `-DSONKORE_USE_SYSTEM_SOUNDTOUCH=ON`
-or `-DSONKORE_USE_SYSTEM_SOXR=ON`. The complete source of Sonkore, which is
+SoundTouch, libsoxr, libebur128, libhdcd and pocketfft are compiled from their unmodified
+upstream sources (see `cmake/Dependencies.cmake`); SoundTouch and libsoxr can also be linked from
+the system with `-DSONKORE_USE_SYSTEM_SOUNDTOUCH=ON` or `-DSONKORE_USE_SYSTEM_SOXR=ON`. The complete source of Sonkore, which is
 needed to rebuild it against a modified version of any of them, is available
 under the GPL.
-
-Rubber Band Library is dual-licensed: GPL, or a commercial licence from its
-authors. Sonkore uses it under the GPL, so a build that includes it must be
-distributed under the GPL as well (Sonkore always is).
 
 ### Fonts
 

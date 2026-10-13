@@ -30,7 +30,7 @@ using HardwareMixer = AlsaMixer;
 #endif
 
 // QML-facing bridge to the audio engine: transport, play queue, output
-// devices and the pitch / tempo processor (Rubber Band or SoundTouch).
+// devices and the pitch / tempo processor (SoundTouch).
 //
 // Precision contract: every continuous parameter is a C++ `double` and QML's
 // `real`/`number` is an IEEE-754 binary64 too, so values cross the boundary
@@ -43,25 +43,11 @@ class DspController : public QObject {
     QML_SINGLETON
     SONKORE_QML_SINGLETON_INSTANCE(DspController)
 
-    // --- Pitch / tempo / rate (either engine) -------------------------------
+    // --- Pitch / tempo / rate ------------------------------------------------
     Q_PROPERTY(double pitchSemitones READ pitchSemitones WRITE setPitchSemitones NOTIFY pitchSemitonesChanged)
     Q_PROPERTY(double tempo READ tempo WRITE setTempo NOTIFY tempoChanged)
     Q_PROPERTY(double rate READ rate WRITE setRate NOTIFY rateChanged)
-    // PitchEngine: RubberBand (default) or SoundTouch.
-    Q_PROPERTY(int pitchEngine READ pitchEngine WRITE setPitchEngine NOTIFY pitchEngineChanged)
-    Q_PROPERTY(QString pitchEngineName READ pitchEngineName NOTIFY pitchEngineChanged)
 
-    // --- Rubber Band ----------------------------------------------------------
-    Q_PROPERTY(bool rubberBandFiner READ rubberBandFiner WRITE setRubberBandFiner NOTIFY rubberBandSettingsChanged)
-    Q_PROPERTY(bool preserveFormants READ preserveFormants WRITE setPreserveFormants NOTIFY rubberBandSettingsChanged)
-    Q_PROPERTY(bool channelsTogether READ channelsTogether WRITE setChannelsTogether NOTIFY rubberBandSettingsChanged)
-    // TimeStretch::PitchMethod, Window, Transients, Detector.
-    Q_PROPERTY(int pitchMethod READ pitchMethod WRITE setPitchMethod NOTIFY rubberBandSettingsChanged)
-    Q_PROPERTY(int rubberBandWindow READ rubberBandWindow WRITE setRubberBandWindow NOTIFY rubberBandSettingsChanged)
-    Q_PROPERTY(int transients READ transients WRITE setTransients NOTIFY rubberBandSettingsChanged)
-    Q_PROPERTY(int detector READ detector WRITE setDetector NOTIFY rubberBandSettingsChanged)
-    Q_PROPERTY(bool phaseIndependent READ phaseIndependent WRITE setPhaseIndependent NOTIFY rubberBandSettingsChanged)
-    Q_PROPERTY(bool rubberBandSmoothing READ rubberBandSmoothing WRITE setRubberBandSmoothing NOTIFY rubberBandSettingsChanged)
 
     // --- SoundTouch: advanced ---------------------------------------------
     Q_PROPERTY(bool useAAFilter READ useAAFilter WRITE setUseAAFilter NOTIFY soundTouchSettingsChanged)
@@ -70,7 +56,7 @@ class DspController : public QObject {
     Q_PROPERTY(int sequenceMs READ sequenceMs WRITE setSequenceMs NOTIFY soundTouchSettingsChanged)
     Q_PROPERTY(int seekWindowMs READ seekWindowMs WRITE setSeekWindowMs NOTIFY soundTouchSettingsChanged)
     Q_PROPERTY(int overlapMs READ overlapMs WRITE setOverlapMs NOTIFY soundTouchSettingsChanged)
-    // The pitch / tempo processor (whichever engine) is processing audio.
+    // The pitch / tempo processor is processing audio.
     Q_PROPERTY(bool soundTouchActive READ soundTouchActive NOTIFY soundTouchActiveChanged)
     // On / off switch: off keeps the values but bypasses the processor.
     Q_PROPERTY(bool soundTouchEnabled READ soundTouchEnabled WRITE setSoundTouchEnabled NOTIFY soundTouchActiveChanged)
@@ -148,9 +134,12 @@ class DspController : public QObject {
     // A direct (hw:) DAC is taken from the desktop sound server while Sonkore
     // uses it; `releaseWhenIdle` hands it back after a minute in pause/stop.
     Q_PROPERTY(bool outputReserved READ outputReserved NOTIFY outputStatusChanged)
+    Q_PROPERTY(bool outputExclusiveCapable READ outputExclusiveCapable NOTIFY outputStatusChanged)
     // Audio libraries in use, with versions (About).
     Q_PROPERTY(QString audioComponents READ audioComponents CONSTANT)
     Q_PROPERTY(bool releaseWhenIdle READ releaseWhenIdle WRITE setReleaseWhenIdle NOTIFY preferencesChanged)
+    Q_PROPERTY(bool testSignalPlaying READ testSignalPlaying NOTIFY trackChanged)
+    Q_PROPERTY(bool dtsTestAvailable READ dtsTestAvailable CONSTANT)
 
     // --- Visualiser: spectrum of what is playing ----------------------------
     // While active (a visualiser is on screen), `spectrum` holds 24 levels
@@ -169,8 +158,6 @@ public:
     Q_ENUM(DsdMode)
     enum DitherModeValue { DitherOff = 0, DitherTpdf = 1, DitherShaped = 2 };
     Q_ENUM(DitherModeValue)
-    enum PitchEngine { RubberBand = 0, SoundTouch = 1 };
-    Q_ENUM(PitchEngine)
 
     explicit DspController(sonkore::DSPManager& engine, QObject* parent = nullptr);
     ~DspController() override;
@@ -183,28 +170,6 @@ public:
     void setPitchSemitones(double semitones);
     void setTempo(double ratio);
     void setRate(double ratio);
-    int pitchEngine() const;
-    void setPitchEngine(int engine);
-    QString pitchEngineName() const;
-
-    bool rubberBandFiner() const;
-    bool preserveFormants() const;
-    bool channelsTogether() const;
-    int pitchMethod() const;
-    int rubberBandWindow() const;
-    int transients() const;
-    int detector() const;
-    bool phaseIndependent() const;
-    bool rubberBandSmoothing() const;
-    void setRubberBandFiner(bool on);
-    void setPreserveFormants(bool on);
-    void setChannelsTogether(bool on);
-    void setPitchMethod(int method);
-    void setRubberBandWindow(int window);
-    void setTransients(int transients);
-    void setDetector(int detector);
-    void setPhaseIndependent(bool on);
-    void setRubberBandSmoothing(bool on);
 
     bool useAAFilter() const;
     int aaFilterLength() const;
@@ -301,7 +266,11 @@ public:
     // Fixed rate and upsampling together (they exclude each other), reopened once.
     Q_INVOKABLE void setRateMode(int fixedHz, int upsampling);
     void setBufferMs(int ms);
-    bool outputReserved() const { return m_reservation.held(); }
+    // Sonkore has the DAC to itself right now (a reserved card, or an output
+    // the system cannot share: WASAPI exclusive, ASIO, hw:, native DSD).
+    bool outputReserved() const;
+    // The chosen output is taken from the system whenever something plays.
+    bool outputExclusiveCapable() const;
     QString audioComponents() const;
     bool releaseWhenIdle() const { return m_releaseWhenIdle; }
     void setReleaseWhenIdle(bool on);
@@ -323,14 +292,19 @@ public:
     Q_INVOKABLE QString formatTime(double seconds) const;
 
     Q_INVOKABLE void resetSoundTouch();
-    // Only the Rubber Band engine options back to the recommended ones
-    // (R3, channels together...); pitch, tempo and rate stay.
-    Q_INVOKABLE void resetRubberBand();
     Q_INVOKABLE void refreshDevices();
     Q_INVOKABLE void selectOutputDevice(const QString& key);
     // Closes the output and gives a reserved DAC back to the system; the
     // next play() takes it again and resumes at the same position.
     Q_INVOKABLE void releaseOutput();
+    // Test signals (Settings › Output): made on the spot and played in place
+    // of the queue, which resumes where it was when the signal ends or is
+    // stopped. kind: "tone" (rate in Hz), "dsd" (rate = 64 / 128 / 256),
+    // "channels" (a tone on each channel in turn), "dts" (bit-perfect check).
+    Q_INVOKABLE void playTestSignal(const QString& kind, int rate, int channels);
+    Q_INVOKABLE void stopTestSignal();
+    bool testSignalPlaying() const { return !m_previewPath.isEmpty(); }
+    bool dtsTestAvailable() const;
     // Same without notifying the UI; used when quitting.
     void closeOutput();
 
@@ -366,8 +340,6 @@ signals:
     void tempoChanged();
     void rateChanged();
     void soundTouchSettingsChanged();
-    void pitchEngineChanged();
-    void rubberBandSettingsChanged();
     void soundTouchActiveChanged();
     void volumeChanged();
     void volumeModeChanged();
@@ -476,6 +448,12 @@ private:
     DeviceReservation m_reservation;
     QTimer m_idleReleaseTimer;
     bool m_releaseWhenIdle = true;
+    // A test signal plays instead of the queue; where the queue was.
+    void endPreview(bool resumePlaying);
+    QString m_previewPath;
+    int m_previewIndex = -1;
+    double m_previewPosition = 0.0;
+    bool m_previewPlaying = false;
 
     QStringList m_queue;
     int m_currentIndex = -1;

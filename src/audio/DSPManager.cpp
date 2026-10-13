@@ -15,7 +15,6 @@ class AlsaDsdOutput {}; // no ALSA: never created (m_dsdOut stays empty)
 #include "PipeWireOutput.hpp"
 
 #include <SoundTouch.h>
-#include <rubberband/RubberBandStretcher.h>
 #include <soxr.h>
 #include <hdcd_simple.h>
 
@@ -236,7 +235,7 @@ std::string DSPManager::componentVersions()
 #endif
     if (const std::string pw = PipeWireOutput::libraryVersion(); !pw.empty())
         s += " · PipeWire" NBSP + pw;
-    s += " · Rubber" NBSP "Band" NBSP RUBBERBAND_VERSION " · SoundTouch" NBSP SOUNDTOUCH_VERSION " · " + soxr + " · Qt" NBSP "6";
+    s += " · SoundTouch" NBSP SOUNDTOUCH_VERSION " · " + soxr + " · Qt" NBSP "6";
 #undef NBSP
     return s;
 }
@@ -1064,7 +1063,8 @@ bool DSPManager::openPcmToDsd()
     case PcmToDsd::Dsd64: multiples = {64}; break;
     case PcmToDsd::Dsd128: multiples = {128, 64}; break;
     case PcmToDsd::Dsd256: multiples = {256, 128, 64}; break;
-    default: multiples = {256, 128, 64}; break;
+    case PcmToDsd::Dsd512: multiples = {512, 256, 128, 64}; break;
+    default: multiples = {256, 128, 64}; break; // Max: DSD512 only when asked for (a 22.6 MHz loop per channel)
     }
     for (int multiple : multiples) {
         const uint32_t dsdRate = 44100u * multiple;

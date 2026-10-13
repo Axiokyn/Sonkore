@@ -23,6 +23,9 @@
 #include <QStandardPaths>
 #include <QApplication>
 #include <QIcon>
+#include <QImage>
+#include <QImageReader>
+#include <QPixmap>
 #include <QQmlApplicationEngine>
 #include <QQuickStyle>
 #include <QQuickWindow>
@@ -44,9 +47,14 @@ namespace {
 
 QIcon appIcon()
 {
+    // Read as PNG by name, without format detection: a reader left to detect
+    // the format asks every image plugin (TIFF, WebP, ICNS...) first.
     QIcon icon;
-    for (int size : {16, 22, 24, 32, 48, 64, 128, 256, 512})
-        icon.addFile(QStringLiteral(":/icons/png/%1.png").arg(size), QSize(size, size));
+    for (int size : {16, 22, 24, 32, 48, 64, 128, 256, 512}) {
+        QImageReader reader(QStringLiteral(":/icons/png/%1.png").arg(size), "png");
+        reader.setAutoDetectImageFormat(false);
+        icon.addPixmap(QPixmap::fromImage(reader.read()));
+    }
     return icon;
 }
 
