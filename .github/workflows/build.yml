@@ -250,8 +250,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ steps.version.outputs.tag }}
         run: |
+          # (No such tag yet: the API answers with an error, not a commit.)
           sha=$(gh api "repos/$GITHUB_REPOSITORY/commits/$TAG" --jq .sha 2>/dev/null || true)
-          if [ -n "$sha" ] && [ "$sha" != "$GITHUB_SHA" ]; then
+          if [[ "$sha" =~ ^[0-9a-f]{40}$ ]] && [ "$sha" != "$GITHUB_SHA" ]; then
             gh release delete "$TAG" --repo "$GITHUB_REPOSITORY" --cleanup-tag --yes \
               || gh api -X DELETE "repos/$GITHUB_REPOSITORY/git/refs/tags/$TAG"
           fi
