@@ -39,6 +39,11 @@ public:
     // by kBlock frames.
     void process(double* samples, std::size_t frames);
     void reset();
+    // A new single-channel response of the same length, for every channel:
+    // the input already seen is kept, and the next block crossfades from the
+    // old filter's output to the new one's (no gap, no click). False when the
+    // length differs.
+    bool replaceTaps(const std::vector<double>& taps);
 
     std::size_t taps() const { return m_taps; }
     std::size_t latency() const { return kBlock; }

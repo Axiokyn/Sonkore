@@ -28,7 +28,7 @@ jobs:
         run: |
           sudo apt-get update -q
           sudo apt-get install -y -q ninja-build sox flac ffmpeg libavformat-dev libavcodec-dev libavutil-dev \
-            libasound2-dev libgl-dev libxkbcommon-dev
+            libasound2-dev libgl-dev libxkbcommon-dev libpipewire-0.3-dev pipewire pipewire-bin wireplumber dbus
       - uses: jurplel/install-qt-action@v4
         with:
           version: ${{ env.QT_VERSION }}
@@ -40,7 +40,9 @@ jobs:
       - name: Corpus
         run: tests/make_corpus.sh corpus
       - name: Engine tests
-        run: build/engine_test corpus
+        # Inside a private PipeWire (one virtual DAC): the "pipewire" test
+        # plays through it and records what the DAC receives.
+        run: SONKORE_REQUIRE_PIPEWIRE=1 tests/pipewire-session.sh build/engine_test corpus
 
   appimage:
     runs-on: ubuntu-24.04
@@ -58,7 +60,7 @@ jobs:
             libxkbcommon-devel libxkbcommon-x11 fontconfig freetype libdrm \
             libX11 libX11-xcb libxcb libSM libICE \
             xcb-util-wm xcb-util-image xcb-util-keysyms xcb-util-renderutil xcb-util-cursor \
-            wayland-devel dbus-libs glib2 openssl-libs krb5-libs alsa-lib alsa-lib-devel
+            wayland-devel dbus-libs glib2 openssl-libs krb5-libs alsa-lib alsa-lib-devel pipewire-devel
       - uses: actions/checkout@v4
       - name: Qt
         run: |
@@ -248,8 +250,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ steps.version.outputs.tag }}
         run: |
+          # (No such tag yet: the API answers with an error, not a commit.)
           sha=$(gh api "repos/$GITHUB_REPOSITORY/commits/$TAG" --jq .sha 2>/dev/null || true)
-          if [ -n "$sha" ] && [ "$sha" != "$GITHUB_SHA" ]; then
+          if [[ "$sha" =~ ^[0-9a-f]{40}$ ]] && [ "$sha" != "$GITHUB_SHA" ]; then
             gh release delete "$TAG" --repo "$GITHUB_REPOSITORY" --cleanup-tag --yes \
               || gh api -X DELETE "repos/$GITHUB_REPOSITORY/git/refs/tags/$TAG"
           fi

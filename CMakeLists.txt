@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.21)
 
 project(Sonkore
-    VERSION 1.0.0
+    VERSION 1.1.0
     DESCRIPTION "Hi-Fi music player: bit-perfect output, Rubber Band / SoundTouch, SuperEQ"
     LANGUAGES C CXX)
 
@@ -51,6 +51,8 @@ add_library(sonkore_audio STATIC
     src/audio/Resampler.cpp
     src/audio/SuperEQ.hpp
     src/audio/SuperEQ.cpp
+    src/audio/LinearPhaseEq.hpp
+    src/audio/LinearPhaseEq.cpp
     src/audio/Crossfeed.hpp
     src/audio/Convolver.hpp
     src/audio/Convolver.cpp
@@ -60,6 +62,8 @@ add_library(sonkore_audio STATIC
     src/audio/AsioConvert.hpp
     src/audio/AsioOutput.hpp
     src/audio/AsioOutput.cpp
+    src/audio/PipeWireOutput.hpp
+    src/audio/PipeWireOutput.cpp
 )
 if(SONKORE_HAVE_FFMPEG)
     target_sources(sonkore_audio PRIVATE src/audio/FfmpegDecoder.hpp src/audio/FfmpegDecoder.cpp)
@@ -98,6 +102,17 @@ else()
         target_compile_definitions(sonkore_audio PRIVATE SONKORE_HAVE_ALSA_DSD)
         target_link_libraries(sonkore_audio PRIVATE ALSA::ALSA)
     endif()
+    # Native PipeWire output: only its headers at build time; libpipewire is
+    # dlopen()'d, so the program runs (without it) where it is missing.
+    find_package(PkgConfig)
+    if(PkgConfig_FOUND)
+        pkg_check_modules(PIPEWIRE libpipewire-0.3>=0.3.40)
+    endif()
+    if(PIPEWIRE_FOUND)
+        target_include_directories(sonkore_audio SYSTEM PRIVATE ${PIPEWIRE_INCLUDE_DIRS})
+        target_compile_definitions(sonkore_audio PRIVATE SONKORE_HAVE_PIPEWIRE)
+    endif()
+    message(STATUS "Sonkore: native PipeWire output ${PIPEWIRE_FOUND}")
 endif()
 
 # Engine tests (tests/make_corpus.sh builds the audio they play).

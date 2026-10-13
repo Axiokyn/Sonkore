@@ -77,7 +77,25 @@ struct Convolver::Impl {
     std::vector<std::vector<double>> inBlock, outBlock; // per channel, kBlock
     std::size_t fill = 0;                              // frames gathered in inBlock / handed out of outBlock
     std::vector<double> acc;
+    std::vector<double> pending;                       // replaceTaps(): the next filter's spectra (one channel)
+    std::vector<double> accNew;
 };
+
+namespace {
+// Partition spectra of a filter (zero-padded to whole partitions).
+std::vector<double> partitionSpectra(pocketfft::detail::pocketfft_r<double>& fft, const std::vector<double>& t,
+                                     std::size_t partitions)
+{
+    std::vector<double> s(partitions * kN, 0.0);
+    for (std::size_t p = 0; p < partitions; ++p) {
+        double* part = s.data() + p * kN;
+        const std::size_t n = std::min(Convolver::kBlock, t.size() - p * Convolver::kBlock);
+        std::copy_n(t.data() + p * Convolver::kBlock, n, part); // zero-padded to kN
+        fft.exec(part, 1.0, true);
+    }
+    return s;
+}
+} // namespace
 
 std::unique_ptr<Convolver> Convolver::create(const ImpulseResponse& ir, uint32_t sampleRate, uint32_t channels,
                                              std::string* error)
@@ -119,16 +137,7 @@ std::unique_ptr<Convolver> Convolver::create(const ImpulseResponse& ir, uint32_t
 
     auto d = std::make_unique<Impl>();
     d->partitions = (c->m_taps + kBlock - 1) / kBlock;
-    const auto spectra = [&](const std::vector<double>& t) {
-        std::vector<double> s(d->partitions * kN, 0.0);
-        for (std::size_t p = 0; p < d->partitions; ++p) {
-            double* part = s.data() + p * kN;
-            const std::size_t n = std::min(kBlock, t.size() - p * kBlock);
-            std::copy_n(t.data() + p * kBlock, n, part); // zero-padded to kN
-            d->fft.exec(part, 1.0, true);
-        }
-        return s;
-    };
+    const auto spectra = [&](const std::vector<double>& t) { return partitionSpectra(d->fft, t, d->partitions); };
     d->filters.resize(channels);
     d->sources.resize(channels);
     for (uint32_t o = 0; o < channels; ++o) {
@@ -150,6 +159,19 @@ std::unique_ptr<Convolver> Convolver::create(const ImpulseResponse& ir, uint32_t
 }
 
 Convolver::~Convolver() = default;
+
+bool Convolver::replaceTaps(const std::vector<double>& taps)
+{
+    if (taps.empty() || (taps.size() + kBlock - 1) / kBlock != d->partitions)
+        return false;
+    for (const auto& sources : d->sources)
+        if (sources.size() != 1)
+            return false; // true stereo: not a single-channel response
+    d->pending = partitionSpectra(d->fft, taps, d->partitions);
+    d->accNew.assign(kN, 0.0);
+    m_taps = taps.size();
+    return true;
+}
 
 void Convolver::reset()
 {
@@ -178,6 +200,7 @@ void Convolver::step()
         std::copy(w.begin(), w.end(), slot);
         d->fft.exec(slot, 1.0, true);
     }
+    const bool crossfade = !d->pending.empty();
     for (uint32_t o = 0; o < m_channels; ++o) {
         std::fill(d->acc.begin(), d->acc.end(), 0.0);
         for (std::size_t s = 0; s < d->sources[o].size(); ++s) {
@@ -187,7 +210,25 @@ void Convolver::step()
                 multiplyAdd(x.data() + ((d->head + p) % parts) * kN, h.data() + p * kN, d->acc.data());
         }
         d->fft.exec(d->acc.data(), 1.0 / kN, false);
+        if (crossfade) {
+            // The same input through the new filter, faded in across the block.
+            std::fill(d->accNew.begin(), d->accNew.end(), 0.0);
+            const std::vector<double>& x = d->history[d->sources[o][0]];
+            for (std::size_t p = 0; p < parts; ++p)
+                multiplyAdd(x.data() + ((d->head + p) % parts) * kN, d->pending.data() + p * kN, d->accNew.data());
+            d->fft.exec(d->accNew.data(), 1.0 / kN, false);
+            for (std::size_t i = 0; i < kBlock; ++i) {
+                const double w = (static_cast<double>(i) + 0.5) / kBlock;
+                d->acc[kBlock + i] += (d->accNew[kBlock + i] - d->acc[kBlock + i]) * w;
+            }
+        }
         std::copy(d->acc.begin() + kBlock, d->acc.end(), d->outBlock[o].begin());
+    }
+    if (crossfade) {
+        for (auto& f : d->filters)
+            f[0] = d->pending;
+        d->pending = {};
+        d->accNew = {};
     }
 }
 

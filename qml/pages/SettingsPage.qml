@@ -38,6 +38,7 @@ Item {
 
     function backendHint(backend) {
         if (backend === "ALSA") return qsTr("Direct hardware (hw:) — exclusive, no mixer, bit-perfect capable. PipeWire must not be using the device.")
+        if (backend === "PipeWire") return qsTr("The desktop's sound server, spoken to directly — shared with other apps; it switches to each track's sample rate (Follow the track's rate).")
         if (backend.indexOf("PipeWire") === 0) return qsTr("Desktop sound server — shared with other apps; sample rate follows PipeWire's clock settings.")
         if (backend === "WASAPI") return qsTr("Windows audio — exclusive mode bypasses the system mixer.")
         if (backend === "ASIO") return qsTr("The DAC's own ASIO driver — direct, bit-perfect capable, and native DSD where the driver offers it.")
@@ -1797,6 +1798,13 @@ Item {
                         currentIndex: modes.indexOf(DspController.volumeMode)
                         onActivated: (index) => DspController.volumeMode = modes[index]
                     }
+                }
+                SettingRow {
+                    visible: App.platform === "linux"
+                    title: qsTr("Follow the track's rate")
+                    description: qsTr("PipeWire switches to each track's sample rate while Sonkore plays.")
+                    details: qsTr("Without it, PipeWire runs at the desktop's rate (usually 48 kHz) and Sonkore converts every track to it with SoX VHQ. Other apps keep playing either way; PipeWire converts them instead. After a minute paused or stopped, PipeWire gets its own rate back.")
+                    LSwitch { checked: DspController.followTrackRate; onToggled: DspController.followTrackRate = checked }
                 }
                 SettingRow {
                     visible: App.platform === "windows"

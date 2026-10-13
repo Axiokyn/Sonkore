@@ -5,6 +5,7 @@
 #include "Crossfeed.hpp"
 #include "DsdDecoder.hpp"
 #include "FilePreload.hpp"
+#include "LinearPhaseEq.hpp"
 #include "Resampler.hpp"
 #include "SigmaDelta.hpp"
 #include "SampleConvert.hpp"
@@ -31,6 +32,7 @@ namespace sonkore {
 
 class AlsaDsdOutput;
 class AsioOutput;
+class PipeWireOutput;
 }
 struct hdcd_simple;
 namespace sonkore {
@@ -84,7 +86,7 @@ public:
         PcmToDsd pcmToDsd = PcmToDsd::Off;  // needs dsd = Native or Dop
         Resampler::Filter filter = Resampler::Filter::Linear;
         bool exclusiveMode = true;          // WASAPI exclusive (ALSA hw: is always exclusive)
-        bool allowSampleRateSwitch = true;  // CoreAudio nominal rate change
+        bool allowSampleRateSwitch = true;  // the system follows the track's rate (Core Audio nominal rate, PipeWire graph rate)
         uint32_t bufferMs = 150;            // ring buffer depth (DSP change latency)
         uint32_t resyncDelayMs = 0;         // silence after the DAC changes rate (lets it lock)
         uint32_t fixedRate = 0;             // every track converted to this rate (0 = each at its own)
@@ -118,6 +120,11 @@ public:
         bool upsampled = false;           // resampled on purpose (Upsampling), not because the device refused the rate
         uint32_t pcmToDsdRate = 0;        // PCM modulated to this DSD rate (Hz), 0 = no
         uint64_t modulatorResets = 0;     // sigma-delta loop overloads (should stay 0)
+        // Native PipeWire: the rate the graph runs at now (0: not known yet, or
+        // another output) and whether anything there scales the samples (this
+        // stream's or the sink's software volume below 100 %, muted).
+        uint32_t graphRate = 0;
+        bool systemVolumeNeutral = true;
     };
 
     enum class State { Empty, Stopped, Playing, Paused };
@@ -248,6 +255,8 @@ private:
         bool direct = false;
         std::string name;
         std::string asio; // Windows: an ASIO driver (by name) instead of a miniaudio device
+        bool pw = false;  // Linux: native PipeWire...
+        std::string pipewire; // ...to this sink (node.name; "" = the desktop's default)
     };
 
     uint32_t bestDeviceRate(Backend& backend, const DeviceEntry& entry, uint32_t wanted);
@@ -285,6 +294,8 @@ private:
     bool drainStretch();
     bool drainResampler();
     bool processAndPush(double* samples, std::size_t frames);
+    bool processRest(double* samples, std::size_t frames, bool biquads); // after the linear-phase EQ
+    std::size_t pendingDspFrames() const; // worker: frames of music inside the DSP chain, at the output rate
     bool quantizeAndPush(const double* samples, std::size_t frames);
     void ensureBuffers(bool stretch);
     void releaseBuffers();
@@ -327,6 +338,12 @@ private:
     std::unique_ptr<AsioOutput> m_asioOut;   // Windows: ASIO driver (PCM and native DSD) instead of miniaudio
     bool asioOpen() const;
     bool openAsio(const DeviceEntry& entry, bool dsd, uint32_t rate, uint32_t channels, std::string* error);
+    std::unique_ptr<PipeWireOutput> m_pwOut; // Linux: native PipeWire instead of miniaudio
+    bool m_pipewireNative = false;           // PipeWire answered at the last enumeration
+    uint32_t m_pwRequestedRate = 0;          // the rate the open stream was asked for
+    bool pwOpen() const;
+    bool outputOpen() const;                 // any output (device, DSD writer, ASIO, PipeWire)
+    bool openPipeWire(const DeviceEntry& entry, uint32_t rate, uint32_t channels, std::string* error);
     StreamInfo::Dsd m_outputDsd = StreamInfo::Dsd::None; // what the open output carries
     DsdPacking m_dsdPacking = DsdPacking::Dop;
     bool m_toDsd = false;                 // PCM modulated to DSD for this output
@@ -400,6 +417,8 @@ private:
     // DSP (worker-owned)
     TimeStretch m_stretch;
     SuperEQ m_eq;
+    LinearPhaseEq m_linearEq;                    // worker
+    std::atomic<std::size_t> m_linearEqLatency{0}; // its frames held, at the track's rate
     Resampler m_resampler;
     uint32_t m_outputRate = 0; // rate handed to the device
     Quantizer m_quantizer;
