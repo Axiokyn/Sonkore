@@ -12,6 +12,7 @@ class AlsaDsdOutput {}; // no ALSA: never created (m_dsdOut stays empty)
 }
 #endif
 #include "AsioOutput.hpp"
+#include "PipeWireOutput.hpp"
 
 #include <SoundTouch.h>
 #include <rubberband/RubberBandStretcher.h>
@@ -233,6 +234,8 @@ std::string DSPManager::componentVersions()
 #if defined(SONKORE_HAVE_FFMPEG)
     s += " · FFmpeg" NBSP + ffmpeg::version();
 #endif
+    if (const std::string pw = PipeWireOutput::libraryVersion(); !pw.empty())
+        s += " · PipeWire" NBSP + pw;
     s += " · Rubber" NBSP "Band" NBSP RUBBERBAND_VERSION " · SoundTouch" NBSP SOUNDTOUCH_VERSION " · " + soxr + " · Qt" NBSP "6";
 #undef NBSP
     return s;
@@ -300,6 +303,22 @@ std::vector<DSPManager::DeviceInfo> DSPManager::playbackDevices()
     std::vector<DeviceInfo> result;
     m_devices.clear();
 
+    // Linux: PipeWire's sinks, spoken to natively (rate switching, no
+    // PulseAudio layer). They stand in for the same sinks seen through
+    // pipewire-pulse, which stay reachable for settings saved before.
+    m_pipewireNative = false;
+    if (!m_nullBackend)
+        for (const PipeWireOutput::Sink& sink : PipeWireOutput::sinks()) {
+            DeviceEntry e;
+            e.pw = true;
+            e.pipewire = sink.name;
+            e.name = sink.description;
+            const std::string key = "pipewire|" + sink.name;
+            m_devices[key] = e;
+            result.push_back({key, "PipeWire", sink.description, sink.name, sink.isDefault, false});
+            m_pipewireNative = true;
+        }
+
     for (std::size_t bi = 0; bi < m_backends.size(); ++bi) {
         Backend& backend = m_backends[bi];
         const std::string tag = backendTag(backend.type);
@@ -345,6 +364,8 @@ std::vector<DSPManager::DeviceInfo> DSPManager::playbackDevices()
             e.name = infos[i].name;
             const std::string key = tag + "|" + id;
             m_devices[key] = e;
+            if (backend.type == ma_backend_pulseaudio && m_pipewireNative)
+                continue; // listed above, natively
             const std::string detail = (backend.type == ma_backend_pulseaudio) ? id : std::string();
             result.push_back({key, backend.label, e.name, detail, infos[i].isDefault != 0, false});
         }
@@ -373,8 +394,18 @@ bool DSPManager::resolveDevice(const std::string& key, DeviceEntry& out)
         }
         if (it != m_devices.end()) {
             out = it->second;
+            // A sink saved as seen through pipewire-pulse: the same sink, natively.
+            if (m_pipewireNative && key.rfind("pulse|", 0) == 0)
+                if (const auto native = m_devices.find("pipewire|" + key.substr(6)); native != m_devices.end())
+                    out = native->second;
             return true;
         }
+    }
+    if (m_pipewireNative) { // the desktop's default sink, natively
+        out = DeviceEntry{};
+        out.pw = true;
+        out.name = "System default";
+        return true;
     }
     // System default: the desktop mixer (PipeWire/PulseAudio) when present,
     // otherwise the first backend's default device.
@@ -446,9 +477,10 @@ uint32_t DSPManager::bestDeviceRate(Backend& backend, const DeviceEntry& entry, 
 bool DSPManager::openDevice(uint32_t sampleRate, uint32_t channels, std::string* error)
 {
     const OutputConfig cfg = outputConfig();
-    if (m_reuseDevice && m_deviceOpen && m_outputRunning && m_outputDsd == StreamInfo::Dsd::None && !m_monoToStereo
-        && cfg.deviceKey == m_openKey && cfg.exclusiveMode == m_openExclusive && sampleRate == m_device.sampleRate
-        && channels == m_device.playback.channels) {
+    const bool sameFormat = m_deviceOpen ? sampleRate == m_device.sampleRate && channels == m_device.playback.channels
+                                         : pwOpen() && sampleRate == m_pwRequestedRate && channels == m_channels;
+    if (m_reuseDevice && (m_deviceOpen || pwOpen()) && m_outputRunning && m_outputDsd == StreamInfo::Dsd::None
+        && (!m_monoToStereo || pwOpen()) && cfg.deviceKey == m_openKey && cfg.exclusiveMode == m_openExclusive && sameFormat) {
         // Same device and format as the track before: it keeps running.
         m_status.sourceSampleRate = sampleRate;
         m_status.resampled = m_outputRate != sampleRate;
@@ -465,6 +497,26 @@ bool DSPManager::openDevice(uint32_t sampleRate, uint32_t channels, std::string*
     if (!resolveDevice(cfg.deviceKey, entry)) {
         setError(error, "No output device available");
         return false;
+    }
+    if (entry.pw) {
+        if (openPipeWire(entry, sampleRate, channels, error))
+            return true;
+        // libpipewire refused (too old, a sandbox...): the same sink through
+        // PipeWire's PulseAudio service.
+        const auto pulse = m_devices.find("pulse|" + entry.pipewire);
+        if (pulse != m_devices.end() && !entry.pipewire.empty()) {
+            entry = pulse->second;
+        } else {
+            entry = DeviceEntry{};
+            entry.name = "System default";
+            for (std::size_t i = 0; i < m_backends.size(); ++i)
+                if (m_backends[i].type == ma_backend_pulseaudio)
+                    entry.backendIndex = i;
+        }
+        if (m_backends.empty())
+            return false;
+    } else if (m_pwOut) {
+        m_pwOut->release(); // another output now: the graph's rate given back
     }
     if (!entry.asio.empty())
         return openAsio(entry, false, sampleRate, channels, error);
@@ -640,6 +692,65 @@ bool DSPManager::asioOpen() const
     return m_asioOut && m_asioOut->isOpen();
 }
 
+bool DSPManager::pwOpen() const
+{
+    return m_pwOut && m_pwOut->isOpen();
+}
+
+bool DSPManager::outputOpen() const
+{
+    bool open = m_deviceOpen || asioOpen() || pwOpen();
+#if defined(SONKORE_HAVE_ALSA_DSD)
+    open = open || (m_dsdOut && m_dsdOut->isOpen());
+#endif
+    return open;
+}
+
+// Native PipeWire: the stream at the track's rate (the graph held at it when
+// the settings allow), or at the graph's rate with the engine converting.
+bool DSPManager::openPipeWire(const DeviceEntry& entry, uint32_t rate, uint32_t channels, std::string* error)
+{
+    if (!m_pwOut)
+        m_pwOut = std::make_unique<PipeWireOutput>();
+    const OutputConfig cfg = outputConfig();
+    // Mono goes to both speakers, sample for sample (render() copies it):
+    // PipeWire would otherwise mix it, or leave one side silent.
+    const uint32_t streamChannels = channels == 1 ? 2 : channels;
+    if (!m_pwOut->open(entry.pipewire, streamChannels, rate, cfg.allowSampleRateSwitch,
+                       [this](int32_t* out, uint32_t n) { render(out, n); }, error))
+        return false;
+    m_pwRequestedRate = rate;
+    m_monoToStereo = streamChannels != channels;
+    m_outputRate = m_pwOut->rate();
+    m_openKey = cfg.deviceKey;
+    m_openExclusive = cfg.exclusiveMode;
+    noteOutputRate(m_outputRate);
+    m_rampFrames.store(std::max<std::size_t>(64, m_outputRate * 8 / 1000));
+    m_cbRampingIn = false;
+    m_reorder = false; // channels go out with their positions: PipeWire places them
+    m_channelsExact = true;
+    // No exclusive access, but nothing alters the samples while the graph
+    // runs at their rate and no software volume is below 100 % (checked live
+    // in outputStatus()).
+    m_mixerFree = true;
+
+    OutputStatus st;
+    st.backend = "PipeWire";
+    st.deviceName = entry.pipewire.empty() ? m_pwOut->sinkDescription() : entry.name;
+    st.exclusive = false;
+    st.deviceSampleRate = m_outputRate;
+    st.deviceChannels = streamChannels;
+    st.deviceBits = 32;
+    st.deviceFloat = true; // PipeWire carries float32: exact for up to 24-bit integers
+    st.sourceSampleRate = rate;
+    st.resampled = m_outputRate != rate;
+    m_status = st;
+    updateBitPerfectPath();
+    m_quantizer.setTargetBits(24);
+    m_quantizer.setFormat(m_outputRate, channels);
+    return true;
+}
+
 // An ASIO driver as the output: PCM at `rate` (or the closest rate it takes,
 // converted here with SoX), or native DSD at the 1-bit rate `rate`.
 bool DSPManager::openAsio(const DeviceEntry& entry, bool dsd, uint32_t rate, uint32_t channels, std::string* error)
@@ -713,6 +824,8 @@ void DSPManager::closeDevice()
 #endif
     if (m_asioOut)
         m_asioOut->close();
+    if (m_pwOut)
+        m_pwOut->close(); // the graph's rate stays held for the next track
     if (m_deviceOpen) {
         ma_device_uninit(&m_device);
         m_deviceOpen = false;
@@ -726,6 +839,10 @@ bool DSPManager::startOutput()
 {
     if (asioOpen()) {
         m_outputRunning = m_asioOut->start();
+        return m_outputRunning;
+    }
+    if (pwOpen()) {
+        m_outputRunning = m_pwOut->start();
         return m_outputRunning;
     }
 #if defined(SONKORE_HAVE_ALSA_DSD)
@@ -792,6 +909,11 @@ void DSPManager::stopOutput()
         m_outputRunning = false;
         return;
     }
+    if (pwOpen()) {
+        m_pwOut->stop();
+        m_outputRunning = false;
+        return;
+    }
 #if defined(SONKORE_HAVE_ALSA_DSD)
     if (m_dsdOut && m_dsdOut->isOpen()) {
         m_dsdOut->stop();
@@ -809,7 +931,7 @@ void DSPManager::adoptDecoder(std::unique_ptr<Decoder> decoder, double gain)
     // An output kept running (silent) from the previous track renders buffers
     // of its own channel count: it cannot go on once m_channels says another
     // (it would write past the device's buffer). It is reopened for the track.
-    if ((m_deviceOpen || m_outputRunning) && decoder->info().channels != m_channels)
+    if ((m_deviceOpen || pwOpen() || m_outputRunning) && decoder->info().channels != m_channels)
         closeDevice();
     m_decoder = std::move(decoder);
     m_track = m_decoder->info();
@@ -831,7 +953,7 @@ bool DSPManager::openDsd(const std::filesystem::path& path, double gain)
         || format.channels > kMaxChannels)
         return false;
     DeviceEntry entry;
-    if (!resolveDevice(cfg.deviceKey, entry))
+    if (!resolveDevice(cfg.deviceKey, entry) || entry.pw) // PipeWire mixes: DSD goes as PCM
         return false;
     if (!entry.asio.empty() && cfg.dsd == DsdOutput::Native) {
         // ASIO DSD mode: the driver takes the 1-bit stream at its own rate.
@@ -934,7 +1056,7 @@ bool DSPManager::openPcmToDsd()
     if (cfg.pcmToDsd == PcmToDsd::Off || cfg.dsd == DsdOutput::Pcm || m_track.dsd != StreamInfo::Dsd::None)
         return false;
     DeviceEntry entry;
-    if (!resolveDevice(cfg.deviceKey, entry))
+    if (!resolveDevice(cfg.deviceKey, entry) || entry.pw)
         return false;
     const Backend& backend = m_backends[entry.backendIndex];
     std::vector<int> multiples;
@@ -1039,12 +1161,13 @@ bool DSPManager::load(const std::filesystem::path& path, std::string* error, dou
         return false;
     // A running PCM output stays open (silent) for the next track: it is kept
     // if that track wants the same format, so the DAC does not re-lock (click).
-    const bool keepDevice = m_deviceOpen && m_outputRunning && m_outputDsd == StreamInfo::Dsd::None && !m_toDsd;
+    const bool keepDevice = (m_deviceOpen || pwOpen()) && m_outputRunning && m_outputDsd == StreamInfo::Dsd::None && !m_toDsd;
     if (keepDevice) {
         muteOutput(false);
         releaseTrack();
     } else {
-        unload();
+        closeDevice(); // (a rate PipeWire holds for us stays: the next output likely wants it)
+        releaseTrack();
     }
     if (outputConfig().playFromMemory) {
         // Before the decoder, so even its header reads come from RAM. A big
@@ -1137,6 +1260,8 @@ bool DSPManager::load(const std::filesystem::path& path, std::string* error, dou
     std::size_t deviceFrames = 0;
     if (asioOpen())
         deviceFrames = m_asioOut->bufferFrames();
+    else if (pwOpen())
+        deviceFrames = m_pwOut->bufferFrames();
 #if defined(SONKORE_HAVE_ALSA_DSD)
     else if (m_outputDsd == StreamInfo::Dsd::Native)
         deviceFrames = m_dsdOut->bufferFrames();
@@ -1154,6 +1279,8 @@ bool DSPManager::load(const std::filesystem::path& path, std::string* error, dou
 
     m_stretch.prepare(m_track.sampleRate, m_channels, static_cast<uint32_t>(kDecodeBlockFrames));
     m_eq.prepare(static_cast<double>(m_track.sampleRate), static_cast<int>(m_channels));
+    m_linearEq.prepare(m_track.sampleRate, m_channels);
+    m_linearEqLatency.store(0);
     m_stWasActive = false;
     m_wasBypassed = true;
     m_crossfeedFor = -1; // set up again for this track's rate
@@ -1196,6 +1323,8 @@ void DSPManager::unload()
 {
     closeDevice(); // fades out first when playing
     releaseTrack();
+    if (m_pwOut)
+        m_pwOut->release(); // nothing plays: PipeWire's rate given back
 }
 
 // Everything of the current track but the output device.
@@ -1212,6 +1341,8 @@ void DSPManager::releaseTrack()
     // Nothing plays: give the DSP memory back.
     m_stretch.release();
     m_resampler.release();
+    m_linearEq.release();
+    m_linearEqLatency.store(0);
     releaseBuffers();
     m_decodeBuf = {};
     m_ring.allocate(0);
@@ -1221,11 +1352,7 @@ void DSPManager::releaseTrack()
 void DSPManager::play()
 {
     const State s = state();
-    bool outputOpen = m_deviceOpen || asioOpen();
-#if defined(SONKORE_HAVE_ALSA_DSD)
-    outputOpen = outputOpen || (m_dsdOut && m_dsdOut->isOpen());
-#endif
-    if (s == State::Empty || !outputOpen)
+    if (s == State::Empty || !outputOpen())
         return;
     if (s == State::Playing) {
         if (m_outputDrained.load()) // played to the end: once more from the start
@@ -1314,6 +1441,8 @@ void DSPManager::seek(double seconds)
     m_stretch.clear();
     m_resampler.clear();
     m_eq.reset();
+    m_linearEq.reset(); // engages again from the new position, without the old history
+    m_linearEqLatency.store(0);
     m_crossfeed.reset();
     if (m_convolver)
         m_convolver->reset();
@@ -1363,6 +1492,14 @@ DSPManager::OutputStatus DSPManager::outputStatus() const
     // so the indicator is correct while paused (the ring catches up within
     // bufferMs once playback resumes).
     st.modulatorResets = m_modulatorResets.load(std::memory_order_relaxed);
+    if (pwOpen()) {
+        // PipeWire: untouched only while the graph runs at the stream's rate
+        // and no software volume scales it.
+        st.graphRate = m_pwOut->graphRate();
+        st.systemVolumeNeutral = m_pwOut->volumeNeutral();
+        if ((st.graphRate != 0 && st.graphRate != st.deviceSampleRate) || !st.systemVolumeNeutral)
+            st.pathCanBeBitPerfect = false;
+    }
     st.bitPerfectNow = st.pathCanBeBitPerfect && !st.hdcd && (dspIsNeutral() || m_outputDsd != StreamInfo::Dsd::None);
     return st;
 }
@@ -1370,6 +1507,7 @@ DSPManager::OutputStatus DSPManager::outputStatus() const
 bool DSPManager::dspIsNeutral() const
 {
     return m_stretch.isNeutral() && m_eq.isNeutral() && !m_convActive.load(std::memory_order_relaxed)
+        && !m_linearEq.busy.load(std::memory_order_relaxed) // still holding (or handing back) music
         && m_volume.load(std::memory_order_relaxed) == 1.0
         && m_trackGain.load(std::memory_order_relaxed) == 1.0
         && (m_crossfeedPreset.load(std::memory_order_relaxed) == 0 || m_channels != 2);
@@ -1397,9 +1535,11 @@ double DSPManager::positionSeconds() const
         return std::max(0.0, pos) / m_track.sampleRate;
     }
     const double queuedFrames = static_cast<double>(m_ring.size() / m_channels) * rateRatio;
-    // What the pitch / tempo engine still holds has not been heard either.
+    // What the pitch / tempo engine and the linear-phase EQ still hold has
+    // not been heard either.
     const double held = m_bypassActive.load(std::memory_order_relaxed) ? 0.0 : m_stretch.heldSourceFrames();
-    const double pos = static_cast<double>(m_decodedFrames.load(std::memory_order_relaxed)) - held - queuedFrames * speed;
+    const double inFilter = static_cast<double>(m_linearEqLatency.load(std::memory_order_relaxed));
+    const double pos = static_cast<double>(m_decodedFrames.load(std::memory_order_relaxed)) - held - (queuedFrames + inFilter) * speed;
     return std::max(0.0, pos) / m_track.sampleRate;
 }
 
@@ -1775,7 +1915,10 @@ bool DSPManager::produceBlock()
     bool ok = true;
     if (frames > 0) {
         if (bypass) {
-            // Bit-perfect: decoded integers go to the device untouched.
+            // Bit-perfect: decoded integers go to the device untouched (the
+            // linear-phase EQ keeps them in mind, to engage seamlessly).
+            if (!raw && m_eq.linearPhase())
+                m_linearEq.remember(m_decodeBuf.data(), frames);
             ok = pushToRing(m_decodeBuf.data(), frames);
         } else if (stActive) {
             s32ToFloat(m_decodeBuf.data(), m_floatIn.data(), frames * ch);
@@ -1800,19 +1943,19 @@ bool DSPManager::finishStream()
 {
     bool ok = true;
     const bool raw = m_workerDsd != StreamInfo::Dsd::None; // no PCM tails to flush into DSD
-    if (!raw && m_convolver && !m_stWasActive) {
-        // The filter still holds its block of delay and its tail: play them out.
-        std::size_t left = m_convolver->tail();
-        while (ok && left > 0) {
-            const std::size_t n = std::min(left, kDecodeBlockFrames);
-            std::fill_n(m_doubleBuf.data(), n * m_channels, 0.0);
-            ok = processAndPush(m_doubleBuf.data(), n);
-            left -= n;
-        }
-    }
     if (!raw && m_stWasActive) {
         m_stretch.flush();
         ok = drainStretch();
+    }
+    // The filters still hold their delay and their tails: play them out.
+    std::size_t left = raw ? 0 : (m_convolver ? m_convolver->tail() : 0) + (m_linearEq.active() ? m_linearEq.tail() : 0);
+    if (left > 0)
+        ensureBuffers(false);
+    while (ok && left > 0) {
+        const std::size_t n = std::min(left, kDecodeBlockFrames);
+        std::fill_n(m_doubleBuf.data(), n * m_channels, 0.0);
+        ok = processAndPush(m_doubleBuf.data(), n);
+        left -= n;
     }
     if (ok && !raw && m_resampler.active())
         ok = drainResampler();
@@ -1862,7 +2005,9 @@ DSPManager::Splice DSPManager::spliceNext()
     m_splicedTrack = info;
     m_next = {};
     m_decodedFrames.store(0, std::memory_order_relaxed);
-    m_splicePoint.store(static_cast<int64_t>(m_framesPushed.load(std::memory_order_acquire)), std::memory_order_release);
+    // The join reaches the ring once the music the filters still hold is out.
+    m_splicePoint.store(static_cast<int64_t>(m_framesPushed.load(std::memory_order_acquire) + pendingDspFrames()),
+                        std::memory_order_release);
     return Splice::Done;
 }
 
@@ -2064,15 +2209,46 @@ bool DSPManager::drainResampler()
     }
 }
 
+std::size_t DSPManager::pendingDspFrames() const
+{
+    if (m_wasBypassed)
+        return 0;
+    const std::size_t held = (m_convolver ? Convolver::kBlock : 0) + m_linearEq.latency();
+    return m_workerRate ? static_cast<std::size_t>(static_cast<uint64_t>(held) * m_outputRate / m_workerRate) : held;
+}
+
 bool DSPManager::processAndPush(double* samples, std::size_t frames)
 {
     const std::size_t count = frames * m_channels;
     if (const double headroom = m_headroom.load(std::memory_order_relaxed); headroom != 1.0)
         for (std::size_t i = 0; i < count; ++i)
             samples[i] *= headroom;
+    const bool linear = m_eq.linearPhase();
+    if (linear || m_linearEq.active()) {
+        m_linearEq.update(linear && !m_eq.isNeutral(), m_eq); // engaging: primed with what went before this block
+        m_linearEq.remember(samples, frames);
+    }
+    if (!m_linearEq.active())
+        return processRest(samples, frames, !linear);
+    // Linear-phase EQ: what comes out of the filter (nothing yet while it
+    // engages), then what it hands back unfiltered once it is done.
+    m_linearEq.process(samples, frames);
+    m_linearEqLatency.store(m_linearEq.latency(), std::memory_order_relaxed);
+    std::vector<double>& filtered = m_linearEq.filtered();
+    std::vector<double>& passed = m_linearEq.passed();
+    bool ok = filtered.empty() || processRest(filtered.data(), filtered.size() / m_channels, false);
+    if (ok && !passed.empty())
+        ok = processRest(passed.data(), passed.size() / m_channels, !linear);
+    return ok;
+}
+
+bool DSPManager::processRest(double* samples, std::size_t frames, bool biquads)
+{
+    const std::size_t count = frames * m_channels;
     if (m_convolver)
         m_convolver->process(samples, frames);
-    m_eq.process(samples, frames);
+    if (biquads)
+        m_eq.process(samples, frames);
     if (m_crossfeed.active())
         m_crossfeed.process(samples, frames);
 

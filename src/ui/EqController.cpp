@@ -165,6 +165,16 @@ void EqController::setEnabled(bool on)
     emit enabledChanged();
 }
 
+void EqController::setLinearPhase(bool on)
+{
+    if (on == m_linearPhase)
+        return;
+    m_linearPhase = on;
+    m_eq.setLinearPhase(on);
+    saveState();
+    emit linearPhaseChanged();
+}
+
 void EqController::setMode(const QString& mode)
 {
     if (mode == m_mode || (mode != "graphic" && mode != "parametric"))
@@ -311,6 +321,7 @@ void EqController::apply(bool markCustom)
     m_eq.setBands(std::move(engineBands));
     m_eq.setPreampDb(m_preamp);
     m_eq.setEnabled(m_enabled);
+    m_eq.setLinearPhase(m_linearPhase);
     if (markCustom)
         setCurrentProfile(QString());
     saveState();
@@ -596,6 +607,7 @@ void EqController::loadState()
     QSettings s;
     s.beginGroup("equalizer");
     m_enabled = s.value("enabled", false).toBool(); // a fresh install starts bit-perfect
+    m_linearPhase = s.value("linearPhase", false).toBool();
     m_mode = s.value("mode", "graphic").toString();
     m_preamp = s.value("preamp", 0.0).toDouble();
     m_currentProfile = s.value("profile", "Flat").toString();
@@ -618,6 +630,7 @@ void EqController::saveState() const
     QSettings s;
     s.beginGroup("equalizer");
     s.setValue("enabled", m_enabled);
+    s.setValue("linearPhase", m_linearPhase);
     s.setValue("mode", m_mode);
     s.setValue("preamp", m_preamp);
     s.setValue("profile", m_currentProfile);

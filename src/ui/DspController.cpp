@@ -845,6 +845,19 @@ void DspController::setExclusiveMode(bool on)
     reopenCurrent();
 }
 
+void DspController::setFollowTrackRate(bool on)
+{
+    if (on == m_followTrackRate)
+        return;
+    m_followTrackRate = on;
+    auto cfg = m_engine.outputConfig();
+    cfg.allowSampleRateSwitch = on;
+    m_engine.setOutputConfig(cfg);
+    emit followTrackRateChanged();
+    scheduleSave();
+    reopenCurrent();
+}
+
 namespace {
 sonkore::DSPManager::DsdOutput toEngineDsd(int mode)
 {
@@ -914,11 +927,13 @@ void DspController::refreshDevices()
     // "System default" opens the sound server's default output, so it heads
     // that group (PipeWire first); without a sound server it gets its own.
     QString defaultGroup = tr("System");
-    for (const auto& d : devices)
-        if (d.key.rfind("pulse|", 0) == 0) {
-            defaultGroup = QString::fromStdString(d.backend);
+    for (const char* server : {"pipewire|", "pulse|"}) {
+        const auto it = std::find_if(devices.begin(), devices.end(), [&](const auto& d) { return d.key.rfind(server, 0) == 0; });
+        if (it != devices.end()) {
+            defaultGroup = QString::fromStdString(it->backend);
             break;
         }
+    }
     m_devices << QVariantMap{
         {"key", QString()}, {"backend", defaultGroup}, {"name", tr("System default")},
         {"detail", tr("Follows the desktop's sound settings")}, {"isDefault", true}, {"direct", false},
@@ -1080,7 +1095,10 @@ void DspController::releaseOutput()
 
 void DspController::updateIdleRelease()
 {
-    if (m_reservation.held() && m_releaseWhenIdle && !playing())
+    // A direct DAC is handed back to the desktop; PipeWire gets its own
+    // rate back (it was held at the track's).
+    const bool holding = m_reservation.held() || (m_followTrackRate && m_engine.outputStatus().backend == "PipeWire");
+    if (holding && m_releaseWhenIdle && !playing())
         m_idleReleaseTimer.start();
     else
         m_idleReleaseTimer.stop();
@@ -1122,6 +1140,10 @@ QString DspController::outputDescription() const
         .arg(s.exclusive ? tr(" · exclusive") : QString());
     if (s.resampled)
         text += tr(" · resampled from %1 kHz (SoX VHQ)").arg(s.sourceSampleRate / 1000.0, 0, 'g', 6);
+    if (s.graphRate != 0 && s.graphRate != s.deviceSampleRate)
+        text += tr(" · PipeWire converts it to %1 kHz").arg(s.graphRate / 1000.0, 0, 'g', 6);
+    if (!s.systemVolumeNeutral)
+        text += tr(" · system volume below 100 %");
     return text;
 }
 
@@ -1814,7 +1836,10 @@ QVariantList DspController::buildSignalPath() const
                                          .arg(st.tempo() * st.rate() * 100.0, 0, 'f', 1), "enhanced");
         sonkore::SuperEQ& eq = m_engine.equalizer();
         if (!eq.isNeutral())
-            add(tr("Equalizer"), tr("%1 bands · preamp %2 dB").arg(eq.bands().size()).arg(signedDb(eq.preampDb())), "enhanced");
+            add(tr("Equalizer"), tr("%1 bands · preamp %2 dB").arg(eq.bands().size()).arg(signedDb(eq.preampDb()))
+                                     + (eq.linearPhase() ? tr(" · linear phase, %1 taps").arg(sonkore::LinearPhaseEq::tapsFor(t.sampleRate))
+                                                         : QString()),
+                "enhanced");
         if (crossfeedOn) {
             double cutoff = 0.0, feed = 0.0;
             sonkore::Crossfeed::parameters(static_cast<sonkore::Crossfeed::Preset>(m_crossfeed), cutoff, feed);
@@ -1891,6 +1916,7 @@ void DspController::loadSettings()
     s.beginGroup("playback");
     m_deviceKey = s.value("device").toString();
     m_exclusive = s.value("exclusive", true).toBool();
+    m_followTrackRate = s.value("followTrackRate", true).toBool();
     // Older settings stored a plain on/off "dither".
     m_ditherMode = std::clamp(s.value("ditherMode", s.value("dither", true).toBool() ? DitherTpdf : DitherOff).toInt(), 0, 2);
     m_headroomDb = std::clamp(s.value("headroomDb", 0.0).toDouble(), -24.0, 0.0);
@@ -1922,6 +1948,7 @@ void DspController::loadSettings()
     auto cfg = m_engine.outputConfig();
     cfg.deviceKey = m_deviceKey.toStdString();
     cfg.exclusiveMode = m_exclusive;
+    cfg.allowSampleRateSwitch = m_followTrackRate;
     cfg.dsd = toEngineDsd(m_dsdMode);
     cfg.pcmToDsd = static_cast<sonkore::DSPManager::PcmToDsd>(m_pcmToDsd);
     cfg.playFromMemory = m_playFromMemory;
@@ -2043,6 +2070,7 @@ void DspController::savePreferences() const
     s.beginGroup("playback");
     s.setValue("device", m_deviceKey);
     s.setValue("exclusive", m_exclusive);
+    s.setValue("followTrackRate", m_followTrackRate);
     s.remove("dither");
     s.setValue("ditherMode", m_ditherMode);
     s.setValue("headroomDb", m_headroomDb);

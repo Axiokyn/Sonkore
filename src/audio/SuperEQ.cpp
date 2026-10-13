@@ -29,6 +29,13 @@ std::vector<SuperEQ::Band> SuperEQ::graphic10Band()
 void SuperEQ::setEnabled(bool enabled)
 {
     m_enabled.store(enabled, std::memory_order_relaxed);
+    m_generation.fetch_add(1, std::memory_order_release);
+}
+
+SuperEQ::Curve SuperEQ::curve() const
+{
+    std::lock_guard lock(m_mutex);
+    return {m_pendingBands, m_pendingPreampDb};
 }
 
 void SuperEQ::setBands(std::vector<Band> bands)
@@ -38,6 +45,7 @@ void SuperEQ::setBands(std::vector<Band> bands)
     std::lock_guard lock(m_mutex);
     m_pendingBands = std::move(bands);
     m_dirty.store(true, std::memory_order_release);
+    m_generation.fetch_add(1, std::memory_order_release);
 }
 
 bool SuperEQ::setBand(int index, const Band& band)
@@ -47,6 +55,7 @@ bool SuperEQ::setBand(int index, const Band& band)
         return false;
     m_pendingBands[static_cast<std::size_t>(index)] = band;
     m_dirty.store(true, std::memory_order_release);
+    m_generation.fetch_add(1, std::memory_order_release);
     return true;
 }
 
@@ -61,6 +70,7 @@ void SuperEQ::setPreampDb(double db)
     std::lock_guard lock(m_mutex);
     m_pendingPreampDb = db;
     m_dirty.store(true, std::memory_order_release);
+    m_generation.fetch_add(1, std::memory_order_release);
 }
 
 double SuperEQ::preampDb() const

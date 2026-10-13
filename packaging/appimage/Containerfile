@@ -14,5 +14,5 @@ RUN printf 'fastestmirror=True\nmax_parallel_downloads=10\n' >> /etc/dnf/dnf.con
         libxkbcommon-devel libxkbcommon-x11 fontconfig freetype libdrm \
         libX11 libX11-xcb libxcb libSM libICE \
         xcb-util-wm xcb-util-image xcb-util-keysyms xcb-util-renderutil xcb-util-cursor \
-        wayland-devel dbus-libs glib2 openssl-libs krb5-libs alsa-lib alsa-lib-devel \
+        wayland-devel dbus-libs glib2 openssl-libs krb5-libs alsa-lib alsa-lib-devel pipewire-devel \
  && dnf clean all

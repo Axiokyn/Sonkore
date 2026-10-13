@@ -5,6 +5,7 @@
 #include <array>
 #include <atomic>
 #include <cstddef>
+#include <cstdint>
 #include <mutex>
 #include <vector>
 
@@ -37,6 +38,17 @@ public:
     // --- any thread ---
     void setEnabled(bool enabled);
     bool isEnabled() const { return m_enabled.load(std::memory_order_relaxed); }
+    // Linear phase: the engine applies the curve as an FIR (LinearPhaseEq)
+    // instead of these biquads.
+    void setLinearPhase(bool on) { m_linearPhase.store(on, std::memory_order_relaxed); }
+    bool linearPhase() const { return m_linearPhase.load(std::memory_order_relaxed); }
+    // Bumped by every change of the curve (bands, preamp, on/off).
+    uint64_t generation() const { return m_generation.load(std::memory_order_acquire); }
+    struct Curve {
+        std::vector<Band> bands;
+        double preampDb = 0.0;
+    };
+    Curve curve() const;
     void setBands(std::vector<Band> bands);
     bool setBand(int index, const Band& band);
     std::vector<Band> bands() const;
@@ -64,6 +76,8 @@ private:
     double m_pendingPreampDb = 0.0;
     std::atomic<bool> m_dirty{true};
     std::atomic<bool> m_enabled{true};
+    std::atomic<bool> m_linearPhase{false};
+    std::atomic<uint64_t> m_generation{0};
 
     // Worker-owned state.
     double m_sampleRate = 44100.0;

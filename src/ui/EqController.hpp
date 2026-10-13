@@ -21,6 +21,8 @@ class EqController : public QObject {
     SONKORE_QML_SINGLETON_INSTANCE(EqController)
 
     Q_PROPERTY(bool enabled READ enabled WRITE setEnabled NOTIFY enabledChanged)
+    // Linear phase: the curve as an FIR (every frequency delayed alike) instead of biquads.
+    Q_PROPERTY(bool linearPhase READ linearPhase WRITE setLinearPhase NOTIFY linearPhaseChanged)
     Q_PROPERTY(QString mode READ mode WRITE setMode NOTIFY bandsChanged)
     Q_PROPERTY(double preamp READ preamp WRITE setPreamp NOTIFY bandsChanged)
     Q_PROPERTY(QVariantList bands READ bands NOTIFY bandsChanged)
@@ -44,6 +46,8 @@ public:
 
     bool enabled() const { return m_enabled; }
     void setEnabled(bool on);
+    bool linearPhase() const { return m_linearPhase; }
+    void setLinearPhase(bool on);
     QString mode() const { return m_mode; }
     void setMode(const QString& mode);
     double preamp() const { return m_preamp; }
@@ -85,6 +89,7 @@ public:
 
 signals:
     void enabledChanged();
+    void linearPhaseChanged();
     void bandsChanged();
     void profilesChanged();
     void currentProfileChanged();
@@ -128,6 +133,7 @@ private:
 
     sonkore::SuperEQ& m_eq;
     bool m_enabled = true;
+    bool m_linearPhase = false;
     QString m_mode = QStringLiteral("graphic");
     double m_preamp = 0.0;
     QVector<Band> m_bands;

@@ -138,7 +138,7 @@ Item {
             StatusCard {
                 title: Equalizer.currentProfile.length > 0 ? Equalizer.currentProfile : qsTr("Custom")
                 subtitle: (page.graphic ? qsTr("10-band graphic") : qsTr("%1-band parametric").arg(Equalizer.bands.length))
-                          + "  ·  " + qsTr("64-bit biquads")
+                          + "  ·  " + (Equalizer.linearPhase ? qsTr("linear phase (FIR)") : qsTr("64-bit biquads"))
                 checked: Equalizer.enabled
                 onToggled: (on) => Equalizer.enabled = on
                 tip: checked ? qsTr("Turn the equalizer off (the settings are kept)") : qsTr("Turn the equalizer on")
@@ -226,6 +226,14 @@ Item {
                         onEdited: (v) => Equalizer.preamp = v
                     }
                     PillButton { text: qsTr("Auto"); onClicked: Equalizer.autoPreamp() }
+                    LCheckBox {
+                        text: qsTr("Linear phase")
+                        checked: Equalizer.linearPhase
+                        onToggled: Equalizer.linearPhase = checked
+                        ToolTip.visible: hovered
+                        ToolTip.delay: 600
+                        ToolTip.text: qsTr("The same curve as a linear-phase FIR: every frequency is delayed alike, so transients and the stereo image keep their timing. Changes are heard about half a second later.")
+                    }
                     Badge {
                         readonly property bool clipping: Equalizer.enabled && Equalizer.peakGain > 0.05
                         text: clipping ? qsTr("CLIP RISK +%1 dB").arg(Equalizer.peakGain.toFixed(1)) : qsTr("NO CLIPPING")

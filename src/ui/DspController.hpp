@@ -109,6 +109,8 @@ class DspController : public QObject {
     // Gain applied to the current track in dB, NaN when it has no loudness data.
     Q_PROPERTY(double currentGainDb READ currentGainDb NOTIFY replayGainChanged)
     Q_PROPERTY(bool exclusiveMode READ exclusiveMode WRITE setExclusiveMode NOTIFY exclusiveModeChanged)
+    // PipeWire: the graph follows each track's rate while Sonkore plays.
+    Q_PROPERTY(bool followTrackRate READ followTrackRate WRITE setFollowTrackRate NOTIFY followTrackRateChanged)
     // DSD files (DsdMode): converted to PCM, or sent as DSD (native / DoP) to a DAC that takes it.
     Q_PROPERTY(int dsdMode READ dsdMode WRITE setDsdMode NOTIFY dsdModeChanged)
     // PCM converted to DSD for the DSD output: 0 off, 1 DSD64, 2 DSD128, 3 DSD256, 4 highest the DAC takes.
@@ -259,6 +261,7 @@ public:
     void setReplayGainPreventClipping(bool on);
     double currentGainDb() const { return m_currentGainDb; }
     bool exclusiveMode() const { return m_exclusive; }
+    bool followTrackRate() const { return m_followTrackRate; }
     int dsdMode() const { return m_dsdMode; }
     int pcmToDsd() const { return m_pcmToDsd; }
     void setPcmToDsd(int mode);
@@ -268,6 +271,7 @@ public:
     void setPlayFromMemory(bool on);
     void setDsdMode(int mode);
     void setExclusiveMode(bool on);
+    void setFollowTrackRate(bool on);
     QVariantList outputDevices() const { return m_devices; }
     QString currentDeviceKey() const { return m_deviceKey; }
     QString outputDescription() const;
@@ -375,6 +379,7 @@ signals:
     void convolutionChanged();
     void replayGainChanged();
     void exclusiveModeChanged();
+    void followTrackRateChanged();
     void dsdModeChanged();
     void playFromMemoryChanged();
     void hdcdChanged();
@@ -459,6 +464,7 @@ private:
     bool m_rgPreventClipping = true;
     double m_currentGainDb = 0.0;
     bool m_exclusive = true;
+    bool m_followTrackRate = true;
     int m_dsdMode = DsdNative;
     int m_pcmToDsd = 0;
     bool m_playFromMemory = true;
