@@ -1,0 +1,27 @@
+[Desktop Entry]
+Type=Application
+Name=Sonkore
+GenericName=Music Player
+Comment=Hi-Fi music player with bit-perfect output, equalizer and AutoEQ
+Exec=Sonkore %U
+TryExec=Sonkore
+Icon=sonkore
+Terminal=false
+Categories=AudioVideo;Audio;Player;Qt;
+MimeType=audio/flac;audio/x-flac;audio/mpeg;audio/mp3;audio/wav;audio/x-wav;audio/mp4;audio/x-m4a;audio/aac;audio/ogg;audio/x-vorbis+ogg;audio/x-opus+ogg;audio/opus;audio/x-flac+ogg;audio/aiff;audio/x-aiff;audio/x-ape;audio/x-wavpack;audio/x-tta;audio/x-musepack;audio/x-ms-wma;audio/x-matroska;audio/x-dsf;audio/x-dff;application/x-cue;
+Keywords=music;audio;player;flac;hifi;bit-perfect;equalizer;autoeq;
+StartupWMClass=sonkore
+SingleMainWindow=true
+Actions=PlayPause;Next;Previous;
+
+[Desktop Action PlayPause]
+Name=Play / Pause
+Exec=dbus-send --session --type=method_call --dest=org.mpris.MediaPlayer2.sonkore /org/mpris/MediaPlayer2 org.mpris.MediaPlayer2.Player.PlayPause
+
+[Desktop Action Next]
+Name=Next track
+Exec=dbus-send --session --type=method_call --dest=org.mpris.MediaPlayer2.sonkore /org/mpris/MediaPlayer2 org.mpris.MediaPlayer2.Player.Next
+
+[Desktop Action Previous]
+Name=Previous track
+Exec=dbus-send --session --type=method_call --dest=org.mpris.MediaPlayer2.sonkore /org/mpris/MediaPlayer2 org.mpris.MediaPlayer2.Player.Previous

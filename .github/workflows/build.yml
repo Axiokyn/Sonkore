@@ -1,0 +1,272 @@
+# Builds and tests Sonkore; a tag "v*" (or a commit marked [release])
+# publishes the AppImage and the Windows package as a GitHub release.
+#   tests          engine tests (bit-perfect, gapless, DSP, DSD, stress)
+#   appimage       Linux x86_64 AppImage, built on AlmaLinux 9 (glibc 2.34):
+#                  Qt, QML and FFmpeg inside, runs on any distro from 2021 on
+#   ffmpeg-windows audio-only FFmpeg DLLs, cross-compiled with MinGW-w64
+#   windows        Windows x64 (MSVC), portable zip with everything inside
+#   release        on a "v*" tag or a commit marked [release]: the files
+#                  above on the release page
+name: Build
+
+on:
+  push:
+    branches: [main, "claude/**"]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+env:
+  QT_VERSION: "6.11.*"
+
+jobs:
+  tests:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Tools
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q ninja-build sox flac ffmpeg libavformat-dev libavcodec-dev libavutil-dev \
+            libasound2-dev libgl-dev libxkbcommon-dev
+      - uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ env.QT_VERSION }}
+          cache: true
+      - name: Configure
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DSONKORE_BUILD_TESTS=ON -DSONKORE_TEST_CORPUS=$PWD/corpus
+      - name: Build
+        run: cmake --build build --target engine_test
+      - name: Corpus
+        run: tests/make_corpus.sh corpus
+      - name: Engine tests
+        run: build/engine_test corpus
+
+  appimage:
+    runs-on: ubuntu-24.04
+    container: almalinux:9
+    steps:
+      - name: Build environment (as packaging/appimage/Containerfile)
+        run: |
+          printf 'fastestmirror=True\nmax_parallel_downloads=10\n' >> /etc/dnf/dnf.conf
+          dnf -y install epel-release dnf-plugins-core
+          dnf config-manager --set-enabled crb
+          dnf -y install \
+            gcc-toolset-13-gcc gcc-toolset-13-gcc-c++ cmake ninja-build git make nasm \
+            pkgconf-pkg-config python3 python3-pip xz file findutils diffutils zlib-devel \
+            mesa-libGL-devel mesa-libEGL-devel libglvnd-devel vulkan-headers vulkan-loader \
+            libxkbcommon-devel libxkbcommon-x11 fontconfig freetype libdrm \
+            libX11 libX11-xcb libxcb libSM libICE \
+            xcb-util-wm xcb-util-image xcb-util-keysyms xcb-util-renderutil xcb-util-cursor \
+            wayland-devel dbus-libs glib2 openssl-libs krb5-libs alsa-lib alsa-lib-devel
+      - uses: actions/checkout@v4
+      - name: Qt
+        run: |
+          python3 -m pip install -q aqtinstall
+          version=$(python3 -m aqt list-qt linux desktop --spec "${QT_VERSION%.\*}" --latest-version)
+          python3 -m aqt install-qt linux desktop "$version" linux_gcc_64 -O /opt/Qt
+          ln -sfn "/opt/Qt/$version/gcc_64" /qt
+          /qt/bin/qmake -query QT_VERSION
+      - uses: actions/cache@v4
+        with:
+          path: /work/ffmpeg-*
+          key: appimage-ffmpeg-${{ hashFiles('packaging/ffmpeg/options.sh') }}
+      - name: AppImage
+        run: |
+          ln -sfn "$GITHUB_WORKSPACE" /src
+          mkdir -p /work /out
+          bash /src/packaging/appimage/inside.sh
+      - name: Smoke test (starts and quits)
+        run: |
+          dnf -y install xorg-x11-server-Xvfb mesa-dri-drivers
+          app=$(ls /out/*.AppImage)
+          export APPIMAGE_EXTRACT_AND_RUN=1 QT_QUICK_BACKEND=software
+          Xvfb :99 & export DISPLAY=:99; sleep 2
+          timeout -s TERM 20 "$app" > smoke.log 2>&1 || status=$?
+          cat smoke.log
+          # 124: still running after 20 s (killed by timeout), as wanted.
+          [ "${status:-0}" = 124 ] || [ "${status:-0}" = 0 ] || exit 1
+          ! grep -E "QQmlApplicationEngine failed|is not installed|Cannot load library|could not load the Qt platform plugin" smoke.log
+      - uses: actions/upload-artifact@v4
+        with:
+          name: appimage
+          path: /out/*
+          if-no-files-found: error
+
+  # The AppImage on clean installs of other distros: only what any desktop
+  # has (an X server, Mesa) is added; every library must resolve, and the
+  # player must start and keep running.
+  appimage-distros:
+    needs: appimage
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: ubuntu:22.04
+            setup: apt-get update -q && DEBIAN_FRONTEND=noninteractive apt-get install -y -q xvfb libgl1 libegl1 fontconfig fonts-dejavu-core libxkbcommon0 libwayland-client0 libwayland-cursor0 libwayland-egl1 libdbus-1-3 libglib2.0-0 libasound2
+          - image: ubuntu:24.04
+            setup: apt-get update -q && DEBIAN_FRONTEND=noninteractive apt-get install -y -q xvfb libgl1 libegl1 fontconfig fonts-dejavu-core libxkbcommon0 libwayland-client0 libwayland-cursor0 libwayland-egl1 libdbus-1-3 libglib2.0-0t64 libasound2t64
+          - image: debian:12
+            setup: apt-get update -q && DEBIAN_FRONTEND=noninteractive apt-get install -y -q xvfb libgl1 libegl1 fontconfig fonts-dejavu-core libxkbcommon0 libwayland-client0 libwayland-cursor0 libwayland-egl1 libdbus-1-3 libglib2.0-0 libasound2
+          - image: fedora:latest
+            setup: dnf -y install xorg-x11-server-Xvfb mesa-libGL mesa-libEGL fontconfig dejavu-sans-fonts libxkbcommon findutils libwayland-client libwayland-cursor libwayland-egl dbus-libs glib2 alsa-lib
+          - image: archlinux:latest
+            setup: pacman -Syu --noconfirm xorg-server-xvfb mesa fontconfig ttf-dejavu libxkbcommon wayland dbus glib2 alsa-lib
+          - image: opensuse/tumbleweed
+            setup: zypper -n install xorg-x11-server-Xvfb Mesa-libGL1 Mesa-libEGL1 fontconfig dejavu-fonts libxkbcommon0 findutils libwayland-client0 libwayland-cursor0 libwayland-egl1 libdbus-1-3 libglib-2_0-0 libgobject-2_0-0 libgio-2_0-0 libasound2
+    container: ${{ matrix.image }}
+    steps:
+      - name: Desktop basics
+        run: ${{ matrix.setup }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: appimage
+      - name: Libraries
+        run: |
+          app=$(ls *.AppImage)
+          chmod +x "$app"
+          "./$app" --appimage-extract > /dev/null
+          missing=$(find squashfs-root/usr -type f \( -name '*.so*' -o -path '*/bin/*' \) -exec sh -c 'LD_LIBRARY_PATH=squashfs-root/usr/lib ldd "$1" 2>/dev/null | grep "not found" | sed "s|^|$1: |"' sh {} \; | sort -u)
+          if [ -n "$missing" ]; then echo "$missing"; exit 1; fi
+      - name: Starts and keeps running
+        run: |
+          app=$(ls *.AppImage)
+          export APPIMAGE_EXTRACT_AND_RUN=1 QT_QUICK_BACKEND=software XDG_RUNTIME_DIR=/tmp/xdg
+          mkdir -p -m 700 /tmp/xdg
+          Xvfb :99 -screen 0 1280x800x24 & export DISPLAY=:99; sleep 2
+          timeout -s TERM 20 "./$app" > run.log 2>&1 || status=$?
+          cat run.log
+          [ "${status:-0}" = 124 ] || [ "${status:-0}" = 0 ] || exit 1
+          ! grep -E "QQmlApplicationEngine failed|is not installed|Cannot load library|could not load the Qt platform plugin|cannot open shared object" run.log
+
+  ffmpeg-windows:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        id: cache
+        with:
+          path: ffmpeg-win64
+          key: ffmpeg-win64-${{ hashFiles('packaging/ffmpeg/options.sh', 'packaging/windows/build-ffmpeg.sh') }}
+      - name: Cross-compile
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q mingw-w64 nasm
+          packaging/windows/build-ffmpeg.sh ffmpeg-win64
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ffmpeg-win64
+          path: ffmpeg-win64
+          if-no-files-found: error
+
+  windows:
+    needs: ffmpeg-windows
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: ffmpeg-win64
+          path: ffmpeg-win64
+      - uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+      - uses: seanmiddleditch/gha-setup-ninja@v5
+      - uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ env.QT_VERSION }}
+          arch: win64_msvc2022_64
+          cache: true
+          # aqtinstall 3.3.0 does not find Qt 6.11's Windows repository.
+          aqtsource: git+https://github.com/miurahr/aqtinstall.git
+      - name: Configure
+        shell: pwsh
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release "-DSONKORE_FFMPEG_INCLUDE_DIR=$PWD/ffmpeg-win64/include" -DSONKORE_WITH_FFMPEG=ON -DSONKORE_BUILD_TESTS=ON
+      - name: Build
+        shell: bash
+        run: |
+          set -o pipefail
+          cmake --build build -- -k 0 2>&1 | tee build.log || {
+            echo "::group::Every error"; grep -E "FAILED:|error C|error LNK|: fatal error" build.log | sort -u | head -150; echo "::endgroup::"
+            grep -E "FAILED:|error C[0-9]+|error LNK|fatal error" build.log | sort -u | head -60
+            exit 1; }
+      - name: Engine tests (no corpus needed)
+        shell: bash
+        run: |
+          build/engine_test.exe corpus asioConvert asioHost | tee tests.log
+          grep -Eq "^asioConvert +ok" tests.log && grep -Eq "^asioHost +ok" tests.log
+      - name: Package
+        shell: pwsh
+        run: packaging/windows/package.ps1 -Build build -FFmpeg ffmpeg-win64 -Out dist
+      - name: Smoke test (starts and quits)
+        shell: pwsh
+        run: |
+          $dir = Get-ChildItem -Directory dist | Select-Object -First 1
+          $env:QT_QUICK_BACKEND = "software"
+          $p = Start-Process -FilePath "$($dir.FullName)/Sonkore.exe" -PassThru
+          Start-Sleep -Seconds 15
+          if ($p.HasExited) { throw "Sonkore exited early with code $($p.ExitCode)" }
+          Stop-Process -Id $p.Id
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-x64
+          path: |
+            dist/*.zip
+            dist/*.sha256
+          if-no-files-found: error
+
+  # A "v*" tag, or a pushed commit whose message says [release], publishes the
+  # packages as the release v<project version> (the tag is made here).
+  release:
+    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'push' && contains(github.event.head_commit.message, '[release]'))
+    needs: [tests, appimage, appimage-distros, windows]
+    runs-on: ubuntu-24.04
+    # Pushing one commit to two branches must not publish it twice at once.
+    concurrency: release-${{ github.sha }}
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Version
+        id: version
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            echo "tag=$GITHUB_REF_NAME" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=v$(sed -n 's/^ *VERSION \([0-9.]*\)$/\1/p' CMakeLists.txt | head -1)" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      # A release of the same version built from another commit is replaced,
+      # tag included, so the tag always names the commit the files came from.
+      - name: Replace an older build of this version
+        if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          sha=$(gh api "repos/$GITHUB_REPOSITORY/commits/$TAG" --jq .sha 2>/dev/null || true)
+          if [ -n "$sha" ] && [ "$sha" != "$GITHUB_SHA" ]; then
+            gh release delete "$TAG" --repo "$GITHUB_REPOSITORY" --cleanup-tag --yes \
+              || gh api -X DELETE "repos/$GITHUB_REPOSITORY/git/refs/tags/$TAG"
+          fi
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          name: Sonkore ${{ steps.version.outputs.tag }}
+          body: |
+            Sonkore ${{ steps.version.outputs.tag }}
+
+            - **Linux x86_64:** `Sonkore-*-x86_64.AppImage` — make it executable and run it; nothing else to install (glibc 2.34 or newer).
+            - **Windows 64-bit:** `Sonkore-*-windows-x64.zip` — unzip and run `Sonkore.exe`.
+
+            Each file has a `.sha256` next to it.
+          files: |
+            artifacts/appimage/*.AppImage
+            artifacts/appimage/*.sha256
+            artifacts/windows-x64/*.zip
+            artifacts/windows-x64/*.sha256

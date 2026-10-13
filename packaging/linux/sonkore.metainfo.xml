@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>sonkore</id>
+  <name>Sonkore</name>
+  <summary>Hi-Fi music player with bit-perfect output, equalizer and AutoEQ</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+  <launchable type="desktop-id">sonkore.desktop</launchable>
+  <description>
+    <p>Minimal, fast music player for FLAC, ALAC, WAV, AIFF, MP3, AAC, Opus, Vorbis, WavPack,
+    APE, DSD and more, with bit-perfect ALSA/WASAPI output, a 32-band parametric equalizer
+    with AutoEQ headphone profiles, high-quality pitch and tempo control (Rubber Band or
+    SoundTouch) and a watched-folder library.</p>
+  </description>
+  <releases>
+    <release version="1.0.0" date="2026-10-05"/>
+  </releases>
+  <categories><category>Audio</category><category>Player</category></categories>
+</component>

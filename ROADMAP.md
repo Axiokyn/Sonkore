@@ -1,0 +1,72 @@
+# Hoja de ruta
+
+Objetivo: un reproductor Hi-Fi a la altura de Roon y JRiver en todo lo que piden los usuarios más puristas, hecho solo con software libre y publicable gratis en todas partes.
+
+## Reglas
+
+1. Sonkore es GPL-3.0-or-later. Solo se agregan dependencias compatibles: MIT, BSD, Apache-2.0, LGPL o GPLv3.
+2. Sin SDKs privativos, salvo las APIs del sistema (WASAPI, CoreAudio, ALSA). ASIO es GPLv3 desde octubre de 2025.
+3. Cada binario publicado incluye sus licencias y el acceso al código fuente (ver `THIRD-PARTY.md` y `packaging/appimage/`).
+4. El README declara que el desarrollo usa asistencia de IA.
+
+## Fase 1: núcleo purista
+
+- [x] **Gapless**: la pista siguiente se decodifica y empalma sin silencio, exacta al sample; se recorta el relleno del codificador (MP3 LAME/Xing, AAC/MP4, Opus pre-skip). El final de la última pista ya no se corta.
+- [x] **ReplayGain / EBU R128** (libebur128, MIT): etiquetas ReplayGain y R128, análisis por pista y por álbum sin modificar los archivos, modo pista/álbum/apagado, preamp y prevención de clipping por true peak.
+- [x] **Volumen por hardware** en Linux: control del mixer del DAC (ALSA, en dB) para conservar el bit-perfect al bajar el volumen.
+- [x] **Volumen por hardware** en Windows: IAudioEndpointVolume con WASAPI exclusivo, en los dispositivos que lo implementan en hardware.
+- [ ] **Volumen por hardware** en macOS (volumen del dispositivo en CoreAudio).
+- [x] **DSD nativo y DoP** en Linux: DSF y DSDIFF sin pasar a PCM (ALSA DSD_U32_BE/LE, DoP de 24 bits), hasta la frecuencia máxima del DAC.
+- [x] **DSD nativo** en Windows: salida ASIO (modo DSD de ASIO 2.2), también PCM bit-perfect en el formato propio del driver.
+- [x] **DST** (DSD comprimido en DSDIFF): se decodifica con FFmpeg y se reproduce como PCM.
+- [ ] DST enviado como DSD nativo (hace falta un decodificador DST propio: el de FFmpeg entrega PCM); DSD nativo en macOS.
+- [x] **Signal path**: cada etapa (archivo → decodificador → DSP → dispositivo) con formato, bits, frecuencia y calidad.
+- [x] **Reproducción desde RAM**: el archivo completo en RAM (bloqueado si el sistema lo permite) antes de reproducir; la siguiente pista se carga en segundo plano.
+- [x] **Prioridad de tiempo real** del hilo de audio (rtkit).
+- [x] **CUE sheets y multicanal** (5.1 / 7.1 sin mezclar a estéreo, con reordenamiento exacto de canales).
+- [x] **HDCD**: decodificación a 20 bits (libhdcd), solo en pistas con códigos HDCD.
+
+## Fase 2: DSP de referencia
+
+- [x] **Convolución FIR** (pocketfft, BSD-3, doble precisión): corrección de sala y filtros de REW, Dirac, etc.; mono, estéreo y true stereo.
+- [x] **Crossfeed** para auriculares (diseño Bauer / bs2b, MIT).
+- [x] **Remuestreo con filtros a elegir** (fase lineal, intermedia, mínima o lineal abrupto, SoX VHQ) y **upsampling** ×2 / ×4 / máximo del DAC.
+- [x] **Dither con noise shaping** (F-weighted de 9 coeficientes).
+- [x] **Upsampling PCM → DSD** (DSD64–DSD256) con modulador sigma-delta de 7.º orden; DSD512 cuando haya un DAC que lo acepte para probarlo.
+- [x] **Gestión de headroom** antes del DSP, con detector de clipping.
+
+## Calidad
+
+- [x] Tests del motor (`tests/engine_test.cpp`): bit-perfect, gapless exacto, DSP, DSD, ASIO, estrés; limpios con ASan, UBSan y TSan. Corren en cada push (CI).
+
+## Fase 3: biblioteca
+
+- [ ] Metadatos, créditos y versiones desde MusicBrainz (CC0); carátulas de Cover Art Archive.
+- [ ] Biografías desde Wikipedia/Wikidata (CC BY-SA, citando la fuente).
+- [ ] Letras sincronizadas (LRCLIB).
+- [ ] Scrobbling (ListenBrainz, Last.fm).
+- [x] Vistas de artistas y géneros, paneles Género → Artista → Álbum y disposiciones al estilo de Spotify, Roon, MusicBee, JRiver, foobar2000, Winamp y Audacious.
+- [x] Escaneo configurable: carpetas omitidas y archivos cortos fuera.
+- [ ] Listas inteligentes, historial, valoraciones y filtros.
+
+## Fase 4: red y multiroom
+
+- [ ] Control remoto desde el navegador y el celular.
+- [ ] UPnP/DLNA para enviar a streamers y DACs de red (libupnp, BSD).
+- [ ] Chromecast.
+- [ ] Multiroom sincronizado (Snapcast, GPLv3).
+
+## Fase 5: plataformas y distribución
+
+- [x] Linux: AppImage en GitHub Releases (CI en AlmaLinux 9: corre en cualquier distro con glibc 2.34+).
+- [ ] Linux: AUR, COPR, openSUSE Build Service, Snap.
+- [x] Windows x64: ASIO + WASAPI exclusivo; zip portable en GitHub Releases (Qt, runtime de MSVC y FFmpeg incluidos).
+- [ ] Windows: instalador, Scoop, winget.
+- [ ] macOS: CoreAudio en modo exclusivo y modo entero; GitHub Releases y tap propio de Homebrew.
+
+## Fuera de alcance
+
+- **MQA**: privativo, sin implementación abierta.
+- **Roon Ready / RAAT**: protocolo cerrado (alternativa: UPnP + Snapcast).
+- **Tidal / Qobuz integrados**: requieren un acuerdo comercial con cada servicio.
+- **Flathub**: no acepta apps desarrolladas con IA.

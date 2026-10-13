@@ -1,0 +1,486 @@
+#pragma once
+
+#include "DeviceReservation.hpp"
+#include "QmlSingleton.hpp"
+
+#include <QFileSystemWatcher>
+#include <QObject>
+#include <QSettings>
+#include <QString>
+#include <QStringList>
+#include <QTimer>
+#include <QUrl>
+#include <QVariant>
+#include <QVariantList>
+#include <QVariantMap>
+#include <QVector>
+#include <QtQml/qqmlregistration.h>
+
+namespace sonkore {
+class DSPManager;
+}
+
+// The DAC's own volume control on this platform (see updateMixer()).
+#if defined(_WIN32)
+class WinEndpointVolume;
+using HardwareMixer = WinEndpointVolume;
+#else
+class AlsaMixer;
+using HardwareMixer = AlsaMixer;
+#endif
+
+// QML-facing bridge to the audio engine: transport, play queue, output
+// devices and the pitch / tempo processor (Rubber Band or SoundTouch).
+//
+// Precision contract: every continuous parameter is a C++ `double` and QML's
+// `real`/`number` is an IEEE-754 binary64 too, so values cross the boundary
+// bit-for-bit. Text from the UI is parsed with parseDecimal() (QLocale::C,
+// correctly rounded) and setters compare with `==`, never qFuzzyCompare, so a
+// 1e-7 semitone edit is never swallowed.
+class DspController : public QObject {
+    Q_OBJECT
+    QML_ELEMENT
+    QML_SINGLETON
+    SONKORE_QML_SINGLETON_INSTANCE(DspController)
+
+    // --- Pitch / tempo / rate (either engine) -------------------------------
+    Q_PROPERTY(double pitchSemitones READ pitchSemitones WRITE setPitchSemitones NOTIFY pitchSemitonesChanged)
+    Q_PROPERTY(double tempo READ tempo WRITE setTempo NOTIFY tempoChanged)
+    Q_PROPERTY(double rate READ rate WRITE setRate NOTIFY rateChanged)
+    // PitchEngine: RubberBand (default) or SoundTouch.
+    Q_PROPERTY(int pitchEngine READ pitchEngine WRITE setPitchEngine NOTIFY pitchEngineChanged)
+    Q_PROPERTY(QString pitchEngineName READ pitchEngineName NOTIFY pitchEngineChanged)
+
+    // --- Rubber Band ----------------------------------------------------------
+    Q_PROPERTY(bool rubberBandFiner READ rubberBandFiner WRITE setRubberBandFiner NOTIFY rubberBandSettingsChanged)
+    Q_PROPERTY(bool preserveFormants READ preserveFormants WRITE setPreserveFormants NOTIFY rubberBandSettingsChanged)
+    Q_PROPERTY(bool channelsTogether READ channelsTogether WRITE setChannelsTogether NOTIFY rubberBandSettingsChanged)
+    // TimeStretch::PitchMethod, Window, Transients, Detector.
+    Q_PROPERTY(int pitchMethod READ pitchMethod WRITE setPitchMethod NOTIFY rubberBandSettingsChanged)
+    Q_PROPERTY(int rubberBandWindow READ rubberBandWindow WRITE setRubberBandWindow NOTIFY rubberBandSettingsChanged)
+    Q_PROPERTY(int transients READ transients WRITE setTransients NOTIFY rubberBandSettingsChanged)
+    Q_PROPERTY(int detector READ detector WRITE setDetector NOTIFY rubberBandSettingsChanged)
+    Q_PROPERTY(bool phaseIndependent READ phaseIndependent WRITE setPhaseIndependent NOTIFY rubberBandSettingsChanged)
+    Q_PROPERTY(bool rubberBandSmoothing READ rubberBandSmoothing WRITE setRubberBandSmoothing NOTIFY rubberBandSettingsChanged)
+
+    // --- SoundTouch: advanced ---------------------------------------------
+    Q_PROPERTY(bool useAAFilter READ useAAFilter WRITE setUseAAFilter NOTIFY soundTouchSettingsChanged)
+    Q_PROPERTY(int aaFilterLength READ aaFilterLength WRITE setAAFilterLength NOTIFY soundTouchSettingsChanged)
+    Q_PROPERTY(bool useQuickSeek READ useQuickSeek WRITE setUseQuickSeek NOTIFY soundTouchSettingsChanged)
+    Q_PROPERTY(int sequenceMs READ sequenceMs WRITE setSequenceMs NOTIFY soundTouchSettingsChanged)
+    Q_PROPERTY(int seekWindowMs READ seekWindowMs WRITE setSeekWindowMs NOTIFY soundTouchSettingsChanged)
+    Q_PROPERTY(int overlapMs READ overlapMs WRITE setOverlapMs NOTIFY soundTouchSettingsChanged)
+    // The pitch / tempo processor (whichever engine) is processing audio.
+    Q_PROPERTY(bool soundTouchActive READ soundTouchActive NOTIFY soundTouchActiveChanged)
+    // On / off switch: off keeps the values but bypasses the processor.
+    Q_PROPERTY(bool soundTouchEnabled READ soundTouchEnabled WRITE setSoundTouchEnabled NOTIFY soundTouchActiveChanged)
+    // Source seconds per wall-clock second (tempo × rate), for smooth progress.
+    Q_PROPERTY(double speed READ speed NOTIFY soundTouchActiveChanged)
+
+    // --- Output -----------------------------------------------------------
+    Q_PROPERTY(double volume READ volume WRITE setVolume NOTIFY volumeChanged)
+    // Where the volume acts (VolumeMode): Sonkore's digital gain, or the DAC's
+    // own control (ALSA mixer of a direct hw: output), which keeps bit-perfect.
+    Q_PROPERTY(int volumeMode READ volumeMode WRITE setVolumeMode NOTIFY volumeModeChanged)
+    Q_PROPERTY(bool hardwareVolume READ hardwareVolume NOTIFY volumeModeChanged) // the DAC's control is in use now
+    Q_PROPERTY(bool volumeFixed READ volumeFixed NOTIFY volumeModeChanged) // at 100 %, set on the DAC / amplifier
+    Q_PROPERTY(bool hardwareVolumeSupported READ hardwareVolumeSupported CONSTANT)
+    Q_PROPERTY(QString hardwareVolumeInfo READ hardwareVolumeInfo NOTIFY volumeModeChanged)
+    // Requantisation dither when DSP is active (DitherMode: off, TPDF, noise shaped).
+    Q_PROPERTY(int ditherMode READ ditherMode WRITE setDitherMode NOTIFY ditherChanged)
+    // Attenuation ahead of active DSP, dB (<= 0), and samples clipped since the track started.
+    Q_PROPERTY(double headroomDb READ headroomDb WRITE setHeadroomDb NOTIFY headroomChanged)
+    Q_PROPERTY(bool headroomAuto READ headroomAuto WRITE setHeadroomAuto NOTIFY headroomChanged)
+    Q_PROPERTY(double effectiveHeadroomDb READ effectiveHeadroomDb NOTIFY headroomChanged)
+    Q_PROPERTY(double clippedSamples READ clippedSamples NOTIFY signalPathChanged)
+    // Headphone crossfeed: 0 off, 1 default (700 Hz, 4.5 dB), 2 Chu Moy, 3 Jan Meier.
+    Q_PROPERTY(int crossfeed READ crossfeed WRITE setCrossfeed NOTIFY crossfeedChanged)
+    // PCM upsampling: 0 off, 1 x2, 2 x4, 3 highest the DAC takes; and the
+    // resampling filter: 0 linear, 1 intermediate, 2 minimum phase, 3 linear steep.
+    Q_PROPERTY(int upsampling READ upsampling WRITE setUpsampling NOTIFY resamplingChanged)
+    // FIR convolution: the impulse response file (kept while switched off).
+    Q_PROPERTY(QString convolutionFile READ convolutionFile NOTIFY convolutionChanged)
+    Q_PROPERTY(bool convolutionEnabled READ convolutionEnabled WRITE setConvolutionEnabled NOTIFY convolutionChanged)
+    Q_PROPERTY(int resampleFilter READ resampleFilter WRITE setResampleFilter NOTIFY resamplingChanged)
+    // ReplayGain (ReplayGainMode). Off by default: any gain leaves bit-perfect.
+    Q_PROPERTY(int replayGainMode READ replayGainMode WRITE setReplayGainMode NOTIFY replayGainChanged)
+    Q_PROPERTY(double replayGainPreamp READ replayGainPreamp WRITE setReplayGainPreamp NOTIFY replayGainChanged)
+    Q_PROPERTY(bool replayGainPreventClipping READ replayGainPreventClipping WRITE setReplayGainPreventClipping NOTIFY replayGainChanged)
+    // Gain applied to the current track in dB, NaN when it has no loudness data.
+    Q_PROPERTY(double currentGainDb READ currentGainDb NOTIFY replayGainChanged)
+    Q_PROPERTY(bool exclusiveMode READ exclusiveMode WRITE setExclusiveMode NOTIFY exclusiveModeChanged)
+    // DSD files (DsdMode): converted to PCM, or sent as DSD (native / DoP) to a DAC that takes it.
+    Q_PROPERTY(int dsdMode READ dsdMode WRITE setDsdMode NOTIFY dsdModeChanged)
+    // PCM converted to DSD for the DSD output: 0 off, 1 DSD64, 2 DSD128, 3 DSD256, 4 highest the DAC takes.
+    Q_PROPERTY(int pcmToDsd READ pcmToDsd WRITE setPcmToDsd NOTIFY dsdModeChanged)
+    // Each file is read into RAM before it plays: no disk access during playback.
+    Q_PROPERTY(bool playFromMemory READ playFromMemory WRITE setPlayFromMemory NOTIFY playFromMemoryChanged)
+    // HDCD CDs decoded to 20 bits (only where HDCD codes are found).
+    Q_PROPERTY(bool hdcd READ hdcd WRITE setHdcd NOTIFY hdcdChanged)
+    Q_PROPERTY(QVariantList outputDevices READ outputDevices NOTIFY outputDevicesChanged)
+    Q_PROPERTY(QString currentDeviceKey READ currentDeviceKey NOTIFY outputStatusChanged)
+    Q_PROPERTY(QString outputDescription READ outputDescription NOTIFY outputStatusChanged)
+    Q_PROPERTY(bool bitPerfect READ bitPerfect NOTIFY outputStatusChanged)
+    // Every stage between the file and the DAC, as Roon shows it: a list of
+    // {stage, detail, quality}, quality being "lossless", "high", "enhanced"
+    // (DSP chosen on purpose) or "low".
+    Q_PROPERTY(QVariantList signalPath READ signalPath NOTIFY signalPathChanged)
+
+    // --- Transport / queue --------------------------------------------------
+    Q_PROPERTY(bool playing READ playing NOTIFY stateChanged)
+    Q_PROPERTY(bool loaded READ loaded NOTIFY stateChanged)
+    Q_PROPERTY(double position READ position NOTIFY positionChanged)
+    Q_PROPERTY(double duration READ duration NOTIFY trackChanged)
+    Q_PROPERTY(QVariantMap currentTrack READ currentTrack NOTIFY trackChanged)
+    Q_PROPERTY(QString currentPath READ currentPath NOTIFY trackChanged)
+    Q_PROPERTY(QString trackDescription READ trackDescription NOTIFY trackChanged)
+    Q_PROPERTY(QStringList queue READ queue NOTIFY queueChanged)
+    Q_PROPERTY(int currentIndex READ currentIndex NOTIFY trackChanged)
+    Q_PROPERTY(bool shuffle READ shuffle WRITE setShuffle NOTIFY shuffleChanged)
+    Q_PROPERTY(int repeatMode READ repeatMode WRITE setRepeatMode NOTIFY repeatModeChanged)
+    Q_PROPERTY(QString lastError READ lastError NOTIFY errorOccurred)
+    Q_PROPERTY(bool resumeSession READ resumeSession WRITE setResumeSession NOTIFY preferencesChanged)
+    Q_PROPERTY(int bufferMs READ bufferMs WRITE setBufferMs NOTIFY preferencesChanged)
+    Q_PROPERTY(int resyncDelayMs READ resyncDelayMs WRITE setResyncDelayMs NOTIFY preferencesChanged)
+    Q_PROPERTY(int fixedRate READ fixedRate WRITE setFixedRate NOTIFY preferencesChanged)
+    // A direct (hw:) DAC is taken from the desktop sound server while Sonkore
+    // uses it; `releaseWhenIdle` hands it back after a minute in pause/stop.
+    Q_PROPERTY(bool outputReserved READ outputReserved NOTIFY outputStatusChanged)
+    // Audio libraries in use, with versions (About).
+    Q_PROPERTY(QString audioComponents READ audioComponents CONSTANT)
+    Q_PROPERTY(bool releaseWhenIdle READ releaseWhenIdle WRITE setReleaseWhenIdle NOTIFY preferencesChanged)
+
+    // --- Visualiser: spectrum of what is playing ----------------------------
+    // While active (a visualiser is on screen), `spectrum` holds 24 levels
+    // (0..1, 40 Hz – 16 kHz, log spaced) about 30 times a second.
+    Q_PROPERTY(bool visualizerActive READ visualizerActive WRITE setVisualizerActive NOTIFY visualizerActiveChanged)
+    Q_PROPERTY(QList<qreal> spectrum READ spectrum NOTIFY spectrumChanged)
+
+public:
+    enum RepeatMode { RepeatOff = 0, RepeatAll = 1, RepeatOne = 2 };
+    Q_ENUM(RepeatMode)
+    enum ReplayGainMode { ReplayGainOff = 0, ReplayGainTrack = 1, ReplayGainAlbum = 2 };
+    Q_ENUM(ReplayGainMode)
+    enum VolumeMode { VolumeDigital = 0, VolumeHardware = 1, VolumeAuto = 2 };
+    Q_ENUM(VolumeMode)
+    enum DsdMode { DsdToPcm = 0, DsdNative = 1, DsdDop = 2 };
+    Q_ENUM(DsdMode)
+    enum DitherModeValue { DitherOff = 0, DitherTpdf = 1, DitherShaped = 2 };
+    Q_ENUM(DitherModeValue)
+    enum PitchEngine { RubberBand = 0, SoundTouch = 1 };
+    Q_ENUM(PitchEngine)
+
+    explicit DspController(sonkore::DSPManager& engine, QObject* parent = nullptr);
+    ~DspController() override;
+    // Writes settings and the session (queue, track, position) right away.
+    void flush();
+
+    double pitchSemitones() const;
+    double tempo() const;
+    double rate() const;
+    void setPitchSemitones(double semitones);
+    void setTempo(double ratio);
+    void setRate(double ratio);
+    int pitchEngine() const;
+    void setPitchEngine(int engine);
+    QString pitchEngineName() const;
+
+    bool rubberBandFiner() const;
+    bool preserveFormants() const;
+    bool channelsTogether() const;
+    int pitchMethod() const;
+    int rubberBandWindow() const;
+    int transients() const;
+    int detector() const;
+    bool phaseIndependent() const;
+    bool rubberBandSmoothing() const;
+    void setRubberBandFiner(bool on);
+    void setPreserveFormants(bool on);
+    void setChannelsTogether(bool on);
+    void setPitchMethod(int method);
+    void setRubberBandWindow(int window);
+    void setTransients(int transients);
+    void setDetector(int detector);
+    void setPhaseIndependent(bool on);
+    void setRubberBandSmoothing(bool on);
+
+    bool useAAFilter() const;
+    int aaFilterLength() const;
+    bool useQuickSeek() const;
+    int sequenceMs() const;
+    int seekWindowMs() const;
+    int overlapMs() const;
+    void setUseAAFilter(bool on);
+    void setAAFilterLength(int taps);
+    void setUseQuickSeek(bool on);
+    void setSequenceMs(int ms);
+    void setSeekWindowMs(int ms);
+    void setOverlapMs(int ms);
+    bool soundTouchActive() const;
+    bool soundTouchEnabled() const;
+    void setSoundTouchEnabled(bool on);
+    double speed() const;
+
+    double volume() const;
+    void setVolume(double v);
+    int volumeMode() const { return m_volumeMode; }
+    void setVolumeMode(int mode);
+    bool hardwareVolume() const { return m_hwVolumeActive; }
+    bool volumeFixed() const { return m_volumeFixed; }
+    QVariantList signalPath() const { return m_signalPath; }
+    bool hardwareVolumeSupported() const;
+    QString hardwareVolumeInfo() const;
+    bool directOutput() const; // a hw: device: nothing mixes in, so the DAC's volume can be used
+    int ditherMode() const { return m_ditherMode; }
+    void setDitherMode(int mode);
+    double headroomDb() const { return m_headroomDb; }
+    void setHeadroomDb(double db);
+    bool headroomAuto() const { return m_headroomAuto; }
+    void setHeadroomAuto(bool on);
+    double effectiveHeadroomDb() const { return m_effectiveHeadroomDb; }
+    double clippedSamples() const;
+    int crossfeed() const { return m_crossfeed; }
+    int upsampling() const { return m_upsampling; }
+    QString convolutionFile() const { return m_convolutionFile; }
+    bool convolutionEnabled() const { return m_convolutionEnabled; }
+    void setConvolutionEnabled(bool on);
+    // Loads an impulse response (WAV / FLAC...) and switches convolution on.
+    Q_INVOKABLE bool loadConvolution(const QUrl& file);
+    Q_INVOKABLE void clearConvolution();
+    void setUpsampling(int mode);
+    int resampleFilter() const { return m_resampleFilter; }
+    void setResampleFilter(int filter);
+    void setCrossfeed(int preset);
+    int replayGainMode() const { return m_rgMode; }
+    void setReplayGainMode(int mode);
+    double replayGainPreamp() const { return m_rgPreamp; }
+    void setReplayGainPreamp(double db);
+    bool replayGainPreventClipping() const { return m_rgPreventClipping; }
+    void setReplayGainPreventClipping(bool on);
+    double currentGainDb() const { return m_currentGainDb; }
+    bool exclusiveMode() const { return m_exclusive; }
+    int dsdMode() const { return m_dsdMode; }
+    int pcmToDsd() const { return m_pcmToDsd; }
+    void setPcmToDsd(int mode);
+    bool playFromMemory() const { return m_playFromMemory; }
+    bool hdcd() const { return m_hdcd; }
+    void setHdcd(bool on);
+    void setPlayFromMemory(bool on);
+    void setDsdMode(int mode);
+    void setExclusiveMode(bool on);
+    QVariantList outputDevices() const { return m_devices; }
+    QString currentDeviceKey() const { return m_deviceKey; }
+    QString outputDescription() const;
+    bool bitPerfect() const;
+
+    bool playing() const;
+    bool loaded() const;
+    double position() const { return m_position; }
+    double duration() const;
+    QVariantMap currentTrack() const { return m_currentTrack; }
+    QString currentPath() const;
+    QString trackDescription() const;
+    QStringList queue() const { return m_queue; }
+    int currentIndex() const { return m_currentIndex; }
+    bool shuffle() const { return m_shuffle; }
+    void setShuffle(bool on);
+    int repeatMode() const { return m_repeat; }
+    void setRepeatMode(int mode);
+    QString lastError() const { return m_lastError; }
+    bool resumeSession() const { return m_resume; }
+    void setResumeSession(bool on);
+    int bufferMs() const;
+    int resyncDelayMs() const;
+    void setResyncDelayMs(int ms);
+    int fixedRate() const;
+    void setFixedRate(int hz);
+    // Fixed rate and upsampling together (they exclude each other), reopened once.
+    Q_INVOKABLE void setRateMode(int fixedHz, int upsampling);
+    void setBufferMs(int ms);
+    bool outputReserved() const { return m_reservation.held(); }
+    QString audioComponents() const;
+    bool releaseWhenIdle() const { return m_releaseWhenIdle; }
+    void setReleaseWhenIdle(bool on);
+    bool visualizerActive() const { return m_visualizerActive; }
+    void setVisualizerActive(bool on);
+    QList<qreal> spectrum() const { return m_spectrum; }
+
+    // Locale-independent, correctly rounded decimal -> double. Returns an
+    // invalid QVariant (undefined in QML) when the text is not a number.
+    Q_INVOKABLE QVariant parseDecimal(const QString& text) const;
+    // Fixed-point formatting used by the UI ('.' separator, no exponent).
+    Q_INVOKABLE QString formatDecimal(double value, int decimals) const;
+    // value + direction*step, snapped to the `decimals` grid and clamped, so
+    // repeated +/- clicks never accumulate binary rounding drift.
+    Q_INVOKABLE double stepValue(double value, double step, int direction, int decimals,
+                                 double minimum, double maximum) const;
+    // 2^(semitones/12), for display.
+    Q_INVOKABLE double pitchRatio(double semitones) const;
+    Q_INVOKABLE QString formatTime(double seconds) const;
+
+    Q_INVOKABLE void resetSoundTouch();
+    // Only the Rubber Band engine options back to the recommended ones
+    // (R3, channels together...); pitch, tempo and rate stay.
+    Q_INVOKABLE void resetRubberBand();
+    Q_INVOKABLE void refreshDevices();
+    Q_INVOKABLE void selectOutputDevice(const QString& key);
+    // Closes the output and gives a reserved DAC back to the system; the
+    // next play() takes it again and resumes at the same position.
+    Q_INVOKABLE void releaseOutput();
+    // Same without notifying the UI; used when quitting.
+    void closeOutput();
+
+    Q_INVOKABLE void playPaths(const QStringList& paths, int startIndex = 0);
+    Q_INVOKABLE void enqueue(const QStringList& paths);
+    Q_INVOKABLE void playIndex(int index);
+    Q_INVOKABLE void clearQueue();
+    Q_INVOKABLE void removeFromQueue(const QList<int>& indices);
+    // A folder left the library: its tracks leave the queue, and if one of
+    // them is the current track it is stopped and forgotten (not resumed).
+    Q_INVOKABLE void forgetFolder(const QString& folder);
+    // Moves the queue entries `indices` so they start at `target` (an index
+    // in the queue before the move); the current track keeps playing.
+    Q_INVOKABLE void moveInQueue(const QList<int>& indices, int target);
+    // Sorts the queue by a track field ("path", "title", "artist", "album",
+    // "duration", "year", "trackNo", "added", "favorite"); albums keep disc / track
+    // order. The current track keeps playing.
+    Q_INVOKABLE void sortQueue(const QString& field, bool descending = false);
+    Q_INVOKABLE void reverseQueue();
+
+public slots:
+    bool load(const QUrl& url);
+    void play();
+    void pause();
+    void togglePlayPause();
+    void stop();
+    void next();
+    void previous();
+    void seek(double seconds);
+
+signals:
+    void pitchSemitonesChanged();
+    void tempoChanged();
+    void rateChanged();
+    void soundTouchSettingsChanged();
+    void pitchEngineChanged();
+    void rubberBandSettingsChanged();
+    void soundTouchActiveChanged();
+    void volumeChanged();
+    void volumeModeChanged();
+    void signalPathChanged();
+    void ditherChanged();
+    void headroomChanged();
+    void crossfeedChanged();
+    void resamplingChanged();
+    void convolutionChanged();
+    void replayGainChanged();
+    void exclusiveModeChanged();
+    void dsdModeChanged();
+    void playFromMemoryChanged();
+    void hdcdChanged();
+    void outputDevicesChanged();
+    void stateChanged();
+    void positionChanged();
+    void trackChanged();
+    void queueChanged();
+    void shuffleChanged();
+    void repeatModeChanged();
+    void outputStatusChanged();
+    void trackFinished();
+    void errorOccurred();
+    void seeked(double seconds);
+    void preferencesChanged();
+    void visualizerActiveChanged();
+    void spectrumChanged();
+    // Another program asked for the DAC and Sonkore let it go.
+    void outputTakenByOther();
+    // A sound device was plugged in / removed (names as listed).
+    void outputDevicesHotplugged(const QStringList& added, const QStringList& removed);
+
+private:
+    // Puts the queue in `order` (old indices, a permutation of them all).
+    void applyQueueOrder(const QVector<int>& order);
+    void poll();
+    void devicesChangedOnSystem();
+    void updateSpectrum();
+    void updateSpectrumTimer();
+    void reportError(const QString& message);
+    bool openIndex(int index, bool autoplay, double startAt = 0.0);
+    bool reserveOutput(bool* justTaken);
+    void updateIdleRelease();
+    void advance(bool userInitiated);
+    void rebuildShuffleOrder();
+    int orderPosition() const;
+    int upcomingIndex() const;
+    void armGapless();
+    double gainFor(const QString& path, QVariantMap info = {}, bool* known = nullptr) const;
+    void updateMixer();
+    QVariantList buildSignalPath() const;
+    void applyGains();
+    void reopenCurrent();
+    void scheduleSave();
+    void saveSettings() const;
+    void savePreferences() const;
+    void saveSession() const;
+    void loadSettings();
+    void loadSession(QSettings& legacy);
+
+    sonkore::DSPManager& m_engine;
+    QTimer m_pollTimer;
+    QTimer m_saveTimer; // coalesces setting changes into one write
+    QFileSystemWatcher m_deviceWatcher; // /dev/snd: DACs plugged in or out
+    QTimer m_hotplugTimer;
+    QTimer m_spectrumTimer;
+    bool m_visualizerActive = false;
+    QList<qreal> m_spectrum;
+    mutable QByteArray m_savedSession;
+    double m_position = 0.0;
+    double m_resumePosition = 0.0;
+    bool m_lastBitPerfect = false;
+    int m_ditherMode = DitherTpdf;
+    double m_headroomDb = 0.0;          // manual setting
+    bool m_headroomAuto = false;        // manual, 0 dB by default
+    double m_effectiveHeadroomDb = 0.0; // what the engine applies
+    void applyHeadroom();
+    int m_crossfeed = 0;
+    int m_upsampling = 0;
+    QString m_convolutionFile;
+    bool m_convolutionEnabled = false;
+    bool applyConvolution(QString* error = nullptr);
+    int m_resampleFilter = 0;
+    int m_volumeMode = VolumeAuto;
+    bool m_hwVolumeActive = false;
+    double m_digitalVolume = 1.0; // kept while the engine is held at unity gain
+    bool m_volumeFixed = false;   // Automatic on a direct output
+    bool m_engineAtUnity = false;
+    HardwareMixer* m_mixer = nullptr; // the DAC's own volume control (ALSA mixer / WASAPI endpoint)
+    int m_rgMode = ReplayGainOff;
+    double m_rgPreamp = 0.0;
+    bool m_rgPreventClipping = true;
+    double m_currentGainDb = 0.0;
+    bool m_exclusive = true;
+    int m_dsdMode = DsdNative;
+    int m_pcmToDsd = 0;
+    bool m_playFromMemory = true;
+    bool m_hdcd = false;
+    QString m_lastError;
+
+    QVariantList m_devices;
+    QString m_deviceKey;
+    DeviceReservation m_reservation;
+    QTimer m_idleReleaseTimer;
+    bool m_releaseWhenIdle = true;
+
+    QStringList m_queue;
+    int m_currentIndex = -1;
+    QString m_currentPath; // stays valid when its queue entry is removed
+    bool m_resume = true;
+    QVariantMap m_currentTrack;
+    QVector<int> m_order; // shuffle order (indices into m_queue)
+    bool m_shuffle = false;
+    int m_repeat = RepeatOff;
+    QString m_armedPath; // handed to the engine for a gapless join
+    QVariantList m_signalPath;
+    qint64 m_rtThread = 0;  // audio thread last handed to rtkit
+    int m_rtPriority = 0;   // its real-time priority, 0 = normal scheduling
+};

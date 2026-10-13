@@ -1,0 +1,18 @@
+# Build environment for the Sonkore AppImage (see build.sh).
+# AlmaLinux 9 = glibc 2.34, the same baseline as Qt's own Linux binaries: what is
+# built here runs on any x86_64 distro from 2021 on (Ubuntu 22.04, Debian 12,
+# Fedora 35, openSUSE Leap 15.4+ with glibc 2.34+, Arch, ...).
+FROM docker.io/library/almalinux:9
+
+RUN printf 'fastestmirror=True\nmax_parallel_downloads=10\n' >> /etc/dnf/dnf.conf \
+ && dnf -y install epel-release dnf-plugins-core \
+ && dnf config-manager --set-enabled crb \
+ && dnf -y install \
+        gcc-toolset-13-gcc gcc-toolset-13-gcc-c++ cmake ninja-build git make nasm \
+        pkgconf-pkg-config python3 xz file findutils diffutils zlib-devel \
+        mesa-libGL-devel mesa-libEGL-devel libglvnd-devel vulkan-headers vulkan-loader \
+        libxkbcommon-devel libxkbcommon-x11 fontconfig freetype libdrm \
+        libX11 libX11-xcb libxcb libSM libICE \
+        xcb-util-wm xcb-util-image xcb-util-keysyms xcb-util-renderutil xcb-util-cursor \
+        wayland-devel dbus-libs glib2 openssl-libs krb5-libs alsa-lib alsa-lib-devel \
+ && dnf clean all

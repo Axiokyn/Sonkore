@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 1024 1024">
+  <!-- for 16-48 px: fuller shape, thicker strokes, one wave; flat colours,
+       no sheen or edge, which blur at this size -->
+  <rect x="16" y="16" width="992" height="992" rx="240" fill="#111215"/>
+  <g fill="none" stroke="#24E86C" stroke-linecap="round">
+    <path d="M330 290V734" stroke-width="140"/>
+    <path d="M560 330A250 250 0 0 1 560 694" stroke-width="130"/>
+  </g>
+</svg>

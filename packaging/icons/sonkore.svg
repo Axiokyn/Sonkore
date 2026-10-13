@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!-- flat graphite squircle with a faint sheen on top, the green mark (the
+       "l" and two sound waves), a fine dark outline and a light top edge -->
+  <defs>
+    <path id="sq" d="M332 32H692C870 32 992 154 992 332V692C992 870 870 992 692 992H332C154 992 32 870 32 692V332C32 154 154 32 332 32Z"/>
+    <clipPath id="clip"><use href="#sq"/></clipPath>
+    <linearGradient id="shine" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".07"/><stop offset=".5" stop-color="#fff" stop-opacity="0"/></linearGradient>
+    <linearGradient id="edge" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".34"/><stop offset=".3" stop-color="#fff" stop-opacity=".06"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+  </defs>
+  <use href="#sq" fill="#111215"/>
+  <use href="#sq" fill="url(#shine)"/>
+  <g fill="none" stroke="#24E86C" stroke-linecap="round">
+    <path d="M300 312V712" stroke-width="104"/>
+    <path d="M522 392A160 160 0 0 1 522 632" stroke-width="96"/>
+    <path d="M628 290A310 310 0 0 1 628 734" stroke-width="96"/>
+  </g>
+  <use href="#sq" fill="none" stroke="#000" stroke-opacity=".45" stroke-width="4"/>
+  <use href="#sq" fill="none" stroke="url(#edge)" stroke-width="10" clip-path="url(#clip)"/>
+</svg>

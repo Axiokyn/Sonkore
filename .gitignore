@@ -1,0 +1,8 @@
+build/
+build-*/
+dist/
+*.user
+.qtcreator/
+__pycache__/
+*.log
+/Studio
