@@ -41,6 +41,8 @@ add_library(sonkore_audio STATIC
     src/audio/DsdDecoder.cpp
     src/audio/DstDecoder.hpp
     src/audio/DstDecoder.cpp
+    src/audio/DsdToPcm.hpp
+    src/audio/DsdToPcm.cpp
     src/audio/SigmaDelta.hpp
     src/audio/SigmaDelta.cpp
     src/audio/TestSignals.hpp

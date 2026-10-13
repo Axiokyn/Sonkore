@@ -15,7 +15,6 @@ Resampler::~Resampler()
 bool Resampler::prepare(uint32_t inRate, uint32_t outRate, uint32_t channels, std::string* error, Filter filter)
 {
     release();
-    const soxr_io_spec_t io = soxr_io_spec(SOXR_FLOAT64_I, SOXR_FLOAT64_I);
     unsigned long phase = SOXR_LINEAR_PHASE;
     switch (filter) {
     case Filter::Intermediate: phase = SOXR_INTERMEDIATE_PHASE; break;
@@ -25,6 +24,22 @@ bool Resampler::prepare(uint32_t inRate, uint32_t outRate, uint32_t channels, st
     }
     // Phase response and steepness belong to the recipe, with the quality.
     const soxr_quality_spec_t quality = soxr_quality_spec(SOXR_VHQ | phase, 0);
+    return create(inRate, outRate, channels, quality, error);
+}
+
+bool Resampler::prepareLowpass(uint32_t inRate, uint32_t outRate, uint32_t channels, double passbandEnd, double stopbandBegin,
+                               std::string* error)
+{
+    release();
+    soxr_quality_spec_t quality = soxr_quality_spec(SOXR_VHQ | SOXR_LINEAR_PHASE, 0);
+    quality.passband_end = passbandEnd;
+    quality.stopband_begin = stopbandBegin;
+    return create(inRate, outRate, channels, quality, error);
+}
+
+bool Resampler::create(uint32_t inRate, uint32_t outRate, uint32_t channels, const struct ::soxr_quality_spec& quality, std::string* error)
+{
+    const soxr_io_spec_t io = soxr_io_spec(SOXR_FLOAT64_I, SOXR_FLOAT64_I);
     const soxr_runtime_spec_t runtime = soxr_runtime_spec(1);          // the worker is the only thread
     soxr_error_t err = nullptr;
     m_soxr = soxr_create(inRate, outRate, channels, &err, &io, &quality, &runtime);

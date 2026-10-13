@@ -1,5 +1,6 @@
 #include "Decoder.hpp"
 #include "CueSheet.hpp"
+#include "DsdToPcm.hpp"
 
 #if defined(SONKORE_HAVE_FFMPEG)
 #include "FfmpegDecoder.hpp"
@@ -278,6 +279,13 @@ std::unique_ptr<Decoder> Decoder::openFile(const std::filesystem::path& path, st
         if (!dec->open(path))
             return fallback("Unreadable MP3 file");
         return dec;
+    }
+    if (ext == ".dsf" || ext == ".dff") {
+        // DSD as PCM: Sonkore's own converter (DST included); FFmpeg for a
+        // file it cannot read.
+        if (auto dec = DsdToPcm::open(path, nullptr))
+            return dec;
+        return fallback("Unreadable DSD file");
     }
 #if defined(SONKORE_HAVE_FFMPEG)
     if (usesFfmpeg(std::string_view(ext).substr(ext.empty() ? 0 : 1)))

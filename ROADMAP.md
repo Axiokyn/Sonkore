@@ -18,7 +18,8 @@ Objetivo: un reproductor Hi-Fi a la altura de Roon y JRiver en todo lo que piden
 - [ ] **Volumen por hardware** en macOS (volumen del dispositivo en CoreAudio).
 - [x] **DSD nativo y DoP** en Linux: DSF y DSDIFF sin pasar a PCM (ALSA DSD_U32_BE/LE, DoP de 24 bits), hasta la frecuencia máxima del DAC.
 - [x] **DSD nativo** en Windows: salida ASIO (modo DSD de ASIO 2.2), también PCM bit-perfect en el formato propio del driver.
-- [x] **DST** (DSD comprimido en DSDIFF, el formato de los SACD): decodificador propio (ISO/IEC 14496-3 subparte 10) que devuelve los bits exactos, así que va como DSD nativo o DoP; como PCM lo decodifica FFmpeg.
+- [x] **DST** (DSD comprimido en DSDIFF, el formato de los SACD): decodificador propio (ISO/IEC 14496-3 subparte 10) que devuelve los bits exactos, así que va como DSD nativo o DoP.
+- [x] **DSD → PCM propio** en doble precisión (FIR de 160 dB + SoX VHQ): 88,2 / 176,4 kHz, sin el ruido ultrasónico que deja FFmpeg (~−120 contra ~−28 dBFS).
 - [ ] DSD nativo en macOS.
 - [x] **Signal path**: cada etapa (archivo → decodificador → DSP → dispositivo) con formato, bits, frecuencia y calidad.
 - [x] **Reproducción desde RAM**: el archivo completo en RAM (bloqueado si el sistema lo permite) antes de reproducir; la siguiente pista se carga en segundo plano.

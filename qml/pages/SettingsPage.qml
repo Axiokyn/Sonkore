@@ -1958,7 +1958,7 @@ Item {
                         ? qsTr("Native DSD to DACs that offer it on a direct (hw:) output; otherwise the file is converted to PCM. EQ, pitch, ReplayGain and digital volume do not apply to DSD: use the DAC's volume.")
                         : DspController.dsdMode === 2
                             ? qsTr("DoP (DSD over PCM) on a direct or exclusive output. Only for DACs that support DoP: others play loud noise. EQ, pitch, ReplayGain and digital volume do not apply to DSD.")
-                            : ""
+                            : qsTr("Sonkore's own converter, in double precision: DSD64 becomes 88.2 kHz PCM flat to 30 kHz, DSD128 and up 176.4 kHz flat to 50-70 kHz. The ultrasonic noise DSD carries above that is filtered out (about 70 dB lower than with FFmpeg's converter), so it never reaches the amplifier. DST files too.")
                     LComboBox {
                         implicitWidth: 140
                         model: [qsTr("Convert to PCM"), qsTr("Native"), qsTr("DoP")]

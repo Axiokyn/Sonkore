@@ -39,8 +39,8 @@ namespace {
 constexpr std::size_t kDecodeBlockFrames = 1024;     // source frames per worker iteration
 constexpr std::size_t kStChunkFrames = 4096;         // time-stretch receive chunk
 constexpr std::size_t kMaxChannels = SuperEQ::kMaxChannels;
-constexpr auto kIdleSleep = std::chrono::milliseconds(5);
-constexpr auto kRingFullSleep = std::chrono::milliseconds(2);
+constexpr auto kIdleSleep = std::chrono::milliseconds(20);     // nothing to decode (end of stream, waiting for the next track)
+constexpr auto kRingFullSleepMin = std::chrono::milliseconds(2); // ring full: at least this long...
 constexpr uint32_t kDsdPrerollMs = 60; // DSD silence first, while the DAC switches mode
 constexpr std::size_t kMaxPreloadBytes = std::size_t(2) << 30; // play from memory up to 2 GB per file
 
@@ -264,27 +264,49 @@ bool DSPManager::initialize(std::string* error)
     // PulseAudio protocol), raw ALSA hw: devices, then JACK graphs.
     const ma_backend wanted[] = {ma_backend_pulseaudio, ma_backend_alsa, ma_backend_jack};
 #endif
-    const bool pipewire = pipewireRunning();
+    m_pipewireRunning = pipewireRunning();
+    // PipeWire spoken to natively: its PulseAudio and JACK faces lead to the
+    // same sinks, and their client libraries (libpulse with libsndfile, FLAC,
+    // Vorbis, Opus, LAME and mpg123; libjack) would only take memory. They
+    // are made when needed (PipeWire's own library refuses, a JACK device
+    // saved in the settings).
+    m_lazyServers = !m_nullBackend && m_pipewireRunning && PipeWireOutput::available();
     const ma_backend null[] = {ma_backend_null};
 
     for (ma_backend type : m_nullBackend ? std::span<const ma_backend>(null) : std::span<const ma_backend>(wanted)) {
-        ma_context_config cc = ma_context_config_init();
-        cc.threadPriority = ma_thread_priority_realtime;
-        cc.alsa.useVerboseDeviceEnumeration = MA_TRUE;
-        cc.pulse.pApplicationName = "Sonkore";
-        cc.jack.pClientName = "Sonkore";
-        cc.jack.tryStartServer = MA_FALSE;
-
-        auto ctx = std::make_unique<ma_context>();
-        if (ma_context_init(&type, 1, &cc, ctx.get()) == MA_SUCCESS)
-            m_backends.push_back({type, backendLabel(type, pipewire), std::move(ctx)});
+        if (m_lazyServers && (type == ma_backend_pulseaudio || type == ma_backend_jack))
+            continue;
+        addBackend(type);
     }
 
-    if (m_backends.empty()) {
+    if (m_backends.empty() && !m_lazyServers) {
         setError(error, "No audio backend could be initialised");
         return false;
     }
     playbackDevices();
+    return true;
+}
+
+bool DSPManager::addBackend(ma_backend type)
+{
+    for (const Backend& b : m_backends)
+        if (b.type == type)
+            return true;
+    ma_context_config cc = ma_context_config_init();
+    cc.threadPriority = ma_thread_priority_realtime;
+    cc.alsa.useVerboseDeviceEnumeration = MA_TRUE;
+    cc.pulse.pApplicationName = "Sonkore";
+    cc.jack.pClientName = "Sonkore";
+    cc.jack.tryStartServer = MA_FALSE;
+    auto ctx = std::make_unique<ma_context>();
+    if (ma_context_init(&type, 1, &cc, ctx.get()) != MA_SUCCESS)
+        return false;
+    // Listed in the usual order whenever it was made: sound server, ALSA, JACK.
+    const auto rank = [](ma_backend t) { return t == ma_backend_pulseaudio ? 0 : t == ma_backend_alsa ? 1 : 2; };
+    auto at = m_backends.begin();
+    while (at != m_backends.end() && rank(at->type) <= rank(type))
+        ++at;
+    m_backends.insert(at, {type, backendLabel(type, m_pipewireRunning), std::move(ctx)});
     return true;
 }
 
@@ -317,6 +339,12 @@ std::vector<DSPManager::DeviceInfo> DSPManager::playbackDevices()
             result.push_back({key, "PipeWire", sink.description, sink.name, sink.isDefault, false});
             m_pipewireNative = true;
         }
+
+    if (m_lazyServers && !m_pipewireNative) {
+        // PipeWire's library is there but lists no sink: its PulseAudio face.
+        addBackend(ma_backend_pulseaudio);
+        addBackend(ma_backend_jack);
+    }
 
     for (std::size_t bi = 0; bi < m_backends.size(); ++bi) {
         Backend& backend = m_backends[bi];
@@ -387,6 +415,10 @@ bool DSPManager::resolveDevice(const std::string& key, DeviceEntry& out)
 {
     if (!key.empty()) {
         auto it = m_devices.find(key);
+        if (it == m_devices.end() && m_pipewireNative && key.rfind("pulse|", 0) == 0)
+            it = m_devices.find("pipewire|" + key.substr(6)); // the same sink, natively
+        if (it == m_devices.end() && m_lazyServers && key.rfind("jack|", 0) == 0)
+            addBackend(ma_backend_jack); // a JACK device saved in the settings
         if (it == m_devices.end()) {
             playbackDevices(); // hot-plugged since the last enumeration?
             it = m_devices.find(key);
@@ -502,6 +534,8 @@ bool DSPManager::openDevice(uint32_t sampleRate, uint32_t channels, std::string*
             return true;
         // libpipewire refused (too old, a sandbox...): the same sink through
         // PipeWire's PulseAudio service.
+        if (m_lazyServers && addBackend(ma_backend_pulseaudio))
+            playbackDevices();
         const auto pulse = m_devices.find("pulse|" + entry.pipewire);
         if (pulse != m_devices.end() && !entry.pipewire.empty()) {
             entry = pulse->second;
@@ -1798,7 +1832,16 @@ void DSPManager::parkWorker()
     std::unique_lock lock(m_parkMutex);
     m_parkRequested = true;
     m_parkFlag.store(true, std::memory_order_release);
+    m_parkCv.notify_all(); // wakes a worker resting between blocks (rest())
     m_parkCv.wait(lock, [this] { return m_parked; });
+}
+
+// The worker waits for the device or for work: woken early by a park (seek,
+// stop, unload) or the end, so a long rest never delays them.
+void DSPManager::rest(std::chrono::nanoseconds duration)
+{
+    std::unique_lock lock(m_parkMutex);
+    m_parkCv.wait_for(lock, duration, [this] { return m_parkRequested || m_quit.load(std::memory_order_acquire); });
 }
 
 void DSPManager::unparkWorker()
@@ -1830,7 +1873,7 @@ void DSPManager::workerLoop()
             continue;
         }
         if (!produceBlock())
-            std::this_thread::sleep_for(kIdleSleep);
+            rest(kIdleSleep);
     }
 }
 
@@ -2321,7 +2364,15 @@ bool DSPManager::pushToRing(const int32_t* samples, std::size_t frames)
         if (remaining > 0) {
             if (interrupted())
                 return false; // seek/stop/unload pending: the data is obsolete
-            std::this_thread::sleep_for(kRingFullSleep);
+            // ...and as long as the device takes to free the room for the
+            // rest, up to a quarter of the ring: a wake-up every 20-40 ms
+            // instead of every 2 ms, so the CPU can rest between them (the
+            // ring still holds three quarters of its depth when it refills).
+            const double rate = std::max<uint32_t>(m_outputRate, 8000);
+            const double needed = static_cast<double>(remaining / m_channels) / rate;
+            const double quarter = static_cast<double>(m_ring.capacity() / m_channels) / rate / 4.0;
+            const auto wait = std::chrono::duration<double>(std::min(needed, quarter));
+            rest(std::max<std::chrono::nanoseconds>(kRingFullSleepMin, std::chrono::duration_cast<std::chrono::nanoseconds>(wait)));
         }
     }
     return true;

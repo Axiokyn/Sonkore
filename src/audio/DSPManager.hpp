@@ -17,6 +17,7 @@
 
 #include <array>
 #include <atomic>
+#include <chrono>
 #include <cmath>
 #include <condition_variable>
 #include <cstdint>
@@ -344,6 +345,10 @@ private:
     bool openAsio(const DeviceEntry& entry, bool dsd, uint32_t rate, uint32_t channels, std::string* error);
     std::unique_ptr<PipeWireOutput> m_pwOut; // Linux: native PipeWire instead of miniaudio
     bool m_pipewireNative = false;           // PipeWire answered at the last enumeration
+    bool m_pipewireRunning = false;          // a PipeWire daemon in this session
+    bool m_lazyServers = false;              // the PulseAudio / JACK contexts are made on demand
+    bool addBackend(ma_backend type);        // a miniaudio context for `type` (once)
+    void rest(std::chrono::nanoseconds duration); // worker: sleep, woken early by a park or the end
     uint32_t m_pwRequestedRate = 0;          // the rate the open stream was asked for
     bool pwOpen() const;
     bool outputOpen() const;                 // any output (device, DSD writer, ASIO, PipeWire)

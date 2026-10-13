@@ -131,6 +131,15 @@ linuxdeploy-x86_64.AppImage --appdir "$appdir" \
     --deploy-deps-only "$appdir/usr/plugins/wayland-graphics-integration-client" \
     --plugin qt
 
+# Image formats: covers are JPEG, PNG, WebP, GIF or BMP (PNG and BMP are built
+# into Qt) and the icons SVG. Qt Quick instantiates every image plugin it finds
+# when the first picture loads, so the others (TIFF with libtiff, libLerc and
+# libdeflate; ICNS, ICO, TGA, WBMP) stay out of the bundle and out of memory;
+# the loop below then drops the libraries only they used.
+for f in "$appdir"/usr/plugins/imageformats/*.so; do
+    case "$(basename "$f")" in libqsvg.so|libqjpeg.so|libqwebp.so|libqgif.so) ;; *) rm -f "$f" ;; esac
+done
+
 # Small, ABI-stable libraries that minimal installs can lack (openSUSE splits
 # them into packages of their own) although linuxdeploy counts on them:
 # libgthread (a stub over the system's GLib, linked by Qt) is bundled above;

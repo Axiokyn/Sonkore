@@ -102,4 +102,22 @@ T = {
     "Le maximum accepté par le DAC (jusqu'à DSD256)",
     "Das Höchste, das der DAC annimmt (bis DSD256)",
     "Il massimo che il DAC accetta (fino a DSD256)"),
+"DSD → PCM": (
+    "DSD → PCM",
+    "DSD → PCM",
+    "DSD → PCM",
+    "DSD → PCM",
+    "DSD → PCM"),
+"Double precision · %1 MHz → 352.8 kHz (%2-tap FIR, 160 dB) → %3 kHz (SoX VHQ, flat to %4 kHz): DSD's ultrasonic noise removed": (
+    "Doble precisión · %1 MHz → 352,8 kHz (FIR de %2 coeficientes, 160 dB) → %3 kHz (SoX VHQ, plano hasta %4 kHz): sin el ruido ultrasónico del DSD",
+    "Precisão dupla · %1 MHz → 352,8 kHz (FIR de %2 coeficientes, 160 dB) → %3 kHz (SoX VHQ, plano até %4 kHz): sem o ruído ultrassônico do DSD",
+    "Double précision · %1 MHz → 352,8 kHz (FIR de %2 coefficients, 160 dB) → %3 kHz (SoX VHQ, plat jusqu'à %4 kHz) : sans le bruit ultrasonique du DSD",
+    "Doppelte Genauigkeit · %1 MHz → 352,8 kHz (FIR mit %2 Koeffizienten, 160 dB) → %3 kHz (SoX VHQ, linear bis %4 kHz): ohne das Ultraschallrauschen des DSD",
+    "Doppia precisione · %1 MHz → 352,8 kHz (FIR a %2 coefficienti, 160 dB) → %3 kHz (SoX VHQ, piatto fino a %4 kHz): senza il rumore ultrasonico del DSD"),
+"Sonkore's own converter, in double precision: DSD64 becomes 88.2 kHz PCM flat to 30 kHz, DSD128 and up 176.4 kHz flat to 50-70 kHz. The ultrasonic noise DSD carries above that is filtered out (about 70 dB lower than with FFmpeg's converter), so it never reaches the amplifier. DST files too.": (
+    "El conversor propio de Sonkore, en doble precisión: DSD64 pasa a PCM de 88,2 kHz plano hasta 30 kHz, DSD128 y superiores a 176,4 kHz plano hasta 50-70 kHz. El ruido ultrasónico que el DSD lleva por encima se filtra (unos 70 dB menos que con el conversor de FFmpeg), así nunca llega al amplificador. También los archivos DST.",
+    "O conversor próprio do Sonkore, em precisão dupla: DSD64 vira PCM de 88,2 kHz plano até 30 kHz, DSD128 e acima 176,4 kHz plano até 50-70 kHz. O ruído ultrassônico que o DSD carrega acima disso é filtrado (cerca de 70 dB menos que com o conversor do FFmpeg), então nunca chega ao amplificador. Arquivos DST também.",
+    "Le convertisseur de Sonkore, en double précision : le DSD64 devient du PCM 88,2 kHz plat jusqu'à 30 kHz, le DSD128 et au-delà du 176,4 kHz plat jusqu'à 50-70 kHz. Le bruit ultrasonique que porte le DSD au-dessus est filtré (environ 70 dB de moins qu'avec le convertisseur de FFmpeg) et n'atteint jamais l'amplificateur. Les fichiers DST aussi.",
+    "Sonkores eigener Wandler in doppelter Genauigkeit: DSD64 wird zu 88,2-kHz-PCM, linear bis 30 kHz, DSD128 und höher zu 176,4 kHz, linear bis 50-70 kHz. Das Ultraschallrauschen darüber wird herausgefiltert (rund 70 dB weniger als mit dem Wandler von FFmpeg) und erreicht den Verstärker nie. Auch DST-Dateien.",
+    "Il convertitore di Sonkore, in doppia precisione: il DSD64 diventa PCM a 88,2 kHz piatto fino a 30 kHz, il DSD128 e superiori 176,4 kHz piatto fino a 50-70 kHz. Il rumore ultrasonico che il DSD porta sopra viene filtrato (circa 70 dB in meno che con il convertitore di FFmpeg), così non arriva mai all'amplificatore. Anche i file DST."),
 }

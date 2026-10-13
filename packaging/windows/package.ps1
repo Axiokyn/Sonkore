@@ -20,6 +20,10 @@ New-Item -ItemType Directory -Force -Path $stage | Out-Null
 Copy-Item "$Build/bin/Sonkore.exe" $stage
 & windeployqt --release --qmldir "$root/qml" --no-translations --no-system-d3d-compiler --no-opengl-sw "$stage/Sonkore.exe"
 if ($LASTEXITCODE -ne 0) { throw "windeployqt failed" }
+# Image formats: covers are JPEG, PNG, WebP, GIF or BMP (PNG and BMP are built
+# into Qt), icons SVG. Qt Quick instantiates every image plugin present when the
+# first picture loads, so the others (TIFF, ICNS, ICO, TGA, WBMP) are left out.
+Get-ChildItem "$stage/imageformats" -Filter *.dll | Where-Object { $_.BaseName -notin @("qsvg", "qjpeg", "qwebp", "qgif") } | Remove-Item
 
 # MSVC runtime next to the exe (Microsoft's app-local deployment).
 $crt = Get-ChildItem -Directory "$env:VCToolsRedistDir/x64" -Filter "Microsoft.VC*.CRT" | Select-Object -First 1

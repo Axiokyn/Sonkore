@@ -9,6 +9,7 @@
 #include "DSPManager.hpp"
 #include "Decoder.hpp"
 #include "DsdDecoder.hpp"
+#include "DsdToPcm.hpp"
 #include "TestSignals.hpp"
 #include "LinearPhaseEq.hpp"
 #include "PipeWireOutput.hpp"
@@ -238,13 +239,13 @@ void decoderLengths()
         CHECK_MSG(frames == expected, "%s decodes to %zu frames, expected %zu", f, frames, expected);
         CHECK_MSG(info.totalFrames == frames, "%s: header length %llu, decoded %zu", f, static_cast<unsigned long long>(info.totalFrames), frames);
     }
-    // DSD read as PCM by FFmpeg: the length is known from the header.
+    // DSD as PCM (Sonkore's converter, DSD64 to 88.2 kHz): the length is
+    // the header's; FFmpeg's probe (tags, duration) agrees.
     ProbeResult probe;
     CHECK(Decoder::probe(corpus("DSD/dsd64.dsf"), probe, false));
     CHECK_MSG(std::abs(probe.durationSeconds - 2.0) < 0.02, "DSD64 probe duration %.3f", probe.durationSeconds);
-    StreamInfo info;
     auto d = Decoder::open(corpus("DSD/dsd64.dsf"));
-    CHECK(d && d->info().totalFrames == 2822400 * 2 / 8);
+    CHECK(d && d->info().sampleRate == 88200 && d->info().totalFrames == 88200 * 2);
 }
 
 void gaplessAlbum()
@@ -534,7 +535,8 @@ void dsd()
         CHECK_MSG(std::abs(e.dsp.durationSeconds() - 2.0) < 0.02, "duration %.3f", e.dsp.durationSeconds());
         CHECK(e.playToEnd());
         const auto out = trimmed(e.capture.take(), 2);
-        CHECK_MSG(out.size() / 2 > 352800 * 19 / 10, "%zu frames", out.size() / 2);
+        CHECK(e.dsp.trackInfo().sampleRate == DsdToPcm::outputRate(2822400));
+        CHECK_MSG(out.size() / 2 > 88200 * 19 / 10, "%zu frames", out.size() / 2);
         CHECK(e.dsp.positionSeconds() > 1.9);
     }
     {
@@ -767,6 +769,140 @@ void testSignals()
         CHECK(trimmed(e.capture.take(), 2) == trimmed(pcm, 2));
     } else {
         std::printf("  (no DTS encoder in this FFmpeg: the DTS test signal is not checked)\n");
+    }
+    std::error_code ec;
+    fs::remove_all(dir, ec);
+}
+
+// DSD to PCM with Sonkore's own converter: the first stage's filter as
+// designed, the level kept, the in-band noise at the modulator's floor, the
+// ultrasonic noise of DSD removed, time-aligned with the source, the file's
+// length, seeks that land on the same samples, and DST giving the same PCM
+// as plain DSD.
+void dsdToPcm()
+{
+    // The first stage: flat to the output's Nyquist frequency, 155 dB or
+    // more down where content would fold onto the kept band.
+    for (uint32_t multiple : {64u, 128u, 256u, 512u}) {
+        g_test = "first stage DSD" + std::to_string(multiple);
+        const uint32_t rate = 44100 * multiple;
+        const std::vector<double> h = DsdToPcm::firstStage(rate);
+        CHECK(h.size() == DsdToPcm::firstStageTaps(rate) && h.size() % 16 == 0);
+        const double mid = 352800.0, pass = DsdToPcm::outputRate(rate) / 2.0;
+        const auto response = [&](double hz) {
+            std::complex<double> acc = 0.0;
+            for (std::size_t n = 0; n < h.size(); ++n)
+                acc += h[n] * std::polar(1.0, -2.0 * std::numbers::pi * hz / rate * static_cast<double>(n));
+            return 20.0 * std::log10(std::abs(acc));
+        };
+        double ripple = 0.0, leak = -400.0;
+        for (double hz = 0.0; hz <= pass; hz += pass / 64)
+            ripple = std::max(ripple, std::abs(response(hz)));
+        for (double hz = mid - pass; hz < rate / 2.0; hz += (rate / 2.0 - (mid - pass)) / 1500)
+            leak = std::max(leak, response(hz));
+        CHECK_MSG(ripple < 1e-6, "pass band ripple %.2e dB", ripple);
+        CHECK_MSG(leak < -155.0, "stop band %.1f dB", leak);
+    }
+
+    // A 1 kHz tone at -20 dBFS through the engine's own 8th-order modulator,
+    // then back to PCM.
+    const fs::path dir = fs::temp_directory_path() / "sonkore-dsd-to-pcm";
+    std::string error;
+    for (int multiple : {64, 128, 256}) {
+        g_test = "DSD" + std::to_string(multiple) + " to PCM";
+        const fs::path f = dir / ("tone" + std::to_string(multiple) + ".dsf");
+        CHECK_MSG(testsignals::writeDsdTone(f, multiple, 2, 2.0, 1000.0, -20.0, &error), "%s", error.c_str());
+        auto d = DsdToPcm::open(f, &error);
+        CHECK_MSG(d != nullptr, "%s", error.c_str());
+        if (!d)
+            continue;
+        const uint32_t rate = d->info().sampleRate;
+        CHECK(rate == (multiple == 64 ? 88200u : 176400u));
+        CHECK(d->info().totalFrames == static_cast<uint64_t>(rate) * 2);
+        std::vector<int32_t> pcm(d->info().totalFrames * 2);
+        CHECK(d->readS32(pcm.data(), d->info().totalFrames) == d->info().totalFrames);
+        // Least squares on the middle second: the tone's gain and time, and
+        // what is left.
+        const std::size_t a = rate / 2, b = a + rate;
+        double ss = 0, sc = 0, cc = 0, xs = 0, xc = 0;
+        std::vector<double> x(b - a);
+        for (std::size_t i = a; i < b; ++i) {
+            const double t = 2.0 * std::numbers::pi * 1000.0 * static_cast<double>(i) / rate;
+            const double v = pcm[i * 2] / 2147483648.0, si = std::sin(t), co = std::cos(t);
+            x[i - a] = v;
+            ss += si * si, sc += si * co, cc += co * co, xs += v * si, xc += v * co;
+        }
+        const double det = ss * cc - sc * sc, g = (xs * cc - xc * sc) / det, q = (xc * ss - xs * sc) / det;
+        const double amplitude = std::hypot(g, q), offsetNs = std::atan2(q, g) / (2.0 * std::numbers::pi * 1000.0) * 1e9;
+        CHECK_MSG(std::abs(20.0 * std::log10(amplitude / (0.1 * SigmaDelta::kInputScale))) < 0.001, "level %.4f", amplitude);
+        CHECK_MSG(std::abs(offsetNs) < 400.0, "time offset %.1f ns", offsetNs); // half a DSD64 bit
+        // The rest (the fitted tone taken out, so no window leakage hides
+        // anything), through a 16384-point FFT: in band (20 Hz - 20 kHz)
+        // and above the middle of the second stage's transition.
+        constexpr std::size_t n = 16384;
+        std::vector<std::complex<double>> spectrum(n);
+        double norm = 0.0;
+        for (std::size_t i = 0; i < n; ++i) {
+            const double t = 2.0 * std::numbers::pi * 1000.0 * static_cast<double>(i + a) / rate;
+            const double w = 0.42 - 0.5 * std::cos(2 * std::numbers::pi * i / n) + 0.08 * std::cos(4 * std::numbers::pi * i / n);
+            spectrum[i] = (x[i] - g * std::sin(t) - q * std::cos(t)) * w;
+            norm += w * w;
+        }
+        // Plain DFT is too slow at this size: a radix-2 FFT.
+        for (std::size_t i = 1, j = 0; i < n; ++i) {
+            std::size_t bit = n >> 1;
+            for (; j & bit; bit >>= 1)
+                j ^= bit;
+            j ^= bit;
+            if (i < j)
+                std::swap(spectrum[i], spectrum[j]);
+        }
+        for (std::size_t len = 2; len <= n; len <<= 1) {
+            const auto wl = std::polar(1.0, -2.0 * std::numbers::pi / static_cast<double>(len));
+            for (std::size_t i = 0; i < n; i += len) {
+                std::complex<double> w = 1.0;
+                for (std::size_t k = 0; k < len / 2; ++k, w *= wl) {
+                    const auto u = spectrum[i + k], v = spectrum[i + k + len / 2] * w;
+                    spectrum[i + k] = u + v;
+                    spectrum[i + k + len / 2] = u - v;
+                }
+            }
+        }
+        const DsdToPcm::Band band = DsdToPcm::secondStage(44100u * multiple);
+        double inBand = 0, ultrasonic = 0;
+        for (std::size_t k = 1; k < n / 2; ++k) {
+            const double hz = static_cast<double>(k) * rate / n, p = 2.0 * std::norm(spectrum[k]) / (norm * n);
+            if (hz >= 20.0 && hz < 20000.0)
+                inBand += p;
+            else if (hz >= (band.passHz + band.stopHz) / 2)
+                ultrasonic += p;
+        }
+        const double snr = 10.0 * std::log10(amplitude * amplitude / 2.0 / inBand), ultra = 10.0 * std::log10(std::max(ultrasonic, 1e-300));
+        CHECK_MSG(snr > (multiple == 64 ? 110.0 : 130.0), "SNR in band %.1f dB", snr);
+        CHECK_MSG(ultra < -95.0, "ultrasonic noise %.1f dBFS", ultra); // FFmpeg's converter leaves about -28 dBFS
+        // A seek lands on the same samples as playing through.
+        const uint64_t at = rate * 3 / 4 + 1;
+        CHECK(d->seek(at));
+        std::vector<int32_t> again(4096 * 2);
+        CHECK(d->readS32(again.data(), 4096) == 4096);
+        int64_t worst = 0;
+        for (std::size_t i = 0; i < again.size(); ++i)
+            worst = std::max<int64_t>(worst, std::abs(static_cast<int64_t>(again[i]) - pcm[at * 2 + i]));
+        CHECK_MSG(worst <= 2, "after a seek: %lld LSB off", static_cast<long long>(worst));
+    }
+    // DST gives the same PCM as the same bits uncompressed.
+    {
+        g_test = "DST to PCM";
+        auto plain = DsdToPcm::open(corpus("DSD/dsd64.dff"), nullptr);
+        auto coded = DsdToPcm::open(corpus("DSD/dsd64-dst.dff"), nullptr);
+        CHECK(plain && coded);
+        if (plain && coded) {
+            CHECK(coded->info().codec == "DSD64 DST");
+            std::vector<int32_t> a(plain->info().totalFrames * 2), b(a.size());
+            CHECK(plain->readS32(a.data(), plain->info().totalFrames) == plain->info().totalFrames);
+            CHECK(coded->readS32(b.data(), plain->info().totalFrames) == plain->info().totalFrames);
+            CHECK(a == b);
+        }
     }
     std::error_code ec;
     fs::remove_all(dir, ec);
@@ -1578,6 +1714,7 @@ int main(int argc, char** argv)
         {"timeStretchHighRate", timeStretchHighRate},
         {"dsd", dsd},
         {"dst", dst},
+        {"dsdToPcm", dsdToPcm},
         {"testSignals", testSignals},
         {"brokenFiles", brokenFiles},
         {"failedLoadWhilePlaying", failedLoadWhilePlaying},

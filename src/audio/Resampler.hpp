@@ -6,6 +6,7 @@
 #include <vector>
 
 struct soxr; // libsoxr
+struct soxr_quality_spec;
 
 namespace sonkore {
 
@@ -30,6 +31,11 @@ public:
 
     bool prepare(uint32_t inRate, uint32_t outRate, uint32_t channels, std::string* error = nullptr,
                  Filter filter = Filter::Linear);
+    // A linear-phase low-pass of its own (same precision): flat to
+    // `passbandEnd` and fully attenuated from `stopbandBegin`, both as
+    // fractions of the lower rate's Nyquist frequency.
+    bool prepareLowpass(uint32_t inRate, uint32_t outRate, uint32_t channels, double passbandEnd, double stopbandBegin,
+                        std::string* error = nullptr);
     void release();
     bool active() const { return m_soxr != nullptr; }
 
@@ -41,6 +47,7 @@ public:
     void clear();
 
 private:
+    bool create(uint32_t inRate, uint32_t outRate, uint32_t channels, const struct ::soxr_quality_spec& quality, std::string* error);
     std::size_t run(const double* in, std::size_t frames);
 
     soxr* m_soxr = nullptr;

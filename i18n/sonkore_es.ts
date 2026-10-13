@@ -296,6 +296,14 @@
         <translation>Decodificador</translation>
     </message>
     <message>
+        <source>DSD → PCM</source>
+        <translation>DSD → PCM</translation>
+    </message>
+    <message>
+        <source>Double precision · %1 MHz → 352.8 kHz (%2-tap FIR, 160 dB) → %3 kHz (SoX VHQ, flat to %4 kHz): DSD's ultrasonic noise removed</source>
+        <translation>Doble precisión · %1 MHz → 352,8 kHz (FIR de %2 coeficientes, 160 dB) → %3 kHz (SoX VHQ, plano hasta %4 kHz): sin el ruido ultrasónico del DSD</translation>
+    </message>
+    <message>
         <source>Memory</source>
         <translation>Memoria</translation>
     </message>
@@ -715,19 +723,7 @@
     </message>
 </context>
 <context>
-    <name>EqualizerPage</name>
-    <message>
-        <source>Save EQ profile</source>
-        <translation>Guardar perfil de ecualizador</translation>
-    </message>
-    <message>
-        <source>e.g. My headphones — warm</source>
-        <translation>p. ej. Mis auriculares — cálido</translation>
-    </message>
-    <message>
-        <source>Saved “%1”</source>
-        <translation>Se guardó «%1»</translation>
-    </message>
+    <name>EqualizerDialogs</name>
     <message>
         <source>Import parametric EQ profile</source>
         <translation>Importar perfil de ecualizador paramétrico</translation>
@@ -743,6 +739,21 @@
     <message>
         <source>Export EQ profile</source>
         <translation>Exportar perfil de ecualizador</translation>
+    </message>
+</context>
+<context>
+    <name>EqualizerPage</name>
+    <message>
+        <source>Save EQ profile</source>
+        <translation>Guardar perfil de ecualizador</translation>
+    </message>
+    <message>
+        <source>e.g. My headphones — warm</source>
+        <translation>p. ej. Mis auriculares — cálido</translation>
+    </message>
+    <message>
+        <source>Saved “%1”</source>
+        <translation>Se guardó «%1»</translation>
     </message>
     <message>
         <source>Profile exported</source>
@@ -1382,6 +1393,33 @@
     </message>
 </context>
 <context>
+    <name>PlaylistDialogs</name>
+    <message>
+        <source>Export playlist</source>
+        <translation>Exportar lista</translation>
+    </message>
+    <message>
+        <source>M3U playlist (*.m3u8 *.m3u)</source>
+        <translation>Lista M3U (*.m3u8 *.m3u)</translation>
+    </message>
+    <message>
+        <source>Add a folder to the playlist</source>
+        <translation>Agregar una carpeta a la lista</translation>
+    </message>
+    <message>
+        <source>Add files to the playlist</source>
+        <translation>Agregar archivos a la lista</translation>
+    </message>
+    <message>
+        <source>Audio files (%1)</source>
+        <translation>Archivos de audio (%1)</translation>
+    </message>
+    <message>
+        <source>All files (*)</source>
+        <translation>Todos los archivos (*)</translation>
+    </message>
+</context>
+<context>
     <name>PlaylistManager</name>
     <message>
         <source>New playlist</source>
@@ -1399,14 +1437,6 @@
         <translation>Renombrar</translation>
     </message>
     <message>
-        <source>Export playlist</source>
-        <translation>Exportar lista</translation>
-    </message>
-    <message>
-        <source>M3U playlist (*.m3u8 *.m3u)</source>
-        <translation>Lista M3U (*.m3u8 *.m3u)</translation>
-    </message>
-    <message>
         <source>Playlist exported</source>
         <translation>Lista exportada</translation>
     </message>
@@ -1417,22 +1447,6 @@
     <message>
         <source>No audio files in that folder</source>
         <translation>No hay archivos de audio en esa carpeta</translation>
-    </message>
-    <message>
-        <source>Add a folder to the playlist</source>
-        <translation>Agregar una carpeta a la lista</translation>
-    </message>
-    <message>
-        <source>Add files to the playlist</source>
-        <translation>Agregar archivos a la lista</translation>
-    </message>
-    <message>
-        <source>Audio files (%1)</source>
-        <translation>Archivos de audio (%1)</translation>
-    </message>
-    <message>
-        <source>All files (*)</source>
-        <translation>Todos los archivos (*)</translation>
     </message>
     <message>
         <source>Playlist</source>
@@ -1518,6 +1532,25 @@ Haz doble clic en cualquier pista, álbum o lista — o arrastra pistas aquí.</
     <message>
         <source>Added %1 to the queue</source>
         <translation>Se agregaron %1 a la cola</translation>
+    </message>
+</context>
+<context>
+    <name>SettingsDialogs</name>
+    <message>
+        <source>Impulse response</source>
+        <translation>Respuesta al impulso</translation>
+    </message>
+    <message>
+        <source>Impulse responses (*.wav *.flac *.aif *.aiff)</source>
+        <translation>Respuestas al impulso (*.wav *.flac *.aif *.aiff)</translation>
+    </message>
+    <message>
+        <source>All files (*)</source>
+        <translation>Todos los archivos (*)</translation>
+    </message>
+    <message>
+        <source>Folder to skip</source>
+        <translation>Carpeta a omitir</translation>
     </message>
 </context>
 <context>
@@ -1805,18 +1838,6 @@ Haz doble clic en cualquier pista, álbum o lista — o arrastra pistas aquí.</
     <message>
         <source>Remove</source>
         <translation>Quitar</translation>
-    </message>
-    <message>
-        <source>Impulse response</source>
-        <translation>Respuesta al impulso</translation>
-    </message>
-    <message>
-        <source>Impulse responses (*.wav *.flac *.aif *.aiff)</source>
-        <translation>Respuestas al impulso (*.wav *.flac *.aif *.aiff)</translation>
-    </message>
-    <message>
-        <source>All files (*)</source>
-        <translation>Todos los archivos (*)</translation>
     </message>
     <message>
         <source>Upsampling</source>
@@ -2183,6 +2204,10 @@ Haz doble clic en cualquier pista, álbum o lista — o arrastra pistas aquí.</
         <translation>DSD</translation>
     </message>
     <message>
+        <source>Sonkore's own converter, in double precision: DSD64 becomes 88.2 kHz PCM flat to 30 kHz, DSD128 and up 176.4 kHz flat to 50-70 kHz. The ultrasonic noise DSD carries above that is filtered out (about 70 dB lower than with FFmpeg's converter), so it never reaches the amplifier. DST files too.</source>
+        <translation>El conversor propio de Sonkore, en doble precisión: DSD64 pasa a PCM de 88,2 kHz plano hasta 30 kHz, DSD128 y superiores a 176,4 kHz plano hasta 50-70 kHz. El ruido ultrasónico que el DSD lleva por encima se filtra (unos 70 dB menos que con el conversor de FFmpeg), así nunca llega al amplificador. También los archivos DST.</translation>
+    </message>
+    <message>
         <source>Converts PCM tracks to DSD with an 8th-order sigma-delta modulator and sends them through the DSD output above. EQ, convolution, ReplayGain and the digital volume are applied before the conversion. DSD512 runs the channels on separate cores.</source>
         <translation>Convierte las pistas PCM a DSD con un modulador sigma-delta de 8.º orden y las envía por la salida DSD de arriba. El EQ, la convolución, ReplayGain y el volumen digital se aplican antes de la conversión. DSD512 reparte los canales en varios núcleos.</translation>
     </message>
@@ -2357,10 +2382,6 @@ Haz doble clic en cualquier pista, álbum o lista — o arrastra pistas aquí.</
     <message>
         <source>Skip a folder…</source>
         <translation>Omitir una carpeta…</translation>
-    </message>
-    <message>
-        <source>Folder to skip</source>
-        <translation>Carpeta a omitir</translation>
     </message>
     <message>
         <source>Skip short files</source>

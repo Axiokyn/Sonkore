@@ -3,6 +3,7 @@
 #include "SettingsLock.hpp"
 #include "AppPaths.hpp"
 #include "TestSignals.hpp"
+#include "DsdToPcm.hpp"
 
 #include "DSPManager.hpp"
 #include "LibraryModel.hpp"
@@ -160,8 +161,12 @@ DspController::DspController(sonkore::DSPManager& engine, QObject* parent)
         emit outputTakenByOther();
     });
 
-    m_pollTimer.setInterval(50);
+    // The engine is read 20 times a second while it plays (position, the
+    // gapless join, the end of the track) and 4 times a second otherwise
+    // (signal path, bit-perfect light): an idle player hardly wakes the CPU.
+    m_pollTimer.setInterval(250);
     connect(&m_pollTimer, &QTimer::timeout, this, &DspController::poll);
+    connect(this, &DspController::stateChanged, this, [this] { m_pollTimer.setInterval(playing() ? 50 : 250); });
     // Whatever changes what plays next re-arms the gapless join.
     connect(this, &DspController::queueChanged, this, &DspController::armGapless);
     connect(this, &DspController::shuffleChanged, this, &DspController::armGapless);
@@ -1821,12 +1826,23 @@ QVariantList DspController::buildSignalPath() const
     const sonkore::StreamInfo t = m_engine.trackInfo();
     const auto s = m_engine.outputStatus();
     const bool dsd = t.dsd != sonkore::StreamInfo::Dsd::None;
+    const bool fromDsd = !dsd && t.dsdRate != 0; // DSD converted to PCM by Sonkore
 
-    if (dsd)
+    if (dsd || fromDsd)
         add(tr("Source"), tr("%1 · %2 MHz").arg(QString::fromStdString(sonkore::DsdDecoder::rateLabel(t.dsdRate))).arg(t.dsdRate / 1e6, 0, 'g', 6), "lossless");
     else
         add(tr("Source"), trackDescription(), t.lossless ? "lossless" : "low");
-    add(tr("Decoder"), QString::fromStdString(t.decoder), t.lossless ? "lossless" : "high");
+    add(tr("Decoder"), QString::fromStdString(t.decoder), t.lossless || fromDsd ? "lossless" : "high");
+    if (fromDsd) {
+        const sonkore::DsdToPcm::Band band = sonkore::DsdToPcm::secondStage(t.dsdRate);
+        add(tr("DSD → PCM"),
+            tr("Double precision · %1 MHz → 352.8 kHz (%2-tap FIR, 160 dB) → %3 kHz (SoX VHQ, flat to %4 kHz): DSD's ultrasonic noise removed")
+                .arg(t.dsdRate / 1e6, 0, 'g', 6)
+                .arg(sonkore::DsdToPcm::firstStageTaps(t.dsdRate))
+                .arg(t.sampleRate / 1000.0, 0, 'g', 6)
+                .arg(band.passHz / 1000.0, 0, 'g', 3),
+            "high");
+    }
     switch (m_engine.memoryState()) {
     case 2: add(tr("Memory"), tr("Played from RAM (locked): no disk access"), "lossless"); break;
     case 1: add(tr("Memory"), tr("Played from RAM: no disk access"), "lossless"); break;
