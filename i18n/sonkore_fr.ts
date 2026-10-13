@@ -252,6 +252,14 @@
         <translation> · rééchantillonné depuis %1 kHz (SoX VHQ)</translation>
     </message>
     <message>
+        <source> · PipeWire converts it to %1 kHz</source>
+        <translation> · PipeWire le convertit en %1 kHz</translation>
+    </message>
+    <message>
+        <source> · system volume below 100 %</source>
+        <translation> · volume du système inférieur à 100 %</translation>
+    </message>
+    <message>
         <source>Source</source>
         <translation>Source</translation>
     </message>
@@ -350,6 +358,10 @@
     <message>
         <source>%1 bands · preamp %2 dB</source>
         <translation>%1 bandes · préampli %2 dB</translation>
+    </message>
+    <message>
+        <source> · linear phase, %1 taps</source>
+        <translation> · phase linéaire, %1 coefficients</translation>
     </message>
     <message>
         <source>Default</source>
@@ -885,6 +897,10 @@
         <translation>Enregistrer sous…</translation>
     </message>
     <message>
+        <source>linear phase (FIR)</source>
+        <translation>phase linéaire (FIR)</translation>
+    </message>
+    <message>
         <source>Delete this profile</source>
         <translation>Supprimer ce profil</translation>
     </message>
@@ -907,6 +923,14 @@
     <message>
         <source>Auto</source>
         <translation>Auto</translation>
+    </message>
+    <message>
+        <source>Linear phase</source>
+        <translation>Phase linéaire</translation>
+    </message>
+    <message>
+        <source>The same curve as a linear-phase FIR: every frequency is delayed alike, so transients and the stereo image keep their timing. Changes are heard about half a second later.</source>
+        <translation>La même courbe en FIR à phase linéaire : toutes les fréquences sont retardées de la même façon, les transitoires et l'image stéréo gardent leur synchronisation. Les changements s'entendent environ une demi-seconde plus tard.</translation>
     </message>
     <message>
         <source>CLIP RISK +%1 dB</source>
@@ -2124,6 +2148,10 @@ Double-cliquez sur une piste, un album ou une playlist — ou glissez des pistes
         <translation>Filtres sur la page Pistes</translation>
     </message>
     <message>
+        <source>The desktop's sound server, spoken to directly — shared with other apps; it switches to each track's sample rate (Follow the track's rate).</source>
+        <translation>Le serveur son du bureau, utilisé directement — partagé avec les autres applications ; il passe à la fréquence de chaque piste (Suivre la fréquence de la piste).</translation>
+    </message>
+    <message>
         <source>The DAC's own ASIO driver — direct, bit-perfect capable, and native DSD where the driver offers it.</source>
         <translation>Le pilote ASIO du DAC — direct, compatible bit-perfect, et DSD natif lorsque le pilote le propose.</translation>
     </message>
@@ -2174,6 +2202,18 @@ Double-cliquez sur une piste, un album ou une playlist — ou glissez des pistes
     <message>
         <source>The chosen output is not connected, so the system default is used. Reconnect it and it is used again the next time playback starts.</source>
         <translation>La sortie choisie n'est pas connectée : la sortie par défaut du système est utilisée. Une fois reconnectée, elle est de nouveau utilisée au prochain démarrage de la lecture.</translation>
+    </message>
+    <message>
+        <source>Follow the track's rate</source>
+        <translation>Suivre la fréquence de la piste</translation>
+    </message>
+    <message>
+        <source>PipeWire switches to each track's sample rate while Sonkore plays.</source>
+        <translation>PipeWire passe à la fréquence de chaque piste pendant que Sonkore joue.</translation>
+    </message>
+    <message>
+        <source>Without it, PipeWire runs at the desktop's rate (usually 48 kHz) and Sonkore converts every track to it with SoX VHQ. Other apps keep playing either way; PipeWire converts them instead. After a minute paused or stopped, PipeWire gets its own rate back.</source>
+        <translation>Sans cela, PipeWire tourne à la fréquence du bureau (généralement 48 kHz) et Sonkore y convertit chaque piste avec SoX VHQ. Les autres applications continuent de jouer dans tous les cas ; c'est PipeWire qui les convertit. Après une minute en pause ou à l'arrêt, PipeWire retrouve sa fréquence.</translation>
     </message>
     <message>
         <source>Sample rate</source>

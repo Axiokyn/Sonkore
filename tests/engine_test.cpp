@@ -1171,10 +1171,10 @@ void linearPhaseEq()
             if (first < 0)
                 first = static_cast<long long>(f);
             last = static_cast<long long>(f);
-            bool near = true;
+            bool filteredHere = true; // (not "near": a macro in <windows.h>)
             for (int c = 0; c < 2; ++c)
-                near = near && std::llabs(int64_t(out[2 * f + c]) - grid24(filtered[2 * (f + lead) + c])) <= 256;
-            neither += !near;
+                filteredHere = filteredHere && std::llabs(int64_t(out[2 * f + c]) - grid24(filtered[2 * (f + lead) + c])) <= 256;
+            neither += !filteredHere;
         }
         CHECK_MSG(first > 22050, "filtered from frame %lld: before the EQ was set", first);
         CHECK_MSG(last >= 0 && last + 22050 < static_cast<long long>(frames), "still filtered at frame %lld of %zu", last, frames);

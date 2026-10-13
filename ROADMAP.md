@@ -34,6 +34,10 @@ Objetivo: un reproductor Hi-Fi a la altura de Roon y JRiver en todo lo que piden
 - [x] **Dither con noise shaping** (F-weighted de 9 coeficientes).
 - [x] **Upsampling PCM → DSD** (DSD64–DSD256) con modulador sigma-delta de 7.º orden; DSD512 cuando haya un DAC que lo acepte para probarlo.
 - [x] **Gestión de headroom** antes del DSP, con detector de clipping.
+- [x] **Ecualizador de fase lineal**: la curva del EQ como FIR (convolución por FFT), activable en plena reproducción sin cortes.
+- [x] **Salida nativa de PipeWire** con cambio de frecuencia por pista: bit-perfect (hasta 24 bits) sin tomar el DAC en exclusiva.
+- [ ] Modulador PCM→DSD de mayor orden y DSD512 en varios hilos.
+- [ ] Señales de prueba (bit-perfect, frecuencia del DAC, canales) desde la app.
 
 ## Calidad
 
