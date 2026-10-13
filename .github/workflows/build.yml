@@ -28,7 +28,7 @@ jobs:
         run: |
           sudo apt-get update -q
           sudo apt-get install -y -q ninja-build sox flac ffmpeg libavformat-dev libavcodec-dev libavutil-dev \
-            libasound2-dev libgl-dev libxkbcommon-dev libpipewire-0.3-dev pipewire pipewire-bin wireplumber dbus python3-numpy
+            libasound2-dev libgl-dev libxkbcommon-dev libpipewire-0.3-dev pipewire pipewire-bin wireplumber dbus
       - uses: jurplel/install-qt-action@v4
         with:
           version: ${{ env.QT_VERSION }}
@@ -38,7 +38,9 @@ jobs:
       - name: Build
         run: cmake --build build --target engine_test
       - name: Corpus
-        run: tests/make_corpus.sh corpus
+        run: |
+          python3 -m pip install -q numpy # tests/mkdst.py, with the Python the Qt action set up
+          tests/make_corpus.sh corpus
       - name: Engine tests
         # Inside a private PipeWire (one virtual DAC): the "pipewire" test
         # plays through it and records what the DAC receives.
