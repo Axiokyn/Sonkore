@@ -13,6 +13,7 @@
     SoundTouch) and a watched-folder library.</p>
   </description>
   <releases>
+    <release version="1.1.0" date="2026-10-13"/>
     <release version="1.0.0" date="2026-10-05"/>
   </releases>
   <categories><category>Audio</category><category>Player</category></categories>
