@@ -808,15 +808,15 @@ Rectangle {
             }
         }
 
-        // What the list shows: the queue or a folder.
+        // What the list shows: the queue or a folder. Only its icon, name
+        // and chevron answer the pointer, not the rest of the band.
         AbstractButton {
             id: sourceButton
             visible: !mini.searchOpen // the search field takes its place
             anchors.top: parent.top
             anchors.left: parent.left
-            anchors.right: searchButton.left
             anchors.margins: 4
-            anchors.rightMargin: 2
+            width: Math.min(implicitWidth, searchButton.x - 2 - x)
             height: 28
             hoverEnabled: true
             focusPolicy: Qt.NoFocus
@@ -825,6 +825,7 @@ Rectangle {
             background: Item {}
             opacity: pressed ? 0.7 : 1
             contentItem: Item {
+                implicitWidth: sourceLabel.x + sourceLabel.implicitWidth + 4 + sourceChevron.width + 6
                 Icon {
                     id: sourceIcon
                     anchors.verticalCenter: parent.verticalCenter
@@ -1002,9 +1003,10 @@ Rectangle {
             visible: mini.searchOpen
             anchors.top: parent.top
             anchors.left: parent.left
-            anchors.right: sourceButton.right
+            anchors.right: searchButton.left
             anchors.topMargin: 5
             anchors.leftMargin: 5
+            anchors.rightMargin: 2
             implicitHeight: 26
             font.pixelSize: Theme.fontSmall + 1
             placeholderText: mini.showingQueue ? qsTr("Search the queue…") : qsTr("Search in this folder…")
