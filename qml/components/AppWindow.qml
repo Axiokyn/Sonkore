@@ -129,5 +129,12 @@ ApplicationWindow {
             radius: win.cornerRadius
             windowEdge: true
         }
+        // A square window: the edge pixels the software renderer leaves
+        // unpainted at a fractional scale (Main.qml).
+        WindowEdges {
+            anchors.fill: parent
+            z: 2000
+            visible: win.cornerRadius === 0
+        }
     }
 }

@@ -1256,6 +1256,14 @@ ApplicationWindow {
         radius: window.cornerRadius
         windowEdge: true
     }
+    // A square window (maximized, or no rounded corners): its last rows and
+    // columns of pixels, which the software renderer leaves unpainted at a
+    // fractional scale (the desktop showed through a line along the bottom).
+    WindowEdges {
+        anchors.fill: parent
+        z: 2000
+        visible: window.cornerRadius === 0
+    }
 
     // --- FPS counter (Settings › Performance) ----------------------------------
     Rectangle {

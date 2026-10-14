@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.21)
 
 project(Sonkore
-    VERSION 1.2.4
+    VERSION 1.2.5
     DESCRIPTION "Hi-Fi music player: bit-perfect output, SoundTouch, SuperEQ"
     LANGUAGES C CXX)
 
@@ -234,6 +234,8 @@ qt_add_qml_module(Sonkore
         src/ui/WindowFrame.cpp
         src/ui/RoundBox.hpp
         src/ui/RoundBox.cpp
+        src/ui/WindowEdges.hpp
+        src/ui/WindowEdges.cpp
         src/library/Metadata.hpp
         src/library/Metadata.cpp
         src/library/TrackSort.hpp
