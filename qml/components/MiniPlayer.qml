@@ -814,7 +814,7 @@ Rectangle {
             visible: !mini.searchOpen // the search field takes its place
             anchors.top: parent.top
             anchors.left: parent.left
-            anchors.right: locateButton.visible ? locateButton.left : searchButton.left
+            anchors.right: searchButton.left
             anchors.margins: 4
             anchors.rightMargin: 2
             height: 28
@@ -834,11 +834,12 @@ Rectangle {
                     color: Theme.accent
                 }
                 Label {
+                    id: sourceLabel
                     anchors.verticalCenter: parent.verticalCenter
                     anchors.left: sourceIcon.right
                     anchors.leftMargin: 8
-                    anchors.right: sourceChevron.left
-                    anchors.rightMargin: 6
+                    // as long as its name, the chevron right after it
+                    width: Math.max(0, Math.min(implicitWidth, parent.width - x - 4 - sourceChevron.width - 6))
                     text: mini.sourceName
                     elide: Text.ElideMiddle
                     color: sourceButton.hovered ? Theme.accent : Theme.text
@@ -848,8 +849,8 @@ Rectangle {
                 Icon {
                     id: sourceChevron
                     anchors.verticalCenter: parent.verticalCenter
-                    anchors.right: parent.right
-                    anchors.rightMargin: 6
+                    // after the text drawn (cut short, narrower than its box)
+                    x: sourceLabel.x + Math.min(sourceLabel.width, sourceLabel.contentWidth) + 4
                     glyph: "chevron-down"
                     size: 13
                     color: sourceButton.hovered ? Theme.accent : Theme.textDim
@@ -1026,7 +1027,7 @@ Rectangle {
             id: locateButton
             visible: mini.hasTrack
             anchors.top: parent.top
-            anchors.right: searchButton.left
+            anchors.right: sortButton.left
             anchors.topMargin: 4
             implicitWidth: 28
             implicitHeight: 28
@@ -1038,7 +1039,7 @@ Rectangle {
         IconButton {
             id: searchButton
             anchors.top: parent.top
-            anchors.right: sortButton.left
+            anchors.right: locateButton.visible ? locateButton.left : sortButton.left
             anchors.topMargin: 4
             implicitWidth: 28
             implicitHeight: 28
