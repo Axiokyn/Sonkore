@@ -7,38 +7,47 @@ import Sonkore
 //   off · line: a hairline · bold: a 2 px edge · highlight: a dark edge with a
 //   bright inner line · accent: a hairline in the accent · glow: the accent
 //   edge fading inwards.
+// The GPU renderers draw it with Rectangles; the software renderer with
+// WindowFrame, on the window's device pixels (it also cuts the rounded
+// corners out cleanly there).
 Item {
     id: outline
 
     property string style: Theme.windowOutline
     property real radius: 0
+    // The window's edge (not a preview): with the software renderer the
+    // rounded corners are cut out here too, with or without an outline.
+    property bool windowEdge: false
 
-    visible: style !== "off"
+    readonly property bool software: GraphicsInfo.api === GraphicsInfo.Software
+    // The rings, from the edge inwards.
+    readonly property var rings: style === "highlight" ? [Qt.rgba(0, 0, 0, Theme.dark ? 0.7 : 0.28), Qt.rgba(1, 1, 1, Theme.dark ? 0.13 : 0.55)]
+                               : style === "glow" ? [Theme.accent].concat([0.45, 0.22, 0.08].map(a => Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, a)))
+                               : style === "accent" ? [Theme.accent]
+                               : style === "bold" ? [Theme.textFaint]
+                               : style === "line" ? [Theme.border]
+                               : []
 
-    // Outer edge
-    Rectangle {
+    WindowFrame {
         anchors.fill: parent
+        visible: outline.software && outline.windowEdge
         radius: outline.radius
-        color: "transparent"
-        border.width: outline.style === "bold" ? 2 : 1
-        border.color: outline.style === "highlight" ? Qt.rgba(0, 0, 0, Theme.dark ? 0.7 : 0.28)
-                    : outline.style === "accent" || outline.style === "glow" ? Theme.accent
-                    : outline.style === "bold" ? Theme.textFaint
-                    : Theme.border
+        lineWidth: outline.style === "bold" ? 2 : 1
+        colors: outline.rings
+        clipCorners: App.alphaWindow && outline.radius > 0
     }
-    // Inner lines: one bright line (highlight), or the accent fading (glow).
+
     Repeater {
-        model: outline.style === "highlight" ? 1 : outline.style === "glow" ? 3 : 0
+        model: outline.software && outline.windowEdge ? 0 : outline.rings.length
         Rectangle {
-            id: inner
+            id: ring
             required property int index
             anchors.fill: parent
-            anchors.margins: inner.index + 1
-            radius: Math.max(0, outline.radius - inner.index - 1)
+            anchors.margins: outline.style === "bold" ? 0 : ring.index
+            radius: Math.max(0, outline.radius - ring.index)
             color: "transparent"
-            border.width: 1
-            border.color: outline.style === "highlight" ? Qt.rgba(1, 1, 1, Theme.dark ? 0.13 : 0.55)
-                        : Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, [0.45, 0.22, 0.08][inner.index])
+            border.width: outline.style === "bold" ? 2 : 1
+            border.color: outline.rings[ring.index]
         }
     }
 }

@@ -4,6 +4,7 @@
 #include "QmlSingleton.hpp"
 
 #include <QFileSystemWatcher>
+#include <QHash>
 #include <QObject>
 #include <QSettings>
 #include <QString>
@@ -143,8 +144,9 @@ class DspController : public QObject {
 
     // --- Visualiser: spectrum of what is playing ----------------------------
     // While active (a visualiser is on screen), `spectrum` holds 24 levels
-    // (0..1, 40 Hz – 16 kHz, log spaced) about 30 times a second.
-    Q_PROPERTY(bool visualizerActive READ visualizerActive WRITE setVisualizerActive NOTIFY visualizerActiveChanged)
+    // (0..1, 40 Hz – 16 kHz, log spaced) about 30 times a second. Each
+    // visualiser says when it is in view (watchSpectrum); active while any is.
+    Q_PROPERTY(bool visualizerActive READ visualizerActive NOTIFY visualizerActiveChanged)
     Q_PROPERTY(QList<qreal> spectrum READ spectrum NOTIFY spectrumChanged)
 
 public:
@@ -275,7 +277,9 @@ public:
     bool releaseWhenIdle() const { return m_releaseWhenIdle; }
     void setReleaseWhenIdle(bool on);
     bool visualizerActive() const { return m_visualizerActive; }
-    void setVisualizerActive(bool on);
+    // `viewer` (a visualiser) is in view, or no longer. One that is destroyed
+    // stops watching by itself.
+    Q_INVOKABLE void watchSpectrum(QObject* viewer, bool on);
     QList<qreal> spectrum() const { return m_spectrum; }
 
     // Locale-independent, correctly rounded decimal -> double. Returns an
@@ -381,6 +385,7 @@ private:
     void devicesChangedOnSystem();
     void updateSpectrum();
     void updateSpectrumTimer();
+    void setVisualizerActive(bool on);
     void reportError(const QString& message);
     bool openIndex(int index, bool autoplay, double startAt = 0.0);
     bool reserveOutput(bool* justTaken);
@@ -408,6 +413,7 @@ private:
     QFileSystemWatcher m_deviceWatcher; // /dev/snd: DACs plugged in or out
     QTimer m_hotplugTimer;
     QTimer m_spectrumTimer;
+    QHash<QObject*, QMetaObject::Connection> m_spectrumViewers; // and their destroyed()
     bool m_visualizerActive = false;
     QList<qreal> m_spectrum;
     mutable QByteArray m_savedSession;

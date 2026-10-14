@@ -125,8 +125,9 @@ ApplicationWindow {
         WindowOutline {
             anchors.fill: parent
             z: 1999
-            visible: !win.maximized && style !== "off"
+            visible: !win.maximized
             radius: win.cornerRadius
+            windowEdge: true
         }
     }
 }

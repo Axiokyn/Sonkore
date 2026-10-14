@@ -14,12 +14,11 @@ SpectrumView {
     implicitWidth: 96
     implicitHeight: 36
 
-    // Asks the engine for the spectrum only while something can be seen.
-    Binding {
-        target: DspController
-        property: "visualizerActive"
-        value: viz.visible && viz.width > 0
-    }
+    // Asks the engine for the spectrum only while something can be seen. Each
+    // visualiser (the full view's, the compact player's) counts on its own.
+    readonly property bool inView: viz.visible && viz.width > 0
+    onInViewChanged: DspController.watchSpectrum(viz, inView)
+    Component.onCompleted: DspController.watchSpectrum(viz, inView)
 
     // Moved by the shared Clock, on the same frames as everything else that
     // moves, until it is at rest.

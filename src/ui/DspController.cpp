@@ -843,6 +843,28 @@ void DspController::refreshDevices()
 
 // --- Visualiser ----------------------------------------------------------------
 
+void DspController::watchSpectrum(QObject* viewer, bool on)
+{
+    if (!viewer)
+        return;
+    // One flag written by every visualiser would be left to the last write:
+    // switching between the compact and the full view, the one going out of
+    // view could switch the spectrum off after the one coming in.
+    if (on && !m_spectrumViewers.contains(viewer)) {
+        m_spectrumViewers.insert(viewer, connect(viewer, &QObject::destroyed, this, [this](QObject* gone) {
+            m_spectrumViewers.remove(gone);
+            setVisualizerActive(!m_spectrumViewers.isEmpty());
+        }));
+    } else if (!on) {
+        const auto it = m_spectrumViewers.constFind(viewer);
+        if (it == m_spectrumViewers.cend())
+            return;
+        disconnect(it.value());
+        m_spectrumViewers.erase(it);
+    }
+    setVisualizerActive(!m_spectrumViewers.isEmpty());
+}
+
 void DspController::setVisualizerActive(bool on)
 {
     if (on == m_visualizerActive)

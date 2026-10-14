@@ -13,6 +13,7 @@
     watched-folder library.</p>
   </description>
   <releases>
+    <release version="1.2.2" date="2026-10-14"/>
     <release version="1.2.1" date="2026-10-14"/>
     <release version="1.2.0" date="2026-10-13"/>
     <release version="1.1.0" date="2026-10-13"/>

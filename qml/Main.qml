@@ -1223,8 +1223,9 @@ ApplicationWindow {
     WindowOutline {
         anchors.fill: parent
         z: 1999
-        visible: !window.maximized && style !== "off"
+        visible: !window.maximized
         radius: window.cornerRadius
+        windowEdge: true
     }
 
     // --- FPS counter (Settings › Performance) ----------------------------------
