@@ -41,10 +41,11 @@ Popup {
         return order[worst]
     }
 
-    background: Rectangle {
+    background: RoundRect {
         radius: Theme.radius + 2
         color: Theme.surface
-        border.color: Theme.border
+        borderWidth: 1
+        borderColor: Theme.border
     }
 
     contentItem: ColumnLayout {

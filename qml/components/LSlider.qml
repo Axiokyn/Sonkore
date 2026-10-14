@@ -115,14 +115,14 @@ Slider {
             readonly property real litTo: control.visualPosition * width
             Repeater {
                 model: segments.visible ? segments.count : 0
-                Rectangle {
+                RoundRect {
                     required property int index
                     x: index * (segments.segment + segments.gap)
                     width: segments.segment
                     height: segments.height
                     radius: 1
                     color: control.groove
-                    Rectangle {
+                    RoundRect {
                         width: Math.max(0, Math.min(parent.width, segments.litTo - parent.x))
                         height: parent.height
                         radius: parent.radius

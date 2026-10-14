@@ -12,11 +12,12 @@ ComboBox {
     focusPolicy: Qt.NoFocus
     font.pixelSize: Theme.fontBody
 
-    background: Rectangle {
+    background: RoundRect {
         implicitWidth: 120
         radius: Theme.squareShapes ? Theme.radiusSmall : Math.min(height / 2, Theme.radius)
         color: control.pressed ? Theme.border : (control.hovered ? Theme.hover : Theme.surfaceHi)
-        border.color: control.visualFocus ? Theme.accent : Theme.border
+        borderWidth: 1
+        borderColor: control.visualFocus ? Theme.accent : Theme.border
     }
     contentItem: Label {
         leftPadding: 12
@@ -49,10 +50,11 @@ ComboBox {
             currentIndex: control.highlightedIndex
             ScrollBar.vertical: LScrollBar {}
         }
-        background: Rectangle {
+        background: RoundRect {
             radius: Theme.radius
             color: Theme.surface
-            border.color: Theme.border
+            borderWidth: 1
+            borderColor: Theme.border
         }
     }
     delegate: ItemDelegate {

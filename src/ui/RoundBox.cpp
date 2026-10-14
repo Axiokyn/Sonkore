@@ -11,6 +11,35 @@
 
 namespace {
 
+// A rounded rectangle with a radius per corner (each at most half the
+// shorter side).
+QPainterPath roundedPath(const QRectF& r, qreal tl, qreal tr, qreal br, qreal bl)
+{
+    const qreal most = std::min(r.width(), r.height()) / 2;
+    tl = std::clamp<qreal>(tl, 0, most), tr = std::clamp<qreal>(tr, 0, most);
+    br = std::clamp<qreal>(br, 0, most), bl = std::clamp<qreal>(bl, 0, most);
+    QPainterPath path;
+    if (tl == tr && tr == br && br == bl) {
+        path.addRoundedRect(r, tl, tl);
+        return path;
+    }
+    path.moveTo(r.left() + tl, r.top());
+    path.lineTo(r.right() - tr, r.top());
+    if (tr > 0)
+        path.arcTo(r.right() - 2 * tr, r.top(), 2 * tr, 2 * tr, 90, -90);
+    path.lineTo(r.right(), r.bottom() - br);
+    if (br > 0)
+        path.arcTo(r.right() - 2 * br, r.bottom() - 2 * br, 2 * br, 2 * br, 0, -90);
+    path.lineTo(r.left() + bl, r.bottom());
+    if (bl > 0)
+        path.arcTo(r.left(), r.bottom() - 2 * bl, 2 * bl, 2 * bl, 270, -90);
+    path.lineTo(r.left(), r.top() + tl);
+    if (tl > 0)
+        path.arcTo(r.left(), r.top(), 2 * tl, 2 * tl, 180, -90);
+    path.closeSubpath();
+    return path;
+}
+
 class BoxNode : public QSGRenderNode {
 public:
     explicit BoxNode(QQuickItem* item)
@@ -34,9 +63,11 @@ public:
             return;
         // The region to repaint, in the window's logical pixels (set before
         // the transform below).
+        // (Nothing to repaint: none.)
         const QRegion* clip = state->clipRegion();
-        if (clip && !clip->isEmpty())
-            p->setClipRegion(*clip, Qt::ReplaceClip);
+        if (!clip || clip->isEmpty())
+            return;
+        p->setClipRegion(*clip, Qt::ReplaceClip);
 
         // The box on the buffer's own pixels: its edges rounded to whole
         // device pixels, so straight sides are sharp and alike.
@@ -46,7 +77,8 @@ public:
         const qreal x1 = std::max(x0 + 1, std::round(r.right() * dpr)), y1 = std::max(y0 + 1, std::round(r.bottom() * dpr));
         const QRectF box(x0, y0, x1 - x0, y1 - y0);
         const qreal scale = r.width() > 0 ? box.width() / r.width() : dpr; // logical px → device px, item scale included
-        const qreal radius = std::clamp(m_look.radius * scale, 0.0, std::min(box.width(), box.height()) / 2);
+        const qreal tl = m_look.topLeft * scale, tr = m_look.topRight * scale;
+        const qreal br = m_look.bottomRight * scale, bl = m_look.bottomLeft * scale;
         const qreal border = m_look.borderWidth > 0 && m_look.borderColor.alpha() > 0
                                  ? std::min(std::max<qreal>(1.0, std::round(m_look.borderWidth * scale)), std::min(box.width(), box.height()) / 2)
                                  : 0.0;
@@ -56,16 +88,14 @@ public:
         p->setRenderHint(QPainter::Antialiasing, true);
         p->setPen(Qt::NoPen);
 
-        QPainterPath outer;
-        outer.addRoundedRect(box, radius, radius);
+        const QPainterPath outer = roundedPath(box, tl, tr, br, bl);
         if (border <= 0) {
             p->fillPath(outer, m_look.color);
             return;
         }
         // The border inside the box, as a Rectangle's; the colour inside it.
-        QPainterPath inner;
-        const qreal innerRadius = std::max<qreal>(0.0, radius - border);
-        inner.addRoundedRect(box.adjusted(border, border, -border, -border), innerRadius, innerRadius);
+        const auto in = [border](qreal radius) { return std::max<qreal>(0.0, radius - border); };
+        const QPainterPath inner = roundedPath(box.adjusted(border, border, -border, -border), in(tl), in(tr), in(br), in(bl));
         QPainterPath ring = outer;
         ring.addPath(inner);
         ring.setFillRule(Qt::OddEvenFill);
@@ -125,6 +155,14 @@ void RoundBox::setBorderColor(const QColor& color)
     emit changed();
 }
 
+void RoundBox::setCorner(qreal& corner, qreal radius)
+{
+    if (qFuzzyCompare(radius, corner))
+        return;
+    corner = radius;
+    emit changed();
+}
+
 void RoundBox::geometryChange(const QRectF& newGeometry, const QRectF& oldGeometry)
 {
     QQuickItem::geometryChange(newGeometry, oldGeometry);
@@ -143,6 +181,8 @@ QSGNode* RoundBox::updatePaintNode(QSGNode* old, UpdatePaintNodeData*)
     auto* node = static_cast<BoxNode*>(old);
     if (!node)
         node = new BoxNode(this);
-    node->setLook({width(), height(), m_radius, m_borderWidth, m_color, m_borderColor});
+    const auto corner = [this](qreal r) { return r < 0 ? m_radius : r; };
+    node->setLook({width(), height(), m_borderWidth, corner(m_topLeft), corner(m_topRight), corner(m_bottomRight),
+                   corner(m_bottomLeft), m_color, m_borderColor});
     return node;
 }

@@ -16,11 +16,11 @@ TextField {
     font.pixelSize: Theme.fontBody
     selectByMouse: true
 
-    background: Rectangle {
+    background: RoundRect {
         radius: Theme.squareShapes ? Theme.radiusSmall : height / 2
         color: Theme.surfaceHi
-        border.width: control.activeFocus ? 1.5 : 1
-        border.color: control.activeFocus ? Theme.accent : Theme.border
+        borderWidth: control.activeFocus ? 1.5 : 1
+        borderColor: control.activeFocus ? Theme.accent : Theme.border
     }
 
     Icon {

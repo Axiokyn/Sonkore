@@ -7,7 +7,7 @@ import Sonkore
 // (Automatic on a direct output): a padlock pill, so it reads as "not
 // adjustable here" at a glance rather than as a faded slider. Click: the
 // volume control menu (VolumeModeMenu, opened by the bar).
-Rectangle {
+RoundRect {
     id: pill
 
     signal clicked()
@@ -18,8 +18,8 @@ Rectangle {
     implicitHeight: 22
     radius: height / 2
     color: area.containsMouse ? Theme.surfaceHi : "transparent"
-    border.width: 1
-    border.color: area.containsMouse ? Theme.textFaint : Theme.border
+    borderWidth: 1
+    borderColor: area.containsMouse ? Theme.textFaint : Theme.border
 
     RowLayout {
         anchors.centerIn: parent

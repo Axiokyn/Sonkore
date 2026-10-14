@@ -144,14 +144,14 @@ Item {
             height: 22
             z: drag.pressed ? 2 : 1
 
-            Rectangle {
+            RoundRect {
                 anchors.centerIn: parent
                 width: drag.containsMouse || drag.pressed ? 18 : 14
                 height: width
                 radius: width / 2
                 color: handle.band.enabled ? Theme.accent : Theme.textFaint
-                border.width: 2
-                border.color: Theme.surface
+                borderWidth: 2
+                borderColor: Theme.surface
                 opacity: Equalizer.enabled ? 1 : 0.5
                 Behavior on width { NumberAnimation { duration: 90 } }
                 Label {

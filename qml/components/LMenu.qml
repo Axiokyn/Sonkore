@@ -21,39 +21,42 @@ Menu {
     background: Item {
         implicitWidth: 220
         // soft shadow: two faint rings outside the edge, lower than it
-        Rectangle {
+        RoundRect {
             visible: !menu.ownWindow
             anchors.fill: parent
             anchors.margins: -3
             anchors.topMargin: -1
             radius: card.radius + 3
             color: "transparent"
-            border.width: 3
-            border.color: Qt.rgba(0, 0, 0, Theme.dark ? 0.18 : 0.06)
+            borderWidth: 3
+            borderColor: Qt.rgba(0, 0, 0, Theme.dark ? 0.18 : 0.06)
         }
-        Rectangle {
+        RoundRect {
             visible: !menu.ownWindow
             anchors.fill: parent
             anchors.margins: -1
             anchors.bottomMargin: -2
             radius: card.radius + 1
             color: "transparent"
-            border.color: Qt.rgba(0, 0, 0, Theme.dark ? 0.35 : 0.1)
+            borderWidth: 1
+            borderColor: Qt.rgba(0, 0, 0, Theme.dark ? 0.35 : 0.1)
         }
-        Rectangle {
+        RoundRect {
             id: card
             anchors.fill: parent
             radius: Theme.radius
             color: menu.tone
-            border.color: menu.ownWindow ? Qt.rgba(0, 0, 0, Theme.dark ? 0.85 : 0.3) : Theme.border
+            borderWidth: 1
+            borderColor: menu.ownWindow ? Qt.rgba(0, 0, 0, Theme.dark ? 0.85 : 0.3) : Theme.border
             // a faint light edge just inside the outline
-            Rectangle {
+            RoundRect {
                 visible: menu.ownWindow
                 anchors.fill: parent
                 anchors.margins: 1
                 radius: parent.radius - 1
                 color: "transparent"
-                border.color: Theme.dark ? Qt.rgba(1, 1, 1, 0.07) : Qt.rgba(1, 1, 1, 0.6)
+                borderWidth: 1
+                borderColor: Theme.dark ? Qt.rgba(1, 1, 1, 0.07) : Qt.rgba(1, 1, 1, 0.6)
             }
         }
     }

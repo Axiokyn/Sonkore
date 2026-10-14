@@ -23,7 +23,7 @@ AbstractButton {
     hoverEnabled: true
     focusPolicy: Qt.NoFocus
 
-    background: Rectangle {
+    background: RoundRect {
         anchors.fill: parent
         anchors.margins: control.tile ? 2 : 0
         radius: control.tile ? Math.round(Math.min(width, height) * 0.3) : Math.min(width, height) / 2

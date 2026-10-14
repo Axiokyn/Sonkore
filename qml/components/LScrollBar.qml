@@ -33,7 +33,7 @@ ScrollBar {
     topInset: horizontal ? 0 : endInset
     bottomInset: horizontal ? 0 : endInset
 
-    contentItem: Rectangle {
+    contentItem: RoundRect {
         implicitWidth: 6
         implicitHeight: 6
         radius: Math.min(width, height) / 2
@@ -42,7 +42,7 @@ ScrollBar {
         Behavior on color { ColorAnimation { duration: 120 } }
         Behavior on opacity { NumberAnimation { duration: 180 } }
     }
-    background: Rectangle {
+    background: RoundRect {
         // 6 px thumb at rest, 8 px under the pointer
         implicitWidth: control.lit ? 10 : 8
         implicitHeight: control.lit ? 10 : 8

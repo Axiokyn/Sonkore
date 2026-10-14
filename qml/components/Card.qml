@@ -1,9 +1,9 @@
 import QtQuick
 import Sonkore
 
-Rectangle {
+RoundRect {
     radius: Theme.radius
     color: Theme.surface
-    border.width: 1
-    border.color: Theme.border
+    borderWidth: 1
+    borderColor: Theme.border
 }

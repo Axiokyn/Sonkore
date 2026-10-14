@@ -28,7 +28,7 @@ AbstractButton {
     readonly property bool tile: style === "sonkore" && Theme.iconTiles
 
     background: Item {
-        Rectangle {
+        RoundRect {
             anchors.fill: parent
             // The round face grows a little under the pointer and shrinks when
             // pressed: by its size, not a scale transform, so its edge is
@@ -40,8 +40,8 @@ AbstractButton {
             color: button.round ? button.face
                  : button.pressed ? Theme.border : button.hovered ? Theme.hover
                  : button.tile ? Theme.surfaceHi : "transparent"
-            border.width: button.style === "outline" ? 1.5 : 0
-            border.color: button.hovered ? Theme.accent : Theme.text
+            borderWidth: button.style === "outline" ? 1.5 : 0
+            borderColor: button.hovered ? Theme.accent : Theme.text
             Behavior on anchors.margins { NumberAnimation { duration: 100 } }
             Behavior on color { ColorAnimation { duration: 120 } }
         }

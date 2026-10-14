@@ -22,10 +22,11 @@ Popup {
     padding: 20
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
 
-    background: Rectangle {
+    background: RoundRect {
         radius: Theme.radius + 2
         color: Theme.surface
-        border.color: Theme.border
+        borderWidth: 1
+        borderColor: Theme.border
     }
     Overlay.modal: Rectangle { color: Qt.rgba(0, 0, 0, 0.45) }
 

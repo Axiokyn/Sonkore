@@ -78,7 +78,7 @@ Item {
         implicitWidth: 28 // the whole column around the thin track grabs the fader
         hoverEnabled: true
         focusPolicy: Qt.NoFocus
-        background: Rectangle {
+        background: RoundRect {
             x: vs.leftPadding + vs.availableWidth / 2 - width / 2
             y: vs.topPadding
             width: 4
@@ -92,7 +92,7 @@ Item {
                 height: 1
                 color: Theme.textFaint
             }
-            Rectangle { // fill from 0 dB
+            RoundRect { // fill from 0 dB
                 anchors.horizontalCenter: parent.horizontalCenter
                 width: parent.width
                 radius: 2
@@ -103,15 +103,15 @@ Item {
                 height: Math.abs(zero - pos)
             }
         }
-        handle: Rectangle {
+        handle: RoundRect {
             x: vs.leftPadding + vs.availableWidth / 2 - width / 2
             y: vs.topPadding + vs.visualPosition * (vs.availableHeight - height)
             width: 18
             height: 10
             radius: Theme.squareShapes ? 1 : 5
             color: Theme.dark ? "#ffffff" : Theme.surface
-            border.color: vs.pressed ? Theme.accent : Theme.border
-            border.width: vs.pressed ? 2 : 1
+            borderColor: vs.pressed ? Theme.accent : Theme.border
+            borderWidth: vs.pressed ? 2 : 1
         }
     }
 
@@ -268,10 +268,11 @@ Item {
                                 implicitWidth: tabLabel.implicitWidth + 28
                                 implicitHeight: 30
                                 onClicked: Equalizer.mode = modelData.key
-                                background: Rectangle {
+                                background: RoundRect {
                                     radius: Theme.squareShapes ? 2 : 15
                                     color: parent.current ? Theme.accentSoft : (parent.hovered ? Theme.hover : "transparent")
-                                    border.color: parent.current ? Theme.accent : Theme.border
+                                    borderWidth: 1
+                                    borderColor: parent.current ? Theme.accent : Theme.border
                                 }
                                 contentItem: Label {
                                     id: tabLabel

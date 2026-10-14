@@ -196,12 +196,13 @@ Item {
     component ScopeSwitch: ColumnLayout {
         Layout.fillWidth: true
         spacing: 6
-        Rectangle {
+        RoundRect {
             implicitWidth: scopeRow.implicitWidth + 6
             implicitHeight: 34
             radius: Theme.radiusSmall + 3
             color: Theme.surfaceHi
-            border.color: Theme.border
+            borderWidth: 1
+            borderColor: Theme.border
             Row {
                 id: scopeRow
                 anchors.centerIn: parent
@@ -218,11 +219,11 @@ Item {
                         hoverEnabled: true
                         focusPolicy: Qt.NoFocus
                         onClicked: Theme.editingCompact = modelData.compact
-                        background: Rectangle {
+                        background: RoundRect {
                             radius: Theme.radiusSmall + 1
                             color: scopeButton.on ? Theme.accentSoft : scopeButton.hovered ? Theme.hover : "transparent"
-                            border.width: scopeButton.on ? 1 : 0
-                            border.color: Theme.accent
+                            borderWidth: scopeButton.on ? 1 : 0
+                            borderColor: Theme.accent
                         }
                         contentItem: Item {
                             Row {
@@ -323,11 +324,11 @@ Item {
                     hoverEnabled: true
                     focusPolicy: Qt.NoFocus
                     onClicked: picker.picked(modelData.value)
-                    background: Rectangle {
+                    background: RoundRect {
                         radius: Theme.radiusSmall + 2
                         color: tile.selected ? Theme.accentSoft : Theme.surfaceHi
-                        border.width: tile.selected ? 2 : 1
-                        border.color: tile.selected ? Theme.accent : (tile.hovered ? Theme.textFaint : Theme.border)
+                        borderWidth: tile.selected ? 2 : 1
+                        borderColor: tile.selected ? Theme.accent : (tile.hovered ? Theme.textFaint : Theme.border)
                     }
                     contentItem: Item {
                         Item { // the drawing, centred above the label
@@ -369,7 +370,7 @@ Item {
     // --- Previews for the pictures above (each gets `value`) ----------------
     // The window's background: the skin's colour with the accent's soft
     // glows or wash, as drawn by qml/shaders/backdrop.frag.
-    component BackdropPreview: Rectangle {
+    component BackdropPreview: RoundRect {
         id: bp
         property var value
         readonly property color a1: Theme.accent
@@ -383,7 +384,8 @@ Item {
         height: 48
         radius: 6
         color: Theme.solidBg
-        border.color: Theme.border
+        borderWidth: 1
+        borderColor: Theme.border
         clip: true
         Rectangle {
             anchors.fill: parent
@@ -457,14 +459,14 @@ Item {
     }
 
     // A window corner at its real radius.
-    component CornerPreview: Rectangle {
+    component CornerPreview: RoundRect {
         property var value
         width: 64
         height: 44
         radius: value
         color: Theme.solidBg
-        border.width: 2
-        border.color: Theme.textDim
+        borderWidth: 2
+        borderColor: Theme.textDim
     }
 
     // A small window on a wallpaper, with the outline as the app draws it.
@@ -490,14 +492,15 @@ Item {
     }
 
     // The Tracks page: the list alone, or three filter columns above it.
-    component BrowserPreview: Rectangle {
+    component BrowserPreview: RoundRect {
         id: bp
         property var value
         width: 84
         height: 48
         radius: 5
         color: Theme.solidBg
-        border.color: Theme.border
+        borderWidth: 1
+        borderColor: Theme.border
         Row { // Genre · Artist · Album
             visible: bp.value === true
             x: 5
@@ -550,14 +553,15 @@ Item {
     // A window corner with the three buttons in that style.
     // Seek and volume bars: a seek bar over a short volume bar, at rest.
     // Progress bar: a seek bar (the waveform a made-up one).
-    component SliderStylePreview: Rectangle {
+    component SliderStylePreview: RoundRect {
         id: ssp
         property var value
         width: 92
         height: 44
         radius: 5
         color: Theme.solidBg
-        border.color: Theme.border
+        borderWidth: 1
+        borderColor: Theme.border
         LSlider {
             anchors.centerIn: parent
             width: 76
@@ -571,14 +575,15 @@ Item {
     }
 
     // Volume bar: the speaker and a short bar.
-    component VolumeStylePreview: Rectangle {
+    component VolumeStylePreview: RoundRect {
         id: vsp
         property var value
         width: 92
         height: 44
         radius: 5
         color: Theme.solidBg
-        border.color: Theme.border
+        borderWidth: 1
+        borderColor: Theme.border
         Row {
             anchors.centerIn: parent
             spacing: 6
@@ -602,7 +607,7 @@ Item {
 
     // Previous, play and next, the play button in that shape, the glyphs
     // (and tiles) in the icon style chosen above.
-    component TransportStylePreview: Rectangle {
+    component TransportStylePreview: RoundRect {
         id: tsp
         property var value
         readonly property bool round: value === "round"
@@ -612,7 +617,8 @@ Item {
         height: 44
         radius: 5
         color: Theme.solidBg
-        border.color: Theme.border
+        borderWidth: 1
+        borderColor: Theme.border
         Row {
             anchors.centerIn: parent
             spacing: 4
@@ -627,19 +633,19 @@ Item {
                     readonly property bool shaped: main && tsp.value !== "sonkore"
                     width: shaped || (main && tsp.tiles) ? 22 : tsp.tiles ? 19 : 16
                     height: width
-                    Rectangle { // a tile (IconButton)
+                    RoundRect { // a tile (IconButton)
                         visible: tsp.tiles && !cell.shaped
                         anchors.fill: parent
                         radius: 5
                         color: Theme.surfaceHi
                     }
-                    Rectangle { // as PlayButton draws it
+                    RoundRect { // as PlayButton draws it
                         visible: cell.main && tsp.value !== "sonkore"
                         anchors.fill: parent
                         radius: width / 2
                         color: tsp.round ? (Theme.dark ? Theme.text : Theme.accent) : "transparent"
-                        border.width: tsp.value === "outline" ? 1 : 0
-                        border.color: Theme.text
+                        borderWidth: tsp.value === "outline" ? 1 : 0
+                        borderColor: Theme.text
                     }
                     Icon {
                         anchors.centerIn: parent
@@ -655,14 +661,15 @@ Item {
         }
     }
 
-    component WindowButtonsPreview: Rectangle {
+    component WindowButtonsPreview: RoundRect {
         id: wbp
         property var value
         width: 92
         height: 44
         radius: 5
         color: Theme.solidBg
-        border.color: Theme.border
+        borderWidth: 1
+        borderColor: Theme.border
         clip: true
         Row {
             anchors.top: parent.top
@@ -693,7 +700,7 @@ Item {
     }
 
     // A few icons of the bar and the sidebar in that style.
-    component IconStylePreview: Rectangle {
+    component IconStylePreview: RoundRect {
         id: isp
         property var value
         readonly property bool tiles: value === "tile"
@@ -701,7 +708,8 @@ Item {
         height: 50
         radius: 5
         color: Theme.solidBg
-        border.color: Theme.border
+        borderWidth: 1
+        borderColor: Theme.border
         Row {
             anchors.centerIn: parent
             spacing: isp.tiles ? 4 : 7
@@ -728,7 +736,7 @@ Item {
     }
 
     // Buttons in a bar: roomy or tight.
-    component DensityPreview: Rectangle {
+    component DensityPreview: RoundRect {
         id: dp
         property var value
         readonly property bool compact: value === "compact"
@@ -737,7 +745,8 @@ Item {
         height: 44
         radius: 5
         color: Theme.solidBg
-        border.color: Theme.border
+        borderWidth: 1
+        borderColor: Theme.border
         Rectangle { // a bar
             anchors.bottom: parent.bottom
             anchors.bottomMargin: 1
@@ -752,7 +761,7 @@ Item {
                 spacing: dp.compact ? 4 : dp.spacious ? 8 : 7
                 Repeater {
                     model: 4
-                    Rectangle {
+                    RoundRect {
                         required property int index
                         width: dp.compact ? 8 : dp.spacious ? 14 : 12
                         height: width
@@ -767,7 +776,7 @@ Item {
     // Rows of a track list as set up: density (`density`), covers and
     // alternating colours. The three list pickers each vary one of them and
     // draw the other two as they are now, so every preview follows the others.
-    component ListPreview: Rectangle {
+    component ListPreview: RoundRect {
         id: lp
         property var value
         property string density: "comfortable"
@@ -781,7 +790,8 @@ Item {
         height: 48
         radius: 5
         color: Theme.solidBg
-        border.color: Theme.border
+        borderWidth: 1
+        borderColor: Theme.border
         clip: true
         Column {
             x: 3
@@ -872,10 +882,11 @@ Item {
                 implicitWidth: segLabel.implicitWidth + 24
                 implicitHeight: 30
                 onClicked: seg.picked(modelData.value)
-                background: Rectangle {
+                background: RoundRect {
                     radius: Theme.radiusSmall
                     color: parent.active ? Theme.accent : (parent.hovered ? Theme.hover : Theme.surfaceHi)
-                    border.color: parent.active ? Theme.accent : Theme.border
+                    borderWidth: 1
+                    borderColor: parent.active ? Theme.accent : Theme.border
                 }
                 contentItem: Label {
                     id: segLabel
@@ -903,7 +914,7 @@ Item {
     // The tabs share the width of the page: never wider than the window;
     // their icons go when there is no room for them. A segmented control:
     // one track, the open tab a raised piece on it.
-    Rectangle {
+    RoundRect {
         id: tabTrack
         anchors.top: parent.top
         anchors.topMargin: 8 // right under the window's title bar
@@ -912,7 +923,8 @@ Item {
         height: tabStrip.height + 8
         radius: Theme.radiusSmall + 4
         color: Theme.surface
-        border.color: Theme.border
+        borderWidth: 1
+        borderColor: Theme.border
     }
     RowLayout {
         id: tabStrip
@@ -948,12 +960,12 @@ Item {
                 hoverEnabled: true
                 focusPolicy: Qt.NoFocus
                 onClicked: Prefs.store.settingsTab = modelData.id
-                background: Rectangle {
+                background: RoundRect {
                     radius: Theme.radiusSmall + 1
                     color: tabButton.active ? Theme.hover
                          : tabButton.hovered ? Qt.rgba(Theme.text.r, Theme.text.g, Theme.text.b, 0.04) : "transparent"
-                    border.width: tabButton.active ? 1 : 0
-                    border.color: Qt.rgba(Theme.text.r, Theme.text.g, Theme.text.b, Theme.dark ? 0.08 : 0.12)
+                    borderWidth: tabButton.active ? 1 : 0
+                    borderColor: Qt.rgba(Theme.text.r, Theme.text.g, Theme.text.b, Theme.dark ? 0.08 : 0.12)
                     Behavior on color { ColorAnimation { duration: 120 } }
                 }
                 contentItem: Item {
@@ -1012,13 +1024,14 @@ Item {
             spacing: 16
 
             // Restart banner (scale / renderer changes)
-            Rectangle {
+            RoundRect {
                 Layout.fillWidth: true
                 visible: App.restartRequired
                 implicitHeight: restartRow.implicitHeight + 20
                 radius: Theme.radius
                 color: Theme.accentSoft
-                border.color: Theme.accent
+                borderWidth: 1
+                borderColor: Theme.accent
                 RowLayout {
                     id: restartRow
                     anchors.fill: parent
@@ -1318,16 +1331,16 @@ Item {
                                 height: skinGrid.cardHeight
                                 hoverEnabled: true
                                 onClicked: Theme.setSkin(skinCard.modelData.skin)
-                                background: Rectangle {
+                                background: RoundRect {
                                     radius: 10
                                     color: Theme.surfaceHi
-                                    border.width: skinCard.selected ? 2 : 1
-                                    border.color: skinCard.selected ? Theme.accent : (skinCard.hovered ? Theme.textFaint : Theme.border)
+                                    borderWidth: skinCard.selected ? 2 : 1
+                                    borderColor: skinCard.selected ? Theme.accent : (skinCard.hovered ? Theme.textFaint : Theme.border)
                                 }
                                 contentItem: Item {
                                     // miniature of the skin, laid out as the window: the frame
                                     // (top bar, sidebar, player bar) and the list's panel in it
-                                    Rectangle {
+                                    RoundRect {
                                         id: miniature
                                         readonly property var tones: Theme.store.invertedSkins.length >= 0 ? Theme.tones(skinCard.modelData) : ({})
                                         readonly property real side: Math.round(width * 0.28)
@@ -1337,7 +1350,8 @@ Item {
                                         height: 74
                                         radius: Math.min(8, skinCard.modelData.radius)
                                         color: tones.frame
-                                        border.color: skinCard.modelData.border
+                                        borderWidth: 1
+                                        borderColor: skinCard.modelData.border
                                         clip: true
                                         // sidebar entries
                                         Column {
@@ -1392,7 +1406,7 @@ Item {
                                             height: 16
                                             color: miniature.tones.frame
                                             Rectangle { width: parent.width; height: 1; color: skinCard.modelData.border }
-                                            Rectangle {
+                                            RoundRect {
                                                 anchors.centerIn: parent
                                                 width: 8; height: 8; radius: 4
                                                 color: skinCard.modelData.accent
@@ -1484,11 +1498,11 @@ Item {
                                 onClicked: Theme.edit("accentOverride", modelData)
                                 ToolTip.visible: hovered && modelData.length === 0
                                 ToolTip.text: qsTr("Theme default")
-                                background: Rectangle {
+                                background: RoundRect {
                                     radius: 12
                                     color: swatch.modelData.length > 0 ? swatch.modelData : Theme.skin.accent
-                                    border.width: swatch.active ? 3 : 1
-                                    border.color: swatch.active ? Theme.text : Theme.border
+                                    borderWidth: swatch.active ? 3 : 1
+                                    borderColor: swatch.active ? Theme.text : Theme.border
                                     Label {
                                         anchors.centerIn: parent
                                         visible: swatch.modelData.length === 0
@@ -1699,13 +1713,13 @@ Item {
                                     anchors.leftMargin: 10
                                     anchors.rightMargin: 10
                                     spacing: 10
-                                    Rectangle {
+                                    RoundRect {
                                         implicitWidth: 16
                                         implicitHeight: 16
                                         radius: 8
                                         color: "transparent"
-                                        border.width: 2
-                                        border.color: deviceRow.selected ? Theme.accent : Theme.textFaint
+                                        borderWidth: 2
+                                        borderColor: deviceRow.selected ? Theme.accent : Theme.textFaint
                                         Rectangle {
                                             anchors.centerIn: parent
                                             width: 8

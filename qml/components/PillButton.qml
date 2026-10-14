@@ -15,13 +15,13 @@ AbstractButton {
     hoverEnabled: true
     focusPolicy: Qt.NoFocus
 
-    background: Rectangle {
+    background: RoundRect {
         radius: Theme.squareShapes ? Theme.radiusSmall : height / 2
         color: control.primary
                ? (control.pressed ? Qt.darker(Theme.accent, 1.15) : (control.hovered ? Qt.lighter(Theme.accent, 1.08) : Theme.accent))
                : (control.pressed ? Theme.border : (control.hovered ? Theme.hover : Theme.surfaceHi))
-        border.width: control.primary ? 0 : 1
-        border.color: Theme.border
+        borderWidth: control.primary ? 0 : 1
+        borderColor: Theme.border
         Behavior on color { ColorAnimation { duration: 120 } }
     }
     contentItem: Item {

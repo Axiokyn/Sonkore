@@ -16,12 +16,12 @@ Item {
     implicitWidth: 48
     implicitHeight: 48
 
-    Rectangle {
+    RoundRect {
         anchors.fill: parent
         radius: root.radius
         color: Theme.surfaceHi
-        border.width: root.hasCover ? 0 : 1
-        border.color: Theme.border
+        borderWidth: root.hasCover ? 0 : 1
+        borderColor: Theme.border
         Icon {
             anchors.centerIn: parent
             visible: !root.hasCover

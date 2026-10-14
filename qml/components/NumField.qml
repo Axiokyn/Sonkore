@@ -37,10 +37,11 @@ TextField {
         notation: DoubleValidator.StandardNotation
         locale: "C"
     }
-    background: Rectangle {
+    background: RoundRect {
         radius: Theme.radiusSmall
         color: Theme.surfaceHi
-        border.color: field.activeFocus ? Theme.accent : Theme.border
+        borderWidth: 1
+        borderColor: field.activeFocus ? Theme.accent : Theme.border
     }
 
     Label {

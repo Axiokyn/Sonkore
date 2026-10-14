@@ -54,9 +54,11 @@ public:
 
         // The region to repaint, in the window's logical pixels (as the
         // painter is now: set before the transform below).
+        // (Nothing to repaint: none.)
         const QRegion* clip = state->clipRegion();
-        if (clip && !clip->isEmpty())
-            p->setClipRegion(*clip, Qt::ReplaceClip);
+        if (!clip || clip->isEmpty())
+            return;
+        p->setClipRegion(*clip, Qt::ReplaceClip);
 
         // From here on in the buffer's own pixels.
         const qreal dpr = p->device()->devicePixelRatio();

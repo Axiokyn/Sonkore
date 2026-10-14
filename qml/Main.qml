@@ -1099,14 +1099,14 @@ ApplicationWindow {
         onCloseRequested: window.close()
     }
 
-    Rectangle {
+    RoundRect {
         anchors.fill: parent
         anchors.margins: 10
         visible: globalDrop.containsDrag
         radius: Theme.radius + 4
         color: Theme.accentSoft
-        border.width: 2
-        border.color: Theme.accent
+        borderWidth: 2
+        borderColor: Theme.accent
         Label {
             anchors.centerIn: parent
             text: qsTr("Drop music to add it to your library and play it")
@@ -1155,7 +1155,7 @@ ApplicationWindow {
     }
 
     // --- Graphics settings were rolled back after a failed start -------------------
-    Rectangle {
+    RoundRect {
         id: recoveryBanner
         visible: App.recoveryMessage.length > 0
         anchors.top: parent.top
@@ -1166,7 +1166,8 @@ ApplicationWindow {
         z: 998
         radius: Theme.radius
         color: Theme.surfaceHi
-        border.color: Theme.warn
+        borderWidth: 1
+        borderColor: Theme.warn
         RowLayout {
             id: recoveryRow
             anchors.fill: parent

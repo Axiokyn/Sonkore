@@ -99,11 +99,11 @@ Rectangle {
         ToolTip.visible: collapsed && hovered
         ToolTip.delay: 350
         ToolTip.text: text + (badge.length > 0 ? "  ·  " + badge : "")
-        background: Rectangle {
+        background: RoundRect {
             radius: Theme.radiusSmall
             color: navDrop.containsDrag ? Theme.accentSoft : (item.current ? Theme.accentSoft : (item.hovered ? Theme.hover : "transparent"))
-            border.width: navDrop.containsDrag ? 1.5 : 0
-            border.color: Theme.accent
+            borderWidth: navDrop.containsDrag ? 1.5 : 0
+            borderColor: Theme.accent
         }
         DropArea {
             id: navDrop
@@ -259,14 +259,14 @@ Rectangle {
                 visible: libraryGrip.active
                 color: Theme.accent
             }
-            Rectangle {
+            RoundRect {
                 anchors.centerIn: parent
                 width: libraryGrip.active ? 40 : 28
                 height: 5
                 radius: 2.5
                 color: libraryGrip.active ? Theme.accent : Theme.sidebar
-                border.width: 1
-                border.color: libraryGrip.active ? Theme.accent : Qt.rgba(Theme.text.r, Theme.text.g, Theme.text.b, Theme.dark ? 0.28 : 0.32)
+                borderWidth: 1
+                borderColor: libraryGrip.active ? Theme.accent : Qt.rgba(Theme.text.r, Theme.text.g, Theme.text.b, Theme.dark ? 0.28 : 0.32)
                 Behavior on width { NumberAnimation { duration: 120 } }
             }
             HoverHandler { id: libraryHover; cursorShape: Qt.SplitVCursor }
@@ -351,14 +351,14 @@ Rectangle {
                 color: Theme.accent
             }
             // Grip in the middle of the line.
-            Rectangle {
+            RoundRect {
                 anchors.centerIn: parent
                 width: splitGrip.active ? 40 : 28
                 height: 5
                 radius: 2.5
                 color: splitGrip.active ? Theme.accent : Theme.sidebar
-                border.width: 1
-                border.color: splitGrip.active ? Theme.accent : Qt.rgba(Theme.text.r, Theme.text.g, Theme.text.b, Theme.dark ? 0.28 : 0.32)
+                borderWidth: 1
+                borderColor: splitGrip.active ? Theme.accent : Qt.rgba(Theme.text.r, Theme.text.g, Theme.text.b, Theme.dark ? 0.28 : 0.32)
                 Behavior on width { NumberAnimation { duration: 120 } }
             }
             HoverHandler { id: splitHover; cursorShape: Qt.SplitVCursor }
@@ -480,13 +480,13 @@ Rectangle {
                 width: playlistList.width - sidebar.edgeInset
                 height: AppActions.trackDragActive ? 46 : 0
                 visible: AppActions.trackDragActive
-                Rectangle {
+                RoundRect {
                     anchors.fill: parent
                     anchors.topMargin: 6
                     radius: Theme.radiusSmall
                     color: newDrop.containsDrag ? Theme.accentSoft : "transparent"
-                    border.width: 1.5
-                    border.color: newDrop.containsDrag ? Theme.accent : Theme.textFaint
+                    borderWidth: 1.5
+                    borderColor: newDrop.containsDrag ? Theme.accent : Theme.textFaint
                     Row {
                         anchors.centerIn: parent
                         spacing: 6

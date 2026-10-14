@@ -392,10 +392,11 @@ Rectangle {
                 rightPadding: 5
                 topPadding: 1
                 bottomPadding: 1
-                background: Rectangle {
+                background: RoundRect {
                     radius: height / 2
                     color: "transparent"
-                    border.color: Theme.accent
+                    borderWidth: 1
+                    borderColor: Theme.accent
                     opacity: 0.6
                 }
             }

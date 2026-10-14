@@ -19,6 +19,11 @@ class RoundBox : public QQuickItem {
     Q_PROPERTY(qreal radius READ radius WRITE setRadius NOTIFY changed)
     Q_PROPERTY(qreal borderWidth READ borderWidth WRITE setBorderWidth NOTIFY changed)
     Q_PROPERTY(QColor borderColor READ borderColor WRITE setBorderColor NOTIFY changed)
+    // A corner of its own (as a Rectangle's): below 0, `radius`.
+    Q_PROPERTY(qreal topLeftRadius MEMBER m_topLeft WRITE setTopLeftRadius NOTIFY changed)
+    Q_PROPERTY(qreal topRightRadius MEMBER m_topRight WRITE setTopRightRadius NOTIFY changed)
+    Q_PROPERTY(qreal bottomLeftRadius MEMBER m_bottomLeft WRITE setBottomLeftRadius NOTIFY changed)
+    Q_PROPERTY(qreal bottomRightRadius MEMBER m_bottomRight WRITE setBottomRightRadius NOTIFY changed)
 
 public:
     explicit RoundBox(QQuickItem* parent = nullptr);
@@ -31,9 +36,14 @@ public:
     void setBorderWidth(qreal width);
     QColor borderColor() const { return m_borderColor; }
     void setBorderColor(const QColor& color);
+    void setTopLeftRadius(qreal r) { setCorner(m_topLeft, r); }
+    void setTopRightRadius(qreal r) { setCorner(m_topRight, r); }
+    void setBottomLeftRadius(qreal r) { setCorner(m_bottomLeft, r); }
+    void setBottomRightRadius(qreal r) { setCorner(m_bottomRight, r); }
 
     struct Look {
-        qreal width = 0, height = 0, radius = 0, borderWidth = 0;
+        qreal width = 0, height = 0, borderWidth = 0;
+        qreal topLeft = 0, topRight = 0, bottomRight = 0, bottomLeft = 0; // radii
         QColor color, borderColor;
     };
 
@@ -45,7 +55,10 @@ protected:
     void geometryChange(const QRectF& newGeometry, const QRectF& oldGeometry) override;
 
 private:
+    void setCorner(qreal& corner, qreal radius);
+
     QColor m_color = Qt::white;
     qreal m_radius = 0, m_borderWidth = 0;
+    qreal m_topLeft = -1, m_topRight = -1, m_bottomLeft = -1, m_bottomRight = -1;
     QColor m_borderColor = Qt::transparent;
 };

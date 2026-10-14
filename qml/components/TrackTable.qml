@@ -331,7 +331,7 @@ Item {
     // (they would show through it while a background style is on). A soft
     // rounded band, a little below the page title.
     readonly property int headerGap: 2
-    Rectangle {
+    RoundRect {
         id: headerBand
         // At the top of the page panel the band is the panel's top: edge to
         // edge, up to its rounded corner, a hairline under it. With something
@@ -351,7 +351,8 @@ Item {
         topLeftRadius: joined ? 14 : radius
         topRightRadius: joined ? 0 : radius
         color: Theme.surface
-        border.color: joined ? "transparent" : Qt.rgba(Theme.text.r, Theme.text.g, Theme.text.b, Theme.dark ? 0.05 : 0.08)
+        borderWidth: 1
+        borderColor: joined ? "transparent" : Qt.rgba(Theme.text.r, Theme.text.g, Theme.text.b, Theme.dark ? 0.05 : 0.08)
         Rectangle {
             visible: headerBand.joined
             anchors.bottom: parent.bottom
@@ -523,7 +524,7 @@ Item {
             }
 
             // Column being moved, and where it would land.
-            Rectangle {
+            RoundRect {
                 visible: table.dragKey.length > 0
                 x: table.dragX
                 y: 3
@@ -531,7 +532,8 @@ Item {
                 height: header.height - 6
                 radius: Theme.radiusSmall
                 color: Theme.surfaceHi
-                border.color: Theme.accent
+                borderWidth: 1
+                borderColor: Theme.accent
                 opacity: 0.95
                 SectionLabel {
                     anchors.verticalCenter: parent.verticalCenter

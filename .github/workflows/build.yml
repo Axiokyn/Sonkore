@@ -53,9 +53,19 @@ jobs:
       - name: Build environment (as packaging/appimage/Containerfile)
         run: |
           printf 'fastestmirror=True\nmax_parallel_downloads=10\n' >> /etc/dnf/dnf.conf
-          dnf -y install epel-release dnf-plugins-core
+          # Mirrors caught half-way through a sync answer 404 for the new
+          # metadata: fresh metadata and another try, up to three.
+          dnf_install() {
+            for attempt in 1 2 3; do
+              dnf -y install "$@" && return 0
+              dnf clean all
+              sleep 30
+            done
+            return 1
+          }
+          dnf_install epel-release dnf-plugins-core
           dnf config-manager --set-enabled crb
-          dnf -y install \
+          dnf_install \
             gcc-toolset-13-gcc gcc-toolset-13-gcc-c++ cmake ninja-build git make nasm \
             pkgconf-pkg-config python3 python3-pip xz file findutils diffutils zlib-devel \
             mesa-libGL-devel mesa-libEGL-devel libglvnd-devel vulkan-headers vulkan-loader \

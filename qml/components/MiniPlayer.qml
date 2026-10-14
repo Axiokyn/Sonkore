@@ -767,7 +767,7 @@ Rectangle {
         descending: Prefs.store.compactSortDesc
     }
 
-    Rectangle {
+    RoundRect {
         id: listFrame
         // Shown by the room there is, not by the toggle: the window resizes
         // just after it (once no frame is in flight, Main), and in between the
@@ -787,7 +787,8 @@ Rectangle {
         bottomRightRadius: Math.max(Theme.radiusSmall, mini.cornerRadius - 6)
         // the lists' darker panel colour, as the full view's page
         color: Theme.pane
-        border.color: Qt.rgba(Theme.text.r, Theme.text.g, Theme.text.b, Theme.dark ? 0.045 : 0.07)
+        borderWidth: 1
+        borderColor: Qt.rgba(Theme.text.r, Theme.text.g, Theme.text.b, Theme.dark ? 0.045 : 0.07)
 
         // As the full view's: the panel's top is a band, edge to edge, under
         // the source and the column heads, a hairline under it.
@@ -1202,14 +1203,14 @@ Rectangle {
                         contentItem: Row {
                             leftPadding: 6
                             spacing: 6
-                            Rectangle { // the box
+                            RoundRect { // the box
                                 anchors.verticalCenter: parent.verticalCenter
                                 width: 13
                                 height: 13
                                 radius: 3
                                 color: columnBox.on ? Theme.accent : "transparent"
-                                border.width: columnBox.on ? 0 : 1
-                                border.color: Theme.textFaint
+                                borderWidth: columnBox.on ? 0 : 1
+                                borderColor: Theme.textFaint
                                 Icon {
                                     anchors.centerIn: parent
                                     visible: columnBox.on

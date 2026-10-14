@@ -192,13 +192,13 @@ Item {
                     }
                     event.accept(Qt.CopyAction)
                 }
-                Rectangle {
+                RoundRect {
                     anchors.fill: parent
                     visible: drop.containsDrag
                     radius: Theme.radius
                     color: "transparent"
-                    border.width: 2
-                    border.color: Theme.accent
+                    borderWidth: 2
+                    borderColor: Theme.accent
                 }
             }
         }

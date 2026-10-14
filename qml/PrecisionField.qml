@@ -59,7 +59,7 @@ RowLayout {
         text: "−"
         implicitWidth: 36
         implicitHeight: 36
-        background: Rectangle { radius: Theme.radiusSmall; color: parent.pressed ? Theme.border : (parent.hovered ? Theme.hover : Theme.surfaceHi); border.color: Theme.border }
+        background: RoundRect { radius: Theme.radiusSmall; color: parent.pressed ? Theme.border : (parent.hovered ? Theme.hover : Theme.surfaceHi); borderWidth: 1; borderColor: Theme.border }
         contentItem: Label { text: parent.text; color: Theme.text; font.pixelSize: 16; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
         autoRepeat: true
         autoRepeatDelay: 350
@@ -84,12 +84,12 @@ RowLayout {
         color: acceptableInput ? Theme.text : Theme.warn
         selectionColor: Theme.accent
         selectedTextColor: Theme.onAccent
-        background: Rectangle {
+        background: RoundRect {
             implicitHeight: 36
             radius: Theme.radiusSmall
             color: Theme.surfaceHi
-            border.width: field.activeFocus ? 1.5 : 1
-            border.color: field.activeFocus ? Theme.accent : Theme.border
+            borderWidth: field.activeFocus ? 1.5 : 1
+            borderColor: field.activeFocus ? Theme.accent : Theme.border
         }
 
         validator: DoubleValidator {
@@ -119,7 +119,7 @@ RowLayout {
         text: "+"
         implicitWidth: 36
         implicitHeight: 36
-        background: Rectangle { radius: Theme.radiusSmall; color: parent.pressed ? Theme.border : (parent.hovered ? Theme.hover : Theme.surfaceHi); border.color: Theme.border }
+        background: RoundRect { radius: Theme.radiusSmall; color: parent.pressed ? Theme.border : (parent.hovered ? Theme.hover : Theme.surfaceHi); borderWidth: 1; borderColor: Theme.border }
         contentItem: Label { text: parent.text; color: Theme.text; font.pixelSize: 16; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
         autoRepeat: true
         autoRepeatDelay: 350

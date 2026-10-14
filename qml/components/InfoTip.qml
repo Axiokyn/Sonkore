@@ -24,10 +24,11 @@ Icon {
             color: Theme.text
             font.pixelSize: Theme.fontSmall + 1
         }
-        background: Rectangle {
+        background: RoundRect {
             radius: Theme.radiusSmall
             color: Theme.surfaceHi
-            border.color: Theme.border
+            borderWidth: 1
+            borderColor: Theme.border
         }
     }
 }

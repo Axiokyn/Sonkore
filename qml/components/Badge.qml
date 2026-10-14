@@ -3,7 +3,7 @@ import QtQuick.Controls
 import Sonkore
 
 // Small rounded label: format tags, bit-perfect status...
-Rectangle {
+RoundRect {
     id: root
 
     property alias text: label.text
@@ -17,8 +17,8 @@ Rectangle {
     implicitHeight: 18
     radius: Theme.squareShapes ? 2 : 9
     color: filled ? tone : Qt.rgba(tone.r, tone.g, tone.b, 0.14)
-    border.width: filled ? 0 : 1
-    border.color: Qt.rgba(tone.r, tone.g, tone.b, 0.35)
+    borderWidth: filled ? 0 : 1
+    borderColor: Qt.rgba(tone.r, tone.g, tone.b, 0.35)
 
     Label {
         id: label

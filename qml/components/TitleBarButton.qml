@@ -40,7 +40,7 @@ AbstractButton {
         }
         // cinnamon: the close button is a blue disc; the others a faint
         // round highlight on hover
-        Rectangle {
+        RoundRect {
             visible: wb.style === "cinnamon"
             anchors.centerIn: parent
             width: wb.danger ? 18 : 22
@@ -50,7 +50,7 @@ AbstractButton {
                  : Qt.rgba(Theme.text.r, Theme.text.g, Theme.text.b, wb.pressed ? 0.16 : wb.hovered ? 0.1 : 0)
         }
         // the round styles
-        Rectangle {
+        RoundRect {
             visible: wb.style !== "windows" && wb.style !== "minimal" && wb.style !== "cinnamon"
             anchors.centerIn: parent
             width: wb.style === "mac" ? 13 : wb.style === "gnome" ? 24 : 26
@@ -60,8 +60,8 @@ AbstractButton {
                  : wb.style === "gnome" ? Qt.rgba(Theme.text.r, Theme.text.g, Theme.text.b, wb.pressed ? 0.2 : wb.hovered ? 0.15 : 0.09)
                  : wb.danger && wb.hovered ? (wb.pressed ? Qt.darker("#da4453", 1.15) : "#da4453")
                  : Qt.rgba(Theme.text.r, Theme.text.g, Theme.text.b, wb.pressed ? 0.18 : wb.hovered ? 0.12 : 0)
-            border.width: wb.style === "mac" ? 1 : 0
-            border.color: Qt.rgba(0, 0, 0, 0.18)
+            borderWidth: wb.style === "mac" ? 1 : 0
+            borderColor: Qt.rgba(0, 0, 0, 0.18)
         }
     }
     contentItem: Item {

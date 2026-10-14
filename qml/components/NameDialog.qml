@@ -35,10 +35,11 @@ Popup {
     padding: 20
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
 
-    background: Rectangle {
+    background: RoundRect {
         radius: Theme.radius + 2
         color: Theme.surface
-        border.color: Theme.border
+        borderWidth: 1
+        borderColor: Theme.border
     }
     Overlay.modal: Rectangle { color: Qt.rgba(0, 0, 0, 0.45) }
 
@@ -57,11 +58,12 @@ Popup {
             color: Theme.text
             placeholderTextColor: Theme.textFaint
             selectByMouse: true
-            background: Rectangle {
+            background: RoundRect {
                 implicitHeight: 36
                 radius: Theme.radiusSmall
                 color: Theme.surfaceHi
-                border.color: field.activeFocus ? Theme.accent : Theme.border
+                borderWidth: 1
+                borderColor: field.activeFocus ? Theme.accent : Theme.border
             }
             onAccepted: if (text.trim().length > 0) { root.accepted(text.trim()); root.close() }
         }

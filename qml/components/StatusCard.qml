@@ -5,7 +5,7 @@ import Sonkore
 
 // Top of a tool window (Equalizer, Pitch & tempo): what is set up, in large
 // type, its details under it, and the on / off switch with its state named.
-Rectangle {
+RoundRect {
     id: card
     property string title
     property string subtitle
@@ -17,7 +17,8 @@ Rectangle {
     implicitHeight: row.implicitHeight + 24
     radius: Theme.radius
     color: Theme.surface
-    border.color: Qt.rgba(Theme.text.r, Theme.text.g, Theme.text.b, Theme.dark ? 0.06 : 0.09)
+    borderWidth: 1
+    borderColor: Qt.rgba(Theme.text.r, Theme.text.g, Theme.text.b, Theme.dark ? 0.06 : 0.09)
 
     RowLayout {
         id: row

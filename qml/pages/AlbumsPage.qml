@@ -87,7 +87,7 @@ Item {
                                 opacity: cellHover.hovered ? 1 : 0
                                 Behavior on opacity { NumberAnimation { duration: 140 } }
                                 onClicked: page.playAlbum(cell.model.albumKey, false)
-                                background: Rectangle {
+                                background: RoundRect {
                                     radius: width / 2
                                     color: Theme.accent
                                 }
