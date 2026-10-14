@@ -445,51 +445,14 @@ Item {
             radius: 1
             color: Theme.border
         }
-        Repeater {
-            model: vz.value === "bars" || vz.value === "mirror" ? vz.levels.length : 0
-            Rectangle {
-                required property int index
-                x: index * 7 + 1
-                width: 4
-                height: Math.max(2, vz.levels[index] * vz.height)
-                y: vz.value === "mirror" ? (vz.height - height) / 2 : vz.height - height
-                radius: 1.5
-                color: Theme.accent
-                opacity: 0.45 + 0.55 * vz.levels[index]
-            }
-        }
-        Repeater {
-            model: vz.value === "dots" ? vz.levels.length : 0
-            Column {
-                id: dotColumn
-                required property int index
-                x: index * 7 + 1
-                anchors.bottom: parent.bottom
-                spacing: 2
-                Repeater {
-                    model: 5
-                    Rectangle {
-                        required property int index
-                        width: 4
-                        height: 4
-                        radius: 1
-                        color: Theme.accent
-                        opacity: (4 - index) < Math.round(vz.levels[dotColumn.index] * 5) ? 1 : 0.15
-                    }
-                }
-            }
-        }
-        Shape {
-            visible: vz.value === "line"
+        // The visualizer's own drawing, with fixed levels.
+        SpectrumView {
             anchors.fill: parent
-            ShapePath {
-                strokeColor: Theme.accent
-                strokeWidth: 2
-                fillColor: "transparent"
-                joinStyle: ShapePath.RoundJoin
-                capStyle: ShapePath.RoundCap
-                PathPolyline { path: vz.levels.map((l, i) => Qt.point(i * 7 + 3, vz.height - 1 - l * (vz.height - 2))) }
-            }
+            visible: vz.value !== "off"
+            style: vz.value
+            color: Theme.accent
+            levels: vz.levels
+            barFraction: 4 / 7
         }
     }
 

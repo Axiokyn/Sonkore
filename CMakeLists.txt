@@ -227,6 +227,8 @@ qt_add_qml_module(Sonkore
         src/ui/WaveformController.cpp
         src/ui/BackdropItem.hpp
         src/ui/BackdropItem.cpp
+        src/ui/SpectrumView.hpp
+        src/ui/SpectrumView.cpp
         src/library/Metadata.hpp
         src/library/Metadata.cpp
         src/library/TrackSort.hpp
