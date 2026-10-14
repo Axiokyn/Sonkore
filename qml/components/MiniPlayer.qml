@@ -79,7 +79,9 @@ Rectangle {
     Component.onCompleted: {
         if (visible)
             adoptColumns()
+        seenFolders = Library.folders.length
         checkSource()
+        pickFirstFolder()
     }
     function setColumn(key, on) {
         let k = columnKeys.filter(x => x !== key)
@@ -450,9 +452,10 @@ Rectangle {
         height: visible ? implicitHeight : 0
     }
 
-    // --- Controls: transport, then equalizer, pitch, play queue, volume,
-    // options. The equalizer and pitch buttons go on narrow windows (they
-    // are in the options menu too), then the volume slider.
+    // --- Controls: transport, then pitch, equalizer (in the full view's
+    // order), play queue, volume, options. The pitch and equalizer buttons go
+    // on narrow windows (they are in the options menu too), then the volume
+    // slider.
     RowLayout {
         id: toolbar
         anchors.left: parent.left
@@ -523,17 +526,17 @@ Rectangle {
         }
         StripButton {
             visible: mini.showStrip
-            iconName: "eq"
-            active: Equalizer.enabled
-            tip: Equalizer.enabled ? qsTr("Equalizer on — click to open") : qsTr("Equalizer off — click to open")
-            onClicked: AppActions.navigate("eq", "")
-        }
-        StripButton {
-            visible: mini.showStrip
             iconName: "wave"
             active: DspController.soundTouchActive
             tip: qsTr("Pitch / tempo (SoundTouch)")
             onClicked: AppActions.openSoundTouch()
+        }
+        StripButton {
+            visible: mini.showStrip
+            iconName: "eq"
+            active: Equalizer.enabled
+            tip: Equalizer.enabled ? qsTr("Equalizer on — click to open") : qsTr("Equalizer off — click to open")
+            onClicked: AppActions.navigate("eq", "")
         }
         StripButton {
             iconName: "queue"
@@ -613,8 +616,8 @@ Rectangle {
         LMenuItem { text: mini.listOpen ? qsTr("Hide play queue") : qsTr("Show play queue"); onTriggered: Prefs.store.compactPlaylist = !Prefs.store.compactPlaylist }
         LMenuItem { text: qsTr("Clear queue"); enabled: DspController.queue.length > 0; onTriggered: DspController.clearQueue() }
         LMenuSeparator {}
-        LMenuItem { text: qsTr("Equalizer"); onTriggered: AppActions.navigate("eq", "") }
         LMenuItem { text: qsTr("Pitch / tempo"); onTriggered: AppActions.openSoundTouch() }
+        LMenuItem { text: qsTr("Equalizer"); onTriggered: AppActions.navigate("eq", "") }
         LMenuItem { text: qsTr("Settings"); onTriggered: mini.settingsRequested() }
         LMenuSeparator {}
         LMenuItem { text: qsTr("Full view (Ctrl+M)"); onTriggered: mini.expandRequested() }
@@ -622,6 +625,45 @@ Rectangle {
 
     // --- Track list: the play queue or a library folder, one plain line per
     // track, as in Winamp's playlist -------------------------------------------
+    // Search: the list keeps the tracks that match as you type (every word
+    // in the title, artists, album, genre or codec). Ctrl+F opens it.
+    property string search: ""
+    property bool searchOpen: false
+    function openSearch() {
+        Prefs.store.compactPlaylist = true
+        searchOpen = true
+        listSearch.forceActiveFocus()
+        listSearch.selectAll()
+    }
+    function closeSearch() {
+        listSearch.clear()
+        searchOpen = false
+    }
+    // The playing track's row in the list shown (-1: not in it).
+    function playingRow() {
+        return showingQueue ? queueModel.rowOfListIndex(DspController.currentIndex)
+                            : folderModel.rowOfPath(DspController.currentPath)
+    }
+    // The locate button: the playing track in the middle of the list. Not
+    // in it: the search is cleared, then the list goes to the folder that
+    // holds it (the deepest in the menu), else to the queue.
+    function showPlaying() {
+        if (!hasTrack)
+            return
+        if (playingRow() < 0 && search.length > 0)
+            closeSearch()
+        if (playingRow() < 0) {
+            const path = DspController.currentPath
+            const holder = shownFolders.filter(f => path.startsWith(f.path + "/"))
+                                       .reduce((best, f) => !best || f.depth > best.depth ? f : best, null)
+            Prefs.store.compactSource = holder ? holder.path : ""
+        }
+        Qt.callLater(() => {
+            const row = playingRow()
+            if (row >= 0)
+                queueList.positionViewAtIndex(row, ListView.Center)
+        })
+    }
     // "" = the play queue, else the folder shown (kept between sessions).
     readonly property string source: Prefs.store.compactSource
     readonly property bool showingQueue: source.length === 0
@@ -680,7 +722,28 @@ Rectangle {
         if (!showingQueue && Prefs.store.compactMode && !Library.scanning && !folderTree.some(f => f.path === source))
             Prefs.store.compactSource = ""
     }
-    onFolderTreeChanged: checkSource()
+    // The library's first folder added (by the dialog or a drop, none
+    // before): once it is scanned the list shows its first folder instead of
+    // the empty queue. Remembered until then, the full view included.
+    function pickFirstFolder() {
+        if (Prefs.store.compactPickFolder && Prefs.store.compactMode && !Library.scanning && folderTree.length > 0) {
+            Prefs.store.compactPickFolder = false
+            Prefs.store.compactSource = folderTree[0].path
+        }
+    }
+    onFolderTreeChanged: {
+        checkSource()
+        pickFirstFolder()
+    }
+    property int seenFolders: -1
+    Connections {
+        target: Library
+        function onFoldersChanged() {
+            if (mini.seenFolders === 0 && Library.folders.length > 0)
+                Prefs.store.compactPickFolder = true
+            mini.seenFolders = Library.folders.length
+        }
+    }
     readonly property string sourceName: {
         if (showingQueue)
             return qsTr("Play queue")
@@ -692,11 +755,13 @@ Rectangle {
     TrackListModel {
         id: queueModel
         paths: Prefs.store.compactMode ? DspController.queue : []
+        search: mini.showingQueue ? mini.search : ""
     }
     TrackFilterModel {
         id: folderModel
         // Kept empty while the queue is shown ("" would be the whole library).
         folder: mini.showingQueue ? "/\u0001" : mini.source
+        search: mini.showingQueue ? "" : mini.search
         // "path": as the folder holds them, like the Folders page
         sortField: Prefs.store.compactSort
         descending: Prefs.store.compactSortDesc
@@ -745,9 +810,10 @@ Rectangle {
         // What the list shows: the queue or a folder.
         AbstractButton {
             id: sourceButton
+            visible: !mini.searchOpen // the search field takes its place
             anchors.top: parent.top
             anchors.left: parent.left
-            anchors.right: sortButton.left
+            anchors.right: locateButton.visible ? locateButton.left : searchButton.left
             anchors.margins: 4
             anchors.rightMargin: 2
             height: 28
@@ -927,6 +993,59 @@ Rectangle {
                 addNext = false
                 removeNext = ""
             }
+        }
+
+        SearchField {
+            id: listSearch
+            visible: mini.searchOpen
+            anchors.top: parent.top
+            anchors.left: parent.left
+            anchors.right: sourceButton.right
+            anchors.topMargin: 5
+            anchors.leftMargin: 5
+            implicitHeight: 26
+            font.pixelSize: Theme.fontSmall + 1
+            placeholderText: mini.showingQueue ? qsTr("Search the queue…") : qsTr("Search in this folder…")
+            onTextChanged: {
+                mini.search = text
+                // Cleared with its × (which takes the focus): it goes.
+                if (text.length === 0 && !activeFocus)
+                    mini.searchOpen = false
+            }
+            // Shown again (the list was closed): ready to type.
+            onVisibleChanged: if (visible && mini.searchOpen) forceActiveFocus()
+            // Left empty, it goes; with text it stays, the list filtered.
+            onActiveFocusChanged: if (!activeFocus && text.length === 0) mini.searchOpen = false
+            // Enter plays the first match.
+            Keys.onReturnPressed: if (queueList.count > 0) mini.playRow(0)
+            Keys.onEnterPressed: if (queueList.count > 0) mini.playRow(0)
+        }
+        // The playing track: the list goes to it.
+        IconButton {
+            id: locateButton
+            visible: mini.hasTrack
+            anchors.top: parent.top
+            anchors.right: searchButton.left
+            anchors.topMargin: 4
+            implicitWidth: 28
+            implicitHeight: 28
+            iconName: "locate"
+            iconSize: 14
+            tip: qsTr("Go to the playing track")
+            onClicked: mini.showPlaying()
+        }
+        IconButton {
+            id: searchButton
+            anchors.top: parent.top
+            anchors.right: sortButton.left
+            anchors.topMargin: 4
+            implicitWidth: 28
+            implicitHeight: 28
+            iconName: "search"
+            iconSize: 14
+            active: mini.search.length > 0
+            tip: mini.searchOpen ? qsTr("Close the search") : qsTr("Search in the list (Ctrl+F)")
+            onClicked: mini.searchOpen ? mini.closeSearch() : mini.openSearch()
         }
 
         // Sort: a folder keeps its order (Settings-free, remembered); the
@@ -1138,7 +1257,7 @@ Rectangle {
             }
             // The playing track in view when the list opens or changes.
             function revealCurrent() {
-                const row = mini.showingQueue ? DspController.currentIndex : folderModel.rowOfPath(DspController.currentPath)
+                const row = mini.playingRow()
                 if (row >= 0 && row < count)
                     positionViewAtIndex(row, ListView.Contain)
             }
@@ -1154,7 +1273,7 @@ Rectangle {
                 id: line
                 required property int index
                 required property var model
-                readonly property bool current: mini.showingQueue ? index === DspController.currentIndex
+                readonly property bool current: mini.showingQueue ? model.listIndex === DspController.currentIndex
                                                                   : model.path === DspController.currentPath
                 readonly property bool missing: model.missing === true
                 width: queueList.width - (queueBar.scrollable ? queueBar.width + 2 : 0)
@@ -1181,7 +1300,8 @@ Rectangle {
                     Label {
                         anchors.verticalCenter: parent.verticalCenter
                         width: 30
-                        text: (line.index + 1) + "."
+                        // a queue row keeps its place in the queue while searching
+                        text: ((mini.showingQueue ? line.model.listIndex : line.index) + 1) + "."
                         color: line.current ? Theme.accent : Theme.textFaint
                         font.pixelSize: Theme.fontSmall
                         font.features: { "tnum": 1 }
@@ -1270,7 +1390,7 @@ Rectangle {
         // No music at all: the way to add some.
         Column {
             anchors.centerIn: queueList
-            visible: queueList.count === 0 && Library.count === 0 && !Library.scanning
+            visible: queueList.count === 0 && Library.count === 0 && !Library.scanning && mini.search.length === 0
             spacing: 10
             Label {
                 anchors.horizontalCenter: parent.horizontalCenter
@@ -1289,8 +1409,9 @@ Rectangle {
         Label {
             anchors.centerIn: queueList
             width: parent.width - 24
-            visible: queueList.count === 0 && (Library.count > 0 || Library.scanning)
-            text: mini.showingQueue ? qsTr("The queue is empty.") : qsTr("No tracks in this folder.")
+            visible: queueList.count === 0 && (Library.count > 0 || Library.scanning || mini.search.length > 0)
+            text: mini.search.length > 0 ? qsTr("No tracks match “%1”").arg(mini.search)
+                : mini.showingQueue ? qsTr("The queue is empty.") : qsTr("No tracks in this folder.")
             horizontalAlignment: Text.AlignHCenter
             wrapMode: Text.Wrap
             color: Theme.textDim
@@ -1306,7 +1427,7 @@ Rectangle {
                 visible: mini.showingQueue
                 height: visible ? implicitHeight : 0
                 text: qsTr("Remove from queue")
-                onTriggered: DspController.removeFromQueue([lineMenu.row])
+                onTriggered: DspController.removeFromQueue([queueModel.listIndexAt(lineMenu.row)])
             }
             LMenuItem {
                 visible: !mini.showingQueue
@@ -1322,9 +1443,9 @@ Rectangle {
         if (row < 0)
             return
         if (showingQueue)
-            DspController.playIndex(row)
+            DspController.playIndex(queueModel.listIndexAt(row))
         else
-            DspController.playPaths(folderModel.paths(), row)
+            DspController.playPaths(folderModel.paths(), row) // the matches only, while searching
     }
 
     // The volume control menu, its right edge at the end of the volume

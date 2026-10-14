@@ -102,12 +102,26 @@ Rectangle {
                 Layout.minimumWidth: 0
                 spacing: 3
                 Label {
+                    id: titleLabel
                     Layout.fillWidth: true
                     text: bar.track.title || qsTr("Nothing playing")
                     elide: Text.ElideRight
-                    color: Theme.text
+                    color: titleHover.hovered && DspController.currentPath.length > 0 ? Theme.accent : Theme.text
                     font.pixelSize: Theme.fontBody + 1
                     font.weight: Font.DemiBold
+                    // A click: the list goes to the playing track.
+                    HoverHandler {
+                        id: titleHover
+                        enabled: DspController.currentPath.length > 0
+                        cursorShape: Qt.PointingHandCursor
+                    }
+                    TapHandler {
+                        enabled: DspController.currentPath.length > 0
+                        onTapped: AppActions.showPlayingRequested()
+                    }
+                    ToolTip.visible: titleHover.hovered
+                    ToolTip.delay: 600
+                    ToolTip.text: qsTr("Go to the playing track")
                 }
                 Label {
                     Layout.fillWidth: true

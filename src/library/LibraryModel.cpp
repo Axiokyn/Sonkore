@@ -232,6 +232,17 @@ const TrackMeta* LibraryModel::find(const QString& path) const
     return it == m_index.cend() ? nullptr : &m_tracks[it.value()];
 }
 
+QString LibraryModel::searchText(const QString& path) const
+{
+    const auto it = m_index.constFind(path);
+    return it == m_index.cend() ? QString() : m_searchText.value(it.value());
+}
+
+QString LibraryModel::searchText(const TrackMeta& t)
+{
+    return searchKey(t);
+}
+
 QVariantMap LibraryModel::track(const QString& path) const
 {
     if (const TrackMeta* t = find(path))

@@ -126,6 +126,10 @@ public:
 
     const QVector<sonkore::TrackMeta>& tracks() const { return m_tracks; }
     const sonkore::TrackMeta* find(const QString& path) const;
+    // The lower-case text a search looks in (title, artists, album, genre,
+    // codec): a library track's kept one, or made for another file's tags.
+    QString searchText(const QString& path) const;
+    static QString searchText(const sonkore::TrackMeta& t);
 
     // Track info as a QML map; reads tags directly for files not in the library.
     Q_INVOKABLE QVariantMap track(const QString& path) const;
@@ -159,6 +163,7 @@ public:
     int favoritesRevision() const { return m_favoritesRevision; }
     int favoriteCount() const { return static_cast<int>(m_favorites.size()); }
     Q_INVOKABLE bool isFavorite(const QString& path) const { return m_favorites.contains(path); }
+    Q_INVOKABLE bool contains(const QString& path) const { return m_index.contains(path); }
     Q_INVOKABLE void setFavorite(const QString& path, bool on);
     Q_INVOKABLE void toggleFavorite(const QString& path) { setFavorite(path, !isFavorite(path)); }
     // While on, new and changed files are measured after every scan.

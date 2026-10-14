@@ -17,7 +17,9 @@
 #include <QFileInfo>
 #include <QFontDatabase>
 #include <QHash>
+#include <QMouseEvent>
 #include <QProcess>
+#include <QQuickItem>
 #include <QQuickWindow>
 #include <QRegularExpression>
 #include <QScreen>
@@ -337,12 +339,31 @@ void AppController::setFrameLimit(int fps)
     emit settingsChanged();
 }
 
+// A click outside the text field being typed in ends the typing, as in
+// desktop apps: the field lets go of the keyboard (its highlighted edge goes,
+// its blinking caret stops redrawing the window, Space plays again). Qt Quick
+// leaves the focus where it was when the click lands on something that does
+// not take it, such as a list or an empty spot.
+static void releaseTextFocus(QQuickWindow* window, const QPointF& scenePos)
+{
+    QQuickItem* item = window->activeFocusItem();
+    if (!item || !(item->inherits("QQuickTextInput") || item->inherits("QQuickTextEdit")))
+        return;
+    if (!item->mapRectToScene(item->boundingRect()).contains(scenePos))
+        item->setFocus(false);
+}
+
 // Every redraw of a window starts as an UpdateRequest event, whatever asked
 // for it (scrolling, an animation, the visualizer) and whichever render loop
 // draws it. One that comes sooner than the limit allows is held back and
 // sent again when its turn comes; requests in between fold into it.
 bool AppController::eventFilter(QObject* watched, QEvent* event)
 {
+    if (event->type() == QEvent::MouseButtonPress) {
+        if (auto* window = qobject_cast<QQuickWindow*>(watched))
+            releaseTextFocus(window, static_cast<QMouseEvent*>(event)->scenePosition());
+        return false;
+    }
     if (event->type() != QEvent::UpdateRequest || m_frameLimit <= 0 || !watched->isWindowType())
         return false;
     if (!m_pacing.contains(watched))

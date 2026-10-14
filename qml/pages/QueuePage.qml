@@ -51,6 +51,8 @@ Item {
             queueMode: true
             dragOrigin: "queue"
             onActivated: (row) => DspController.playIndex(row)
+            // Opened: the playing track in view.
+            Component.onCompleted: Qt.callLater(revealPlaying)
             onRemoveRequested: (rows) => DspController.removeFromQueue(rows)
 
             Label {

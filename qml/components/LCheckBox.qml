@@ -12,15 +12,15 @@ CheckBox {
     spacing: 10
     opacity: enabled ? 1 : 0.45
 
-    indicator: Rectangle {
+    indicator: RoundRect {
         implicitWidth: 18
         implicitHeight: 18
         x: control.leftPadding
         y: control.topPadding + (control.availableHeight - height) / 2
         radius: 5
         color: control.checked ? Theme.accent : (control.hovered ? Theme.hover : "transparent")
-        border.width: control.checked ? 0 : 1.5
-        border.color: control.hovered ? Theme.textDim : Theme.textFaint
+        borderWidth: control.checked ? 0 : 1.5
+        borderColor: control.hovered ? Theme.textDim : Theme.textFaint
         Behavior on color { ColorAnimation { duration: 90 } }
         Icon {
             anchors.centerIn: parent

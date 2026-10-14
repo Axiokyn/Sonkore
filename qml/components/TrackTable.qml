@@ -266,6 +266,29 @@ Item {
         menu.popup(item, x, y)
     }
 
+    // The playing track in the middle of the list, when the list holds it
+    // (the player bar's title asks every open list: AppActions.revealPlaying).
+    function revealPlaying() {
+        const path = DspController.currentPath
+        if (path.length === 0)
+            return false
+        const row = queueMode ? DspController.currentIndex
+                  : isArray ? model.findIndex(t => t.path === path)
+                  : model.rowOfPath(path)
+        if (row < 0 || row >= list.count)
+            return false
+        list.positionViewAtIndex(row, ListView.Center)
+        return true
+    }
+    Connections {
+        target: AppActions
+        enabled: table.visible
+        function onRevealPlayingRequested() {
+            if (table.revealPlaying())
+                AppActions.revealed = true
+        }
+    }
+
     // Model changes invalidate row indices.
     onModelChanged: clearSelection()
     Connections {

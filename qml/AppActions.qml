@@ -17,6 +17,8 @@ QtObject {
     signal openSoundTouch()
     signal compactRequested(bool on)   // compact mode on / off (MiniPlayer)
     signal revealPlayingRequested()    // scroll the open track list to the playing track
+    property bool revealed: false      // ... set by the list that did
+    signal showPlayingRequested()      // the playing track in a list: the open one, else its folder
     signal removeFolderRequested(string path) // asks before taking a watched folder out
     property bool settingsOpen: false  // the settings window is shown
     property bool equalizerOpen: false // the equalizer window is shown

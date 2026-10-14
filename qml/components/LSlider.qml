@@ -56,14 +56,14 @@ Slider {
         height: control.trackHeight
 
         // groove and fill (every style but led and the waveforms)
-        Rectangle {
+        RoundRect {
             visible: control.look !== "led" && !control.waveLook
             anchors.fill: parent
             radius: control.look === "classic" ? 2 : height / 2
             color: control.groove
-            border.width: control.look === "classic" ? 1 : 0
-            border.color: Qt.rgba(0, 0, 0, Theme.dark ? 0.45 : 0.12)
-            Rectangle {
+            borderWidth: control.look === "classic" ? 1 : 0
+            borderColor: Qt.rgba(0, 0, 0, Theme.dark ? 0.45 : 0.12)
+            RoundRect {
                 visible: control.look !== "glow"
                 width: control.visualPosition * parent.width
                 height: parent.height
@@ -182,7 +182,7 @@ Slider {
         Behavior on size { NumberAnimation { duration: 80 } }
 
         // glow: a soft halo around the dot
-        Rectangle {
+        RoundRect {
             visible: parent.style === "glow"
             anchors.centerIn: parent
             width: parent.width + (control.active ? 10 : 6)
@@ -190,18 +190,18 @@ Slider {
             radius: width / 2
             color: Qt.rgba(control.fill.r, control.fill.g, control.fill.b, 0.25)
         }
-        Rectangle {
+        RoundRect {
             anchors.fill: parent
             radius: parent.style === "classic" ? 2 : width / 2
             color: parent.cursor ? Theme.text
                  : parent.style === "ring" ? Theme.solidBg
                  : parent.style === "glow" ? control.fill
                  : Theme.dark ? "#ffffff" : Theme.surface
-            border.width: parent.style === "ring" ? 2 : parent.cursor ? 0 : 1
-            border.color: parent.style === "ring" ? control.fill
-                        : parent.style === "glow" ? "transparent"
-                        : parent.style === "classic" ? Qt.rgba(0, 0, 0, Theme.dark ? 0.5 : 0.2)
-                        : Theme.dark ? "transparent" : Theme.border
+            borderWidth: parent.style === "ring" ? 2 : parent.cursor ? 0 : 1
+            borderColor: parent.style === "ring" ? control.fill
+                       : parent.style === "glow" ? "transparent"
+                       : parent.style === "classic" ? Qt.rgba(0, 0, 0, Theme.dark ? 0.5 : 0.2)
+                       : Theme.dark ? "transparent" : Theme.border
         }
     }
 }

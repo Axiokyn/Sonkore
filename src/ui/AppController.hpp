@@ -132,7 +132,8 @@ public slots:
     void handleSceneGraphError(const QString& message);
 
 protected:
-    // The frame limit: holds back each window's redraw requests.
+    // The frame limit: holds back each window's redraw requests. And a click
+    // outside the text field being typed in takes the keyboard from it.
     bool eventFilter(QObject* watched, QEvent* event) override;
 
 signals:

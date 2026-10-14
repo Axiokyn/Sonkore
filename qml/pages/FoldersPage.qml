@@ -31,10 +31,6 @@ Item {
     }
     Component.onCompleted: Qt.callLater(revealPlaying)
     onFolderChanged: Qt.callLater(revealPlaying)
-    Connections {
-        target: AppActions
-        function onRevealPlayingRequested() { page.revealPlaying() }
-    }
 
 
         // --- Tracks of the selected folder (the tree is in the sidebar) -------

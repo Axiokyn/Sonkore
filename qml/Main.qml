@@ -361,6 +361,29 @@ ApplicationWindow {
         page = target
     }
 
+    // The playing track in a list (the player bar's title, the mini
+    // player's locate button): in the open list when it holds it, else in its
+    // folder; a file outside the library in the play queue.
+    function showPlaying() {
+        const path = DspController.currentPath
+        if (path.length === 0)
+            return
+        if (compact) {
+            miniPlayer.showPlaying()
+            return
+        }
+        AppActions.revealed = false
+        AppActions.revealPlayingRequested()
+        if (AppActions.revealed)
+            return
+        if (Library.contains(path))
+            navigate("folders", path.substring(0, path.lastIndexOf("/")))
+        else
+            navigate("queue", "")
+        // A page that was already open shows it once it is laid out.
+        Qt.callLater(AppActions.revealPlayingRequested)
+    }
+
     function showToast(text) {
         toastLabel.text = text
         toast.opacity = 1
@@ -387,6 +410,7 @@ ApplicationWindow {
         target: AppActions
         function onNavigate(target, argument) { window.navigate(target, argument) }
         function onCompactRequested(on) { window.setCompact(on) }
+        function onShowPlayingRequested() { window.showPlaying() }
         function onNewPlaylistRequested(paths) {
             window.pendingPlaylistPaths = paths
             newPlaylistDialog.ask("")
@@ -449,6 +473,10 @@ ApplicationWindow {
     Shortcut {
         sequence: "Ctrl+F"
         onActivated: {
+            if (window.compact) {
+                miniPlayer.openSearch()
+                return
+            }
             if (!window.libraryPage)
                 window.page = "tracks"
             titleSearch.summoned = true

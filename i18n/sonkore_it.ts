@@ -1250,6 +1250,26 @@
         <translation>Aggiungi cartella musicale…</translation>
     </message>
     <message>
+        <source>Search the queue…</source>
+        <translation>Cerca nella coda…</translation>
+    </message>
+    <message>
+        <source>Search in this folder…</source>
+        <translation>Cerca in questa cartella…</translation>
+    </message>
+    <message>
+        <source>Go to the playing track</source>
+        <translation>Vai al brano in riproduzione</translation>
+    </message>
+    <message>
+        <source>Close the search</source>
+        <translation>Chiudi la ricerca</translation>
+    </message>
+    <message>
+        <source>Search in the list (Ctrl+F)</source>
+        <translation>Cerca nell'elenco (Ctrl+F)</translation>
+    </message>
+    <message>
         <source>Sort by</source>
         <translation>Ordina per</translation>
     </message>
@@ -1280,6 +1300,10 @@
     <message>
         <source>Add music folder</source>
         <translation>Aggiungi cartella musicale</translation>
+    </message>
+    <message>
+        <source>No tracks match “%1”</source>
+        <translation>Nessun brano corrisponde a «%1»</translation>
     </message>
     <message>
         <source>The queue is empty.</source>
@@ -1318,6 +1342,10 @@
     <message>
         <source>Nothing playing</source>
         <translation>Nessuna riproduzione</translation>
+    </message>
+    <message>
+        <source>Go to the playing track</source>
+        <translation>Vai al brano in riproduzione</translation>
     </message>
     <message>
         <source>Pick something from your library</source>

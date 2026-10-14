@@ -11,7 +11,7 @@ Switch {
     // than scaled, so its rounded edges stay crisp with every renderer.
     property real size: 1
 
-    indicator: Rectangle {
+    indicator: RoundRect {
         implicitWidth: Math.round(38 * control.size)
         implicitHeight: Math.round(22 * control.size)
         x: control.leftPadding
@@ -19,7 +19,7 @@ Switch {
         radius: Theme.squareShapes ? 3 : height / 2
         color: control.checked ? Theme.accent : Theme.border
         Behavior on color { ColorAnimation { duration: 140 } }
-        Rectangle {
+        RoundRect {
             readonly property int inset: Math.round(3 * control.size)
             x: control.checked ? parent.width - width - inset : inset
             y: inset

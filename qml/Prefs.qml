@@ -27,6 +27,7 @@ QtObject {
         property int compactLastHeight: 0     // the compact window's last height, to open with (0 = not yet)
         property bool alwaysOnTop: false      // the compact player stays above other windows
         property string compactSource: ""     // compact list: "" the play queue, else a library folder
+        property bool compactPickFolder: false // compact list: show the first folder once scanned (the library's first one was just added)
         property string compactSort: "path"   // compact list: a folder's sort field ("path" = as on disk)
         property bool compactSortDesc: false  // compact list: that sort reversed
         property bool treeSubfolders: true    // sidebar folder tree: subfolders can be unfolded
