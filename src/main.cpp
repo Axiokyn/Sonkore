@@ -29,6 +29,7 @@
 #include <QQmlApplicationEngine>
 #include <QQuickStyle>
 #include <QQuickWindow>
+#include <QThreadPool>
 #include <QTimer>
 #include <QUrl>
 
@@ -203,6 +204,9 @@ int main(int argc, char* argv[])
     // QApplication (not QGuiApplication): the tray icon and its menu fall back
     // to Qt Widgets on desktops without a native StatusNotifier host.
     QApplication app(argc, argv);
+    // Qt's pooled threads (image loading, scans) go away soon after their
+    // work instead of idling for half a minute.
+    QThreadPool::globalInstance()->setExpiryTimeout(3000);
     QGuiApplication::setApplicationDisplayName(QStringLiteral("Sonkore"));
     QGuiApplication::setDesktopFileName(QStringLiteral("sonkore")); // Wayland app_id -> sonkore.desktop
     QGuiApplication::setWindowIcon(appIcon());
