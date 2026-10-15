@@ -226,10 +226,6 @@ void applyTag(TrackMeta& t, QString key, const QString& value)
     else if (key == "TRACKNUMBER" || key == "TRACK") t.trackNo = leadingInt(value);
     else if (key == "DISCNUMBER" || key == "DISC") t.discNo = leadingInt(value);
     else if ((key == "DATE" || key == "YEAR" || key == "ORIGINALDATE") && t.year == 0) t.year = leadingInt(value);
-    else if (t.wantLyrics && (key.startsWith("LYRICS") || key == "UNSYNCEDLYRICS" || key == "UNSYNCED LYRICS" || key == "SYNCEDLYRICS")) {
-        if (t.lyrics.isEmpty() || (value.contains('[') && !t.lyrics.contains('['))) // timed ones first
-            t.lyrics = value;
-    }
 }
 
 // -----------------------------------------------------------------------------
@@ -325,14 +321,6 @@ void parseId3(const QByteArray& tag, TrackMeta& t, QByteArray* cover)
                 *cover = d.mid(p);
                 pictureType = type;
             }
-            continue;
-        }
-        if (t.wantLyrics && (id == "USLT" || id == "ULT") && d.size() > 4) { // encoding, language, descriptor, text
-            const int enc = static_cast<unsigned char>(d[0]);
-            const int textPos = skipId3String(d, 4, enc);
-            const QString text = decodeId3Text(d.mid(textPos), enc);
-            if (t.lyrics.isEmpty() || (text.contains('[') && !t.lyrics.contains('[')))
-                t.lyrics = text;
             continue;
         }
         if (id[0] != 'T' || d.isEmpty())
@@ -758,19 +746,6 @@ QByteArray Metadata::embeddedCover(const QString& path)
     }
     readAny(path, t, &cover);
     return cover;
-}
-
-QString Metadata::embeddedLyrics(const QString& path)
-{
-    TrackMeta t;
-    t.wantLyrics = true;
-    std::filesystem::path sheetPath;
-    int number = 0;
-    sonkore::CueSheet sheet;
-    if (sonkore::CueSheet::splitTrackPath(path.toStdString(), sheetPath, number))
-        return {}; // one image file for the whole album: its lyrics would not be this track's
-    readAny(path, t, nullptr);
-    return t.lyrics;
 }
 
 QString Metadata::folderCover(const QString& directory)

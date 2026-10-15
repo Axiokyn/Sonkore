@@ -51,7 +51,6 @@ Objetivo: un reproductor Hi-Fi a la altura de Roon y JRiver en todo lo que piden
 - [x] Carátulas de Cover Art Archive para los álbumes sin imagen (búsqueda en MusicBrainz por artista y álbum).
 - [ ] Metadatos, créditos y versiones desde MusicBrainz (CC0).
 - [ ] Biografías desde Wikipedia/Wikidata (CC BY-SA, citando la fuente).
-- [x] Letras sincronizadas (LRCLIB), `.lrc` junto a la pista o la etiqueta del archivo.
 - [ ] Scrobbling (ListenBrainz, Last.fm).
 - [x] Vistas de artistas y géneros, paneles Género → Artista → Álbum y disposiciones al estilo de Spotify, Roon, MusicBee, JRiver, foobar2000, Winamp y Audacious.
 - [x] Escaneo configurable: carpetas omitidas y archivos cortos fuera.

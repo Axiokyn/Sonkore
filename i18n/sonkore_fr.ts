@@ -1026,33 +1026,6 @@
     </message>
 </context>
 <context>
-    <name>Lyrics</name>
-    <message>
-        <source>No lyrics found for this track</source>
-        <translation>Aucune parole trouvée pour ce morceau</translation>
-    </message>
-    <message>
-        <source>Looking for the lyrics…</source>
-        <translation>Recherche des paroles…</translation>
-    </message>
-    <message>
-        <source>LRCLIB is busy; trying again…</source>
-        <translation>LRCLIB est occupé ; nouvelle tentative…</translation>
-    </message>
-    <message>
-        <source>LRCLIB is busy right now. The lyrics are looked up again the next time this track plays.</source>
-        <translation>LRCLIB est occupé pour le moment. Les paroles seront recherchées à nouveau la prochaine fois que ce morceau sera joué.</translation>
-    </message>
-    <message>
-        <source>LRCLIB answered with error %1.</source>
-        <translation>LRCLIB a répondu avec l'erreur %1.</translation>
-    </message>
-    <message>
-        <source>Could not reach LRCLIB. Check the internet connection.</source>
-        <translation>Impossible de joindre LRCLIB. Vérifiez la connexion à Internet.</translation>
-    </message>
-</context>
-<context>
     <name>Main</name>
     <message>
         <source>Another app asked for the DAC — playback paused</source>
@@ -1590,44 +1563,12 @@
         <translation>File d'attente</translation>
     </message>
     <message>
-        <source>Lyrics</source>
-        <translation>Paroles</translation>
-    </message>
-    <message>
-        <source>Queue</source>
-        <translation>File</translation>
-    </message>
-    <message>
         <source>Save as playlist</source>
         <translation>Enregistrer comme playlist</translation>
     </message>
     <message>
         <source>Clear</source>
         <translation>Vider</translation>
-    </message>
-    <message>
-        <source>Looking for the lyrics…</source>
-        <translation>Recherche des paroles…</translation>
-    </message>
-    <message>
-        <source>No lyrics for this track</source>
-        <translation>Pas de paroles pour ce morceau</translation>
-    </message>
-    <message>
-        <source>A .lrc file beside the track, its LYRICS tag, or LRCLIB with the switch in Settings › Library.</source>
-        <translation>Un fichier .lrc à côté du morceau, sa balise LYRICS, ou LRCLIB avec l'interrupteur dans Réglages › Bibliothèque.</translation>
-    </message>
-    <message>
-        <source>From a .lrc file beside the track</source>
-        <translation>D'un fichier .lrc à côté du morceau</translation>
-    </message>
-    <message>
-        <source>From the file's tags</source>
-        <translation>Des balises du fichier</translation>
-    </message>
-    <message>
-        <source>From LRCLIB</source>
-        <translation>De LRCLIB</translation>
     </message>
     <message>
         <source>The queue is empty.
@@ -2643,26 +2584,6 @@ Double-cliquez sur une piste, un album ou une playlist — ou glissez des pistes
         <translation>Les noms de l'artiste et de l'album sont envoyés à MusicBrainz pour trouver l'album ; l'image vient du Cover Art Archive et reste dans le cache de Sonkore, jamais dans vos dossiers de musique.</translation>
     </message>
     <message>
-        <source>Lyrics</source>
-        <translation>Paroles</translation>
-    </message>
-    <message>
-        <source>A .lrc file beside the track or its own tag comes first; otherwise LRCLIB, a public-domain database of timed lyrics.</source>
-        <translation>D'abord un fichier .lrc à côté du morceau ou sa propre balise ; sinon LRCLIB, une base de paroles synchronisées du domaine public.</translation>
-    </message>
-    <message>
-        <source>Only lyrics from a .lrc file beside the track or from its own tag.</source>
-        <translation>Seulement les paroles d'un fichier .lrc à côté du morceau ou de sa propre balise.</translation>
-    </message>
-    <message>
-        <source>The title, artist, album and length of the playing track are sent to lrclib.net. Lyrics found are kept in Sonkore's cache.</source>
-        <translation>Le titre, l'artiste, l'album et la durée du morceau en cours sont envoyés à lrclib.net. Les paroles trouvées restent dans le cache de Sonkore.</translation>
-    </message>
-    <message>
-        <source>Clear downloaded covers and lyrics</source>
-        <translation>Effacer les pochettes et paroles téléchargées</translation>
-    </message>
-    <message>
         <source>Library folders</source>
         <translation>Dossiers de la bibliothèque</translation>
     </message>
@@ -2941,6 +2862,10 @@ Double-cliquez sur une piste, un album ou une playlist — ou glissez des pistes
     <message>
         <source>Lowers the gain when it would push the track's true peak above -1 dBTP (the EBU R128 ceiling), so the resampler, the EQ and the DAC's own filter never clip it.</source>
         <translation>Réduit le gain lorsqu'il pousserait la crête réelle (true peak) de la piste au-delà de −1 dBTP (le plafond EBU R128), afin que le rééchantillonneur, l'égaliseur et le filtre du DAC ne l'écrêtent jamais.</translation>
+    </message>
+    <message>
+        <source>Clear downloaded covers</source>
+        <translation>Effacer les pochettes téléchargées</translation>
     </message>
     <message>
         <source>Track list columns</source>

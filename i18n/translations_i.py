@@ -73,7 +73,7 @@ T = {
 "Show in library": ("Mostrar en la biblioteca", "Mostrar na biblioteca", "Afficher dans la bibliothèque", "In der Mediathek zeigen", "Mostra nella libreria"),
 }
 
-# Covers from the Cover Art Archive and lyrics from LRCLIB.
+# Covers from the Cover Art Archive.
 T.update({
 "From the internet": ("De internet", "Da internet", "Depuis Internet", "Aus dem Internet", "Da Internet"),
 "Missing covers": ("Carátulas que faltan", "Capas que faltam", "Pochettes manquantes", "Fehlende Cover", "Copertine mancanti"),
@@ -101,44 +101,6 @@ T.update({
     "Les noms de l'artiste et de l'album sont envoyés à MusicBrainz pour trouver l'album ; l'image vient du Cover Art Archive et reste dans le cache de Sonkore, jamais dans vos dossiers de musique.",
     "Künstler- und Albumname werden an MusicBrainz gesendet, um das Album zu finden; das Bild kommt aus dem Cover Art Archive und bleibt im Cache von Sonkore, nie in deinen Musikordnern.",
     "I nomi di artista e album vengono inviati a MusicBrainz per trovare l'album; l'immagine viene dal Cover Art Archive e resta nella cache di Sonkore, mai nelle tue cartelle musicali."),
-"Lyrics": ("Letra", "Letra", "Paroles", "Liedtext", "Testo"),
-"A .lrc file beside the track or its own tag comes first; otherwise LRCLIB, a public-domain database of timed lyrics.": (
-    "Primero un archivo .lrc junto a la pista o su propia etiqueta; si no, LRCLIB, una base de datos de dominio público de letras sincronizadas.",
-    "Primeiro um arquivo .lrc ao lado da faixa ou a própria tag; senão, o LRCLIB, um banco de dados de domínio público de letras sincronizadas.",
-    "D'abord un fichier .lrc à côté du morceau ou sa propre balise ; sinon LRCLIB, une base de paroles synchronisées du domaine public.",
-    "Zuerst eine .lrc-Datei neben dem Titel oder sein eigener Tag; sonst LRCLIB, eine gemeinfreie Datenbank synchronisierter Liedtexte.",
-    "Prima un file .lrc accanto al brano o il suo tag; altrimenti LRCLIB, un database di pubblico dominio di testi sincronizzati."),
-"Only lyrics from a .lrc file beside the track or from its own tag.": (
-    "Solo letras de un archivo .lrc junto a la pista o de su propia etiqueta.",
-    "Só letras de um arquivo .lrc ao lado da faixa ou da própria tag.",
-    "Seulement les paroles d'un fichier .lrc à côté du morceau ou de sa propre balise.",
-    "Nur Liedtexte aus einer .lrc-Datei neben dem Titel oder aus seinem eigenen Tag.",
-    "Solo testi da un file .lrc accanto al brano o dal suo tag."),
-"The title, artist, album and length of the playing track are sent to lrclib.net. Lyrics found are kept in Sonkore's cache.": (
-    "Se envían el título, el artista, el álbum y la duración de la pista que suena a lrclib.net. Las letras encontradas se guardan en la caché de Sonkore.",
-    "O título, o artista, o álbum e a duração da faixa tocando são enviados a lrclib.net. As letras encontradas ficam no cache do Sonkore.",
-    "Le titre, l'artiste, l'album et la durée du morceau en cours sont envoyés à lrclib.net. Les paroles trouvées restent dans le cache de Sonkore.",
-    "Titel, Künstler, Album und Länge des laufenden Titels werden an lrclib.net gesendet. Gefundene Liedtexte bleiben im Cache von Sonkore.",
-    "Titolo, artista, album e durata del brano in riproduzione vengono inviati a lrclib.net. I testi trovati restano nella cache di Sonkore."),
-"Clear downloaded covers and lyrics": (
-    "Borrar carátulas y letras descargadas",
-    "Apagar capas e letras baixadas",
-    "Effacer les pochettes et paroles téléchargées",
-    "Geladene Cover und Liedtexte löschen",
-    "Elimina copertine e testi scaricati"),
-"Queue": ("Cola", "Fila", "File", "Warteschlange", "Coda"),
-"Looking for the lyrics…": ("Buscando la letra…", "Procurando a letra…", "Recherche des paroles…", "Liedtext wird gesucht…", "Ricerca del testo…"),
-"No lyrics for this track": ("No hay letra para esta pista", "Sem letra para esta faixa", "Pas de paroles pour ce morceau", "Kein Liedtext für diesen Titel", "Nessun testo per questo brano"),
-"No lyrics found for this track": ("No se encontró letra para esta pista", "Nenhuma letra encontrada para esta faixa", "Aucune parole trouvée pour ce morceau", "Kein Liedtext für diesen Titel gefunden", "Nessun testo trovato per questo brano"),
-"A .lrc file beside the track, its LYRICS tag, or LRCLIB with the switch in Settings › Library.": (
-    "Un archivo .lrc junto a la pista, su etiqueta LYRICS, o LRCLIB con el interruptor en Ajustes › Biblioteca.",
-    "Um arquivo .lrc ao lado da faixa, a tag LYRICS, ou o LRCLIB com a chave em Configurações › Biblioteca.",
-    "Un fichier .lrc à côté du morceau, sa balise LYRICS, ou LRCLIB avec l'interrupteur dans Réglages › Bibliothèque.",
-    "Eine .lrc-Datei neben dem Titel, sein LYRICS-Tag oder LRCLIB über den Schalter in Einstellungen › Bibliothek.",
-    "Un file .lrc accanto al brano, il suo tag LYRICS, o LRCLIB con l'interruttore in Impostazioni › Libreria."),
-"From a .lrc file beside the track": ("De un archivo .lrc junto a la pista", "De um arquivo .lrc ao lado da faixa", "D'un fichier .lrc à côté du morceau", "Aus einer .lrc-Datei neben dem Titel", "Da un file .lrc accanto al brano"),
-"From the file's tags": ("De las etiquetas del archivo", "Das tags do arquivo", "Des balises du fichier", "Aus den Tags der Datei", "Dai tag del file"),
-"From LRCLIB": ("De LRCLIB", "Do LRCLIB", "De LRCLIB", "Von LRCLIB", "Da LRCLIB"),
 "MusicBrainz did not answer: %1": ("MusicBrainz no respondió: %1", "O MusicBrainz não respondeu: %1", "MusicBrainz n'a pas répondu : %1", "MusicBrainz hat nicht geantwortet: %1", "MusicBrainz non ha risposto: %1"),
 "Cover Art Archive did not answer: %1": ("Cover Art Archive no respondió: %1", "O Cover Art Archive não respondeu: %1", "Cover Art Archive n'a pas répondu : %1", "Cover Art Archive hat nicht geantwortet: %1", "Cover Art Archive non ha risposto: %1"),
 })
@@ -153,21 +115,8 @@ T.update({
     "Restituito a PipeWire quando scelto"),
 })
 
-# LRCLIB, MusicBrainz and Cover Art Archive busy: retries and plain messages.
+# MusicBrainz and Cover Art Archive busy: plain messages.
 T.update({
-"LRCLIB is busy; trying again…": ("LRCLIB está ocupado; se vuelve a intentar…", "O LRCLIB está ocupado; tentando de novo…", "LRCLIB est occupé ; nouvelle tentative…", "LRCLIB ist ausgelastet; neuer Versuch…", "LRCLIB è occupato; nuovo tentativo…"),
-"LRCLIB is busy right now. The lyrics are looked up again the next time this track plays.": (
-    "LRCLIB está ocupado en este momento. La letra se vuelve a buscar la próxima vez que suene esta pista.",
-    "O LRCLIB está ocupado no momento. A letra será procurada de novo na próxima vez que esta faixa tocar.",
-    "LRCLIB est occupé pour le moment. Les paroles seront recherchées à nouveau la prochaine fois que ce morceau sera joué.",
-    "LRCLIB ist gerade ausgelastet. Der Liedtext wird beim nächsten Abspielen dieses Titels erneut gesucht.",
-    "LRCLIB è occupato al momento. Il testo verrà cercato di nuovo la prossima volta che il brano viene riprodotto."),
-"LRCLIB answered with error %1.": ("LRCLIB respondió con el error %1.", "O LRCLIB respondeu com o erro %1.", "LRCLIB a répondu avec l'erreur %1.", "LRCLIB antwortete mit Fehler %1.", "LRCLIB ha risposto con l'errore %1."),
-"Could not reach LRCLIB. Check the internet connection.": (
-    "No se pudo conectar con LRCLIB. Revisa la conexión a internet.",
-    "Não foi possível conectar ao LRCLIB. Verifique a conexão com a internet.",
-    "Impossible de joindre LRCLIB. Vérifiez la connexion à Internet.",
-    "LRCLIB ist nicht erreichbar. Prüfe die Internetverbindung.",
-    "Impossibile raggiungere LRCLIB. Controlla la connessione a Internet."),
+"Clear downloaded covers": ("Borrar carátulas descargadas", "Apagar capas baixadas", "Effacer les pochettes téléchargées", "Geladene Cover löschen", "Elimina copertine scaricate"),
 "no connection": ("sin conexión", "sem conexão", "pas de connexion", "keine Verbindung", "nessuna connessione"),
 })

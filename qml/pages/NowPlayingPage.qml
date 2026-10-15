@@ -17,8 +17,6 @@ Item {
     readonly property bool hasTrack: DspController.currentPath.length > 0
     // Narrow pages: the queue goes under the track instead of beside it.
     readonly property bool stacked: width < 900
-    // What the second column shows: the play queue or the lyrics (remembered).
-    readonly property string pane: Prefs.store.playingPane === "lyrics" ? "lyrics" : "queue"
 
     TrackListModel {
         id: queueModel
@@ -142,7 +140,7 @@ Item {
             }
         }
 
-        // --- The queue, or the lyrics ----------------------------------------
+        // --- The queue -------------------------------------------------------
         ColumnLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
@@ -152,33 +150,18 @@ Item {
                 Layout.topMargin: 4
                 Label {
                     Layout.fillWidth: true
-                    text: page.pane === "lyrics" ? qsTr("Lyrics") : qsTr("Play queue")
+                    text: qsTr("Play queue")
                     font.pixelSize: Theme.fontTitle
                     font.weight: Font.DemiBold
                     color: Theme.text
                 }
                 PillButton {
-                    iconName: "queue"
-                    text: qsTr("Queue")
-                    primary: page.pane === "queue"
-                    onClicked: Prefs.store.playingPane = "queue"
-                }
-                PillButton {
-                    iconName: "tag"
-                    text: qsTr("Lyrics")
-                    primary: page.pane === "lyrics"
-                    onClicked: Prefs.store.playingPane = "lyrics"
-                }
-                Rectangle { width: 1; height: 20; color: Theme.border; visible: page.pane === "queue" }
-                PillButton {
-                    visible: page.pane === "queue"
                     iconName: "save"
                     text: qsTr("Save as playlist")
                     enabled: DspController.queue.length > 0
                     onClicked: AppActions.newPlaylistRequested(DspController.queue)
                 }
                 PillButton {
-                    visible: page.pane === "queue"
                     iconName: "trash"
                     text: qsTr("Clear")
                     enabled: DspController.queue.length > 0
@@ -186,106 +169,8 @@ Item {
                 }
             }
 
-            // The lyrics: timed lines follow the music and seek on a click.
-            Item {
-                visible: page.pane === "lyrics"
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-
-                ListView {
-                    id: lyricsList
-                    anchors.fill: parent
-                    anchors.rightMargin: 4
-                    clip: true
-                    model: Lyrics.lines
-                    spacing: 2
-                    boundsBehavior: Flickable.StopAtBounds
-                    readonly property int current: Lyrics.lines.length > 0 ? Lyrics.lineAt(DspController.position) : -1
-                    currentIndex: current
-                    highlightFollowsCurrentItem: Lyrics.synced
-                    highlightRangeMode: Lyrics.synced ? ListView.ApplyRange : ListView.NoHighlightRange
-                    preferredHighlightBegin: height * 0.38
-                    preferredHighlightEnd: height * 0.62
-                    highlightMoveDuration: 350
-                    highlightMoveVelocity: -1
-                    highlight: Item {}
-                    header: Item { height: Lyrics.synced ? lyricsList.height * 0.38 : 8 }
-                    footer: Item { height: Lyrics.synced ? lyricsList.height * 0.5 : 24 }
-                    WheelScroll { flickable: lyricsList }
-                    ScrollBar.vertical: LScrollBar {}
-
-                    delegate: Item {
-                        id: lineRow
-                        required property var modelData
-                        required property int index
-                        readonly property bool sung: Lyrics.synced && index === lyricsList.current
-                        readonly property bool past: Lyrics.synced && index < lyricsList.current
-                        width: ListView.view.width
-                        height: lineText.implicitHeight + 10
-                        Label {
-                            id: lineText
-                            anchors.left: parent.left
-                            anchors.right: parent.right
-                            anchors.leftMargin: 8
-                            anchors.rightMargin: 16
-                            anchors.verticalCenter: parent.verticalCenter
-                            text: lineRow.modelData.text.length > 0 ? lineRow.modelData.text : "♪"
-                            wrapMode: Text.Wrap
-                            color: lineRow.sung ? Theme.text : (lineRow.past ? Theme.textFaint : Theme.textDim)
-                            font.pixelSize: Theme.fontTitle + (lineRow.sung ? 4 : 0)
-                            font.weight: lineRow.sung ? Font.Bold : Font.Normal
-                            Behavior on color { ColorAnimation { duration: 200 } }
-                            Behavior on font.pixelSize { NumberAnimation { duration: 150 } }
-                        }
-                        HoverHandler { id: lineHover; enabled: lineRow.modelData.time >= 0; cursorShape: Qt.PointingHandCursor }
-                        TapHandler {
-                            enabled: lineRow.modelData.time >= 0
-                            onTapped: DspController.seek(lineRow.modelData.time)
-                        }
-                    }
-                }
-                ColumnLayout {
-                    anchors.centerIn: parent
-                    width: Math.min(parent.width - 40, 420)
-                    visible: Lyrics.lines.length === 0
-                    spacing: 8
-                    Label {
-                        Layout.fillWidth: true
-                        horizontalAlignment: Text.AlignHCenter
-                        wrapMode: Text.Wrap
-                        text: !page.hasTrack ? qsTr("Nothing playing")
-                              : Lyrics.loading ? qsTr("Looking for the lyrics…")
-                              : Lyrics.status.length > 0 ? Lyrics.status
-                              : qsTr("No lyrics for this track")
-                        color: Theme.textDim
-                        font.pixelSize: Theme.fontBody + 1
-                    }
-                    Label {
-                        Layout.fillWidth: true
-                        visible: page.hasTrack && !Lyrics.loading && !Lyrics.onlineEnabled
-                        horizontalAlignment: Text.AlignHCenter
-                        wrapMode: Text.Wrap
-                        text: qsTr("A .lrc file beside the track, its LYRICS tag, or LRCLIB with the switch in Settings › Library.")
-                        color: Theme.textFaint
-                        font.pixelSize: Theme.fontSmall + 1
-                    }
-                }
-                Label {
-                    anchors.right: parent.right
-                    anchors.bottom: parent.bottom
-                    anchors.margins: 8
-                    visible: Lyrics.lines.length > 0
-                    text: Lyrics.source === "file" ? qsTr("From a .lrc file beside the track")
-                          : Lyrics.source === "embedded" ? qsTr("From the file's tags")
-                          : qsTr("From LRCLIB")
-                    color: Theme.textFaint
-                    font.pixelSize: Theme.fontSmall
-                }
-            }
-
             TrackTable {
                 id: table
-                visible: page.pane === "queue"
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 Layout.rightMargin: -16 // scroll bar against the window edge

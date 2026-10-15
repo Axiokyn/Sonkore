@@ -6,7 +6,6 @@
 #include "EqController.hpp"
 #include "FrameAnimationDriver.hpp"
 #include "SoftwareRepaint.hpp"
-#include "Lyrics.hpp"
 #include "OnlineArt.hpp"
 #include "LibraryModel.hpp"
 #include "Metadata.hpp"
@@ -253,10 +252,6 @@ int main(int argc, char* argv[])
     waveform.setPath(controller.currentPath());
     OnlineArt onlineArt(nullptr);
     OnlineArt::setInstance(&onlineArt);
-    Lyrics lyrics(nullptr);
-    Lyrics::setInstance(&lyrics);
-    QObject::connect(&controller, &DspController::trackChanged, &lyrics, [&] { lyrics.setPath(controller.currentPath()); });
-    lyrics.setPath(controller.currentPath());
 
 #if defined(SONKORE_HAVE_MPRIS)
     MprisService mpris(&controller);

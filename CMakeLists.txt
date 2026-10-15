@@ -269,8 +269,6 @@ qt_add_qml_module(Sonkore
         src/library/CoverImageProvider.cpp
         src/library/OnlineArt.hpp
         src/library/OnlineArt.cpp
-        src/library/Lyrics.hpp
-        src/library/Lyrics.cpp
 )
 
 # Precompiled shaders (sources and build.sh next to them; Qt Shader Tools is

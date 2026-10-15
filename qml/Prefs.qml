@@ -36,7 +36,6 @@ QtObject {
         property int compactFolderDepth: 2    // ... down to this many levels (at least 1)
         property string compactColumns: ""    // compact list: its columns (JSON keys; "" = take the full view's, once)
         property string lastFolder: ""        // folder last opened in the folder tree (reopened at start-up)
-        property string playingPane: "queue"   // the Now playing page's second column: queue | lyrics
         property string startPage: "last"     // last | tracks | favorites | albums | artists | genres | folders | queue
         property bool trackBrowser: false     // Genre → Artist → Album panes above the track list
         property string settingsTab: "general" // the Settings tab last open

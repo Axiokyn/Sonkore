@@ -2217,20 +2217,12 @@ Item {
                     details: qsTr("The artist and album names are sent to MusicBrainz to find the album; the picture comes from the Cover Art Archive and is kept in Sonkore's cache, never written into your music folders.")
                     LSwitch { checked: OnlineArt.enabled; onToggled: OnlineArt.enabled = checked }
                 }
-                SettingRow {
-                    title: qsTr("Lyrics")
-                    description: Lyrics.onlineEnabled
-                        ? qsTr("A .lrc file beside the track or its own tag comes first; otherwise LRCLIB, a public-domain database of timed lyrics.")
-                        : qsTr("Only lyrics from a .lrc file beside the track or from its own tag.")
-                    details: qsTr("The title, artist, album and length of the playing track are sent to lrclib.net. Lyrics found are kept in Sonkore's cache.")
-                    LSwitch { checked: Lyrics.onlineEnabled; onToggled: Lyrics.onlineEnabled = checked }
-                }
                 RowLayout {
                     spacing: 8
                     PillButton {
                         iconName: "trash"
-                        text: qsTr("Clear downloaded covers and lyrics")
-                        onClicked: { OnlineArt.clearCache(); Lyrics.clearCache() }
+                        text: qsTr("Clear downloaded covers")
+                        onClicked: OnlineArt.clearCache()
                     }
                 }
             }
