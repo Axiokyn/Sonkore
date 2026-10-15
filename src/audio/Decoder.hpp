@@ -1,5 +1,7 @@
 #pragma once
 
+#include <climits>
+#include <cmath>
 #include <cstdint>
 #include <filesystem>
 #include <memory>
@@ -47,6 +49,11 @@ public:
 
     // Returns frames read; fewer than requested means end of stream.
     virtual uint64_t readS32(int32_t* out, uint64_t frames) = 0;
+    // The same as doubles at 1.0 = full scale, for the DSP path. Integer
+    // sources give exactly readS32 / 2^31; float sources (MP3, AAC, Opus,
+    // Vorbis, float WAV, DSD converted to PCM) keep what lies above full
+    // scale, which readS32 has to clip, so the gain stages can still lower it.
+    virtual uint64_t readDouble(double* out, uint64_t frames);
     virtual bool seek(uint64_t frame) = 0;
 
     // A file, or one track of a CD image ("<sheet>.cue#<number>", see CueSheet).
@@ -63,6 +70,16 @@ public:
 
 protected:
     StreamInfo m_info;
+
+private:
+    std::vector<int32_t> m_s32Scratch; // readDouble()'s default
 };
+
+// A double at 1.0 = full scale to s32, rounded to nearest, clamped.
+inline int32_t doubleToS32(double v) noexcept
+{
+    v *= 2147483648.0;
+    return v >= 2147483647.0 ? 2147483647 : v <= -2147483648.0 ? INT32_MIN : static_cast<int32_t>(std::lrint(v));
+}
 
 } // namespace sonkore

@@ -478,11 +478,31 @@ DSPManager::OutputConfig DSPManager::outputConfig() const
     return m_config;
 }
 
-// The rate to open a device at when it refuses the track's: the lowest one
-// above it (nothing of the signal is lost; 88.2 kHz -> 96 kHz), or, for a
-// track above everything the device takes, the highest whole divisor of its
-// rate (384 kHz -> 192 kHz), else the highest rate. 0 when the device does
-// not say which rates it takes.
+// The rate to open a device at when it refuses the track's: the lowest whole
+// multiple of it (44.1 kHz -> 88.2 kHz rather than 48: one exact conversion
+// stage, and the family the music was made in), else the lowest rate above
+// it (nothing of the signal is lost; 88.2 kHz -> 96 kHz), or, for a track
+// above everything the device takes, the highest whole divisor of its rate
+// (384 kHz -> 192 kHz), else the highest rate.
+static uint32_t pickRate(std::vector<uint32_t> rates, uint32_t wanted)
+{
+    if (rates.empty() || wanted == 0)
+        return 0;
+    std::sort(rates.begin(), rates.end());
+    rates.erase(std::unique(rates.begin(), rates.end()), rates.end());
+    for (uint32_t r : rates)
+        if (r > wanted && r % wanted == 0)
+            return r;
+    if (const auto above = std::lower_bound(rates.begin(), rates.end(), wanted); above != rates.end())
+        return *above;
+    for (auto r = rates.rbegin(); r != rates.rend(); ++r)
+        if (wanted % *r == 0)
+            return *r;
+    return rates.back();
+}
+
+// pickRate() among the rates the device lists; 0 when it does not say which
+// rates it takes.
 uint32_t DSPManager::bestDeviceRate(Backend& backend, const DeviceEntry& entry, uint32_t wanted)
 {
     ma_device_info info{};
@@ -496,16 +516,7 @@ uint32_t DSPManager::bestDeviceRate(Backend& backend, const DeviceEntry& entry, 
             return 0; // takes any rate
         rates.push_back(r);
     }
-    if (rates.empty())
-        return 0;
-    std::sort(rates.begin(), rates.end());
-    rates.erase(std::unique(rates.begin(), rates.end()), rates.end());
-    if (const auto above = std::lower_bound(rates.begin(), rates.end(), wanted); above != rates.end())
-        return *above;
-    for (auto r = rates.rbegin(); r != rates.rend(); ++r)
-        if (wanted % *r == 0)
-            return *r;
-    return rates.back();
+    return pickRate(std::move(rates), wanted);
 }
 
 bool DSPManager::openDevice(uint32_t sampleRate, uint32_t channels, std::string* error)
@@ -806,17 +817,8 @@ bool DSPManager::openAsio(const DeviceEntry& entry, bool dsd, uint32_t rate, uin
     uint32_t outputRate = rate;
     bool opened = m_asioOut->open(entry.asio, dsd ? AsioOutput::Mode::Dsd : AsioOutput::Mode::Pcm, driverChannels, rate, feed, error);
     if (!opened && !dsd) {
-        // The driver refuses the rate: the lowest one above it, else the
-        // highest whole divisor of it, else its highest.
-        std::vector<uint32_t> rates = AsioOutput::sampleRates(entry.asio);
-        uint32_t best = 0;
-        if (const auto above = std::lower_bound(rates.begin(), rates.end(), rate); above != rates.end())
-            best = *above;
-        for (auto r = rates.rbegin(); best == 0 && r != rates.rend(); ++r)
-            if (rate % *r == 0)
-                best = *r;
-        if (best == 0 && !rates.empty())
-            best = rates.back();
+        // The driver refuses the rate: the closest it takes (pickRate()).
+        const uint32_t best = pickRate(AsioOutput::sampleRates(entry.asio), rate);
         if (best != 0 && best != rate) {
             outputRate = best;
             opened = m_asioOut->open(entry.asio, AsioOutput::Mode::Pcm, driverChannels, best, feed, error);
@@ -1017,6 +1019,7 @@ bool DSPManager::openDsd(const std::filesystem::path& path, double gain)
         m_status.dsd = m_track.codec;
         updateBitPerfectPath();
         m_resampler.release();
+        m_resamplerDelay.store(0.0, std::memory_order_relaxed);
         return true;
     }
     const Backend& backend = m_backends[entry.backendIndex];
@@ -1061,6 +1064,7 @@ bool DSPManager::openDsd(const std::filesystem::path& path, double gain)
         m_channelsExact = true;
         updateBitPerfectPath();
         m_resampler.release();
+        m_resamplerDelay.store(0.0, std::memory_order_relaxed);
         return true;
 #else
         return false;
@@ -1089,6 +1093,7 @@ bool DSPManager::openDsd(const std::filesystem::path& path, double gain)
     m_dsdPacking = DsdPacking::Dop;
     m_status.dsd = m_track.codec;
     m_resampler.release();
+    m_resamplerDelay.store(0.0, std::memory_order_relaxed);
     return true;
 }
 
@@ -1298,6 +1303,7 @@ bool DSPManager::load(const std::filesystem::path& path, std::string* error, dou
         }
     } else {
         m_resampler.release();
+        m_resamplerDelay.store(0.0, std::memory_order_relaxed);
     }
 
     const std::size_t ch = m_channels;
@@ -1387,6 +1393,7 @@ void DSPManager::releaseTrack()
     // Nothing plays: give the DSP memory back.
     m_stretch.release();
     m_resampler.release();
+    m_resamplerDelay.store(0.0, std::memory_order_relaxed);
     m_linearEq.release();
     m_linearEqLatency.store(0);
     releaseBuffers();
@@ -1487,6 +1494,7 @@ void DSPManager::seek(double seconds)
     m_ring.clear();
     m_stretch.clear();
     m_resampler.clear();
+    m_resamplerDelay.store(0.0, std::memory_order_relaxed);
     m_eq.reset();
     m_linearEq.reset(); // engages again from the new position, without the old history
     m_linearEqLatency.store(0);
@@ -1586,7 +1594,9 @@ double DSPManager::positionSeconds() const
     // not been heard either.
     const double held = m_bypassActive.load(std::memory_order_relaxed) ? 0.0 : m_stretch.heldSourceFrames();
     const double inFilter = static_cast<double>(m_linearEqLatency.load(std::memory_order_relaxed));
-    const double pos = static_cast<double>(m_decodedFrames.load(std::memory_order_relaxed)) - held - (queuedFrames + inFilter) * speed;
+    // ...nor what the sample-rate converter holds (output frames).
+    const double converting = m_bypassActive.load(std::memory_order_relaxed) ? 0.0 : m_resamplerDelay.load(std::memory_order_relaxed) * rateRatio;
+    const double pos = static_cast<double>(m_decodedFrames.load(std::memory_order_relaxed)) - held - (queuedFrames + inFilter + converting) * speed;
     return std::max(0.0, pos) / m_track.sampleRate;
 }
 
@@ -1771,6 +1781,7 @@ void DSPManager::applyRamp(int32_t* out, std::size_t frames, std::size_t& pos, b
 {
     const std::size_t ch = m_channels;
     const std::size_t len = m_rampFrames.load(std::memory_order_relaxed);
+    const double lsb = m_deviceDepth >= 32 ? 1.0 : std::ldexp(1.0, 32 - m_deviceDepth);
     for (std::size_t f = 0; f < frames; ++f, ++pos) {
         if (pos >= len) {
             if (!down)
@@ -1781,9 +1792,25 @@ void DSPManager::applyRamp(int32_t* out, std::size_t frames, std::size_t& pos, b
         }
         const double rise = 0.5 - 0.5 * std::cos(std::numbers::pi * static_cast<double>(pos) / static_cast<double>(len));
         const double g = down ? 1.0 - rise : rise;
-        for (std::size_t c = 0; c < ch; ++c)
-            out[f * ch + c] = static_cast<int32_t>(std::lround(out[f * ch + c] * g));
+        // Scaled samples go back onto the device's grid with TPDF dither, as
+        // everything else that reaches it (the low bits would otherwise be
+        // truncated by the format conversion).
+        for (std::size_t c = 0; c < ch; ++c) {
+            const double v = out[f * ch + c] * g / lsb;
+            const double d = rampNoise() - rampNoise();
+            const double q = std::nearbyint(lsb > 1.0 ? v + d : v) * lsb;
+            out[f * ch + c] = static_cast<int32_t>(std::clamp(q, -2147483648.0, 2147483647.0 - (lsb - 1.0)));
+        }
     }
+}
+
+// Uniform [0, 1) for the fades' dither (device thread only).
+double DSPManager::rampNoise() const
+{
+    m_rampRng ^= m_rampRng << 13;
+    m_rampRng ^= m_rampRng >> 17;
+    m_rampRng ^= m_rampRng << 5;
+    return m_rampRng * (1.0 / 4294967296.0);
 }
 
 void DSPManager::setAnalysisEnabled(bool on)
@@ -1977,7 +2004,13 @@ bool DSPManager::produceBlock()
     if (!bypass)
         ensureBuffers(stActive);
 
-    const auto frames = static_cast<std::size_t>(m_decoder->readS32(m_decodeBuf.data(), kDecodeBlockFrames));
+    // The processed path reads doubles: a float source (MP3, AAC, Opus, float
+    // WAV, DSD as PCM) keeps what lies above full scale for the gain stages
+    // to lower, instead of having it clipped at the decoder. HDCD works on
+    // the integers.
+    const bool readFloat = !bypass && !hdcd;
+    const auto frames = static_cast<std::size_t>(readFloat ? m_decoder->readDouble(m_doubleBuf.data(), kDecodeBlockFrames)
+                                                           : m_decoder->readS32(m_decodeBuf.data(), kDecodeBlockFrames));
     m_decodedFrames.fetch_add(frames, std::memory_order_relaxed);
     if (hdcd && frames > 0) {
         // 16-bit samples in, 32-bit out at -6 dB, so peak extension has room
@@ -1999,12 +2032,17 @@ bool DSPManager::produceBlock()
                 m_linearEq.remember(m_decodeBuf.data(), frames);
             ok = pushToRing(m_decodeBuf.data(), frames);
         } else if (stActive) {
-            s32ToFloat(m_decodeBuf.data(), m_floatIn.data(), frames * ch);
+            if (readFloat)
+                for (std::size_t i = 0; i < frames * ch; ++i)
+                    m_floatIn[i] = static_cast<float>(m_doubleBuf[i]);
+            else
+                s32ToFloat(m_decodeBuf.data(), m_floatIn.data(), frames * ch);
             m_stretch.putSamples(m_floatIn.data(), static_cast<uint32_t>(frames));
             ok = drainStretch();
         } else {
-            // EQ/volume/resampling only: stay in double from the integer source on.
-            s32ToDouble(m_decodeBuf.data(), m_doubleBuf.data(), frames * ch);
+            // EQ/volume/resampling only: double from the source on.
+            if (!readFloat)
+                s32ToDouble(m_decodeBuf.data(), m_doubleBuf.data(), frames * ch);
             ok = processAndPush(m_doubleBuf.data(), frames);
         }
     }
@@ -2294,7 +2332,8 @@ std::size_t DSPManager::pendingDspFrames() const
     if (m_wasBypassed)
         return 0;
     const std::size_t held = (m_convolver ? Convolver::kBlock : 0) + m_linearEq.latency();
-    return m_workerRate ? static_cast<std::size_t>(static_cast<uint64_t>(held) * m_outputRate / m_workerRate) : held;
+    const std::size_t converting = m_resampler.active() ? static_cast<std::size_t>(std::lround(m_resampler.delayFrames())) : 0;
+    return (m_workerRate ? static_cast<std::size_t>(static_cast<uint64_t>(held) * m_outputRate / m_workerRate) : held) + converting;
 }
 
 bool DSPManager::processAndPush(double* samples, std::size_t frames)
@@ -2333,6 +2372,7 @@ bool DSPManager::processRest(double* samples, std::size_t frames, bool biquads)
 
     if (m_resampler.active()) {
         const std::size_t got = m_resampler.process(samples, frames);
+        m_resamplerDelay.store(m_resampler.delayFrames(), std::memory_order_relaxed);
         return m_toDsd ? modulateAndPush(m_resampler.output(), got) : quantizeAndPush(m_resampler.output(), got);
     }
     return quantizeAndPush(samples, frames);

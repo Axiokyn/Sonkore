@@ -318,27 +318,8 @@ public:
         return true;
     }
 
-    uint64_t readS32(int32_t* out, uint64_t frames) override
-    {
-        const std::size_t ch = m_info.channels;
-        if (m_trimToLength)
-            frames = std::min(frames, m_info.totalFrames - std::min(m_info.totalFrames, m_position));
-        uint64_t done = 0;
-        while (done < frames) {
-            if (m_pendingPos >= m_pending.size()) {
-                if (!decodeNext())
-                    break;
-                continue;
-            }
-            const std::size_t availableFrames = (m_pending.size() - m_pendingPos) / ch;
-            const std::size_t n = static_cast<std::size_t>(std::min<uint64_t>(frames - done, availableFrames));
-            std::memcpy(out + done * ch, m_pending.data() + m_pendingPos, n * ch * sizeof(int32_t));
-            m_pendingPos += n * ch;
-            done += n;
-        }
-        m_position += done;
-        return done;
-    }
+    uint64_t readS32(int32_t* out, uint64_t frames) override { return read(out, frames); }
+    uint64_t readDouble(double* out, uint64_t frames) override { return read(out, frames); }
 
     bool seek(uint64_t frame) override
     {
@@ -348,6 +329,7 @@ public:
             return false;
         ff().avcodec_flush_buffers(m_codec);
         m_pending.clear();
+        m_pendingFloat.clear();
         m_pendingPos = 0;
         m_inputDone = false;
         // The demuxer lands on a packet at or before the target: decode from
@@ -359,17 +341,61 @@ public:
     }
 
 private:
+    // Integer frames are held as s32, float ones as doubles (what lies above
+    // full scale survives until readS32 has to clip it).
+    std::size_t pendingSize() const { return m_floatPending ? m_pendingFloat.size() : m_pending.size(); }
+    static void put(const int32_t* in, int32_t* out, std::size_t n) { std::memcpy(out, in, n * sizeof(int32_t)); }
+    static void put(const double* in, double* out, std::size_t n) { std::memcpy(out, in, n * sizeof(double)); }
+    static void put(const int32_t* in, double* out, std::size_t n) { s32ToDoubleExact(in, out, n); }
+    static void put(const double* in, int32_t* out, std::size_t n)
+    {
+        for (std::size_t i = 0; i < n; ++i)
+            out[i] = doubleToS32(in[i]);
+    }
+    static void s32ToDoubleExact(const int32_t* in, double* out, std::size_t n)
+    {
+        for (std::size_t i = 0; i < n; ++i)
+            out[i] = static_cast<double>(in[i]) * (1.0 / 2147483648.0);
+    }
+
+    template <typename T>
+    uint64_t read(T* out, uint64_t frames)
+    {
+        const std::size_t ch = m_info.channels;
+        if (m_trimToLength)
+            frames = std::min(frames, m_info.totalFrames - std::min(m_info.totalFrames, m_position));
+        uint64_t done = 0;
+        while (done < frames) {
+            if (m_pendingPos >= pendingSize()) {
+                if (!decodeNext())
+                    break;
+                continue;
+            }
+            const std::size_t availableFrames = (pendingSize() - m_pendingPos) / ch;
+            const std::size_t n = static_cast<std::size_t>(std::min<uint64_t>(frames - done, availableFrames));
+            if (m_floatPending)
+                put(m_pendingFloat.data() + m_pendingPos, out + done * ch, n * ch);
+            else
+                put(m_pending.data() + m_pendingPos, out + done * ch, n * ch);
+            m_pendingPos += n * ch;
+            done += n;
+        }
+        m_position += done;
+        return done;
+    }
+
     // Decodes until at least one frame of audio is pending. False at the end.
     bool decodeNext()
     {
         m_pending.clear();
+        m_pendingFloat.clear();
         m_pendingPos = 0;
         for (;;) {
             const int r = ff().avcodec_receive_frame(m_codec, m_frame);
             if (r == 0) {
                 append(m_frame);
                 ff().av_frame_unref(m_frame);
-                if (!m_pending.empty())
+                if (pendingSize() > 0)
                     return true;
                 continue;
             }
@@ -387,7 +413,8 @@ private:
         }
     }
 
-    // Appends one decoded frame as interleaved left-justified s32.
+    // Appends one decoded frame, interleaved: left-justified s32, or doubles
+    // at 1.0 = full scale for float formats.
     void append(const AVFrame* f)
     {
         const std::size_t ch = m_info.channels;
@@ -410,49 +437,52 @@ private:
         if (first >= count || frameChannels <= 0)
             return;
 
-        const std::size_t base = m_pending.size();
-        m_pending.resize(base + (count - first) * ch, 0);
-        int32_t* out = m_pending.data() + base;
         const auto fmt = static_cast<AVSampleFormat>(f->format);
+        const auto packed = ff().av_get_packed_sample_fmt(fmt);
         const bool planar = ff().av_sample_fmt_is_planar(fmt);
         const std::size_t used = std::min<std::size_t>(ch, static_cast<std::size_t>(frameChannels));
+        m_floatPending = packed == AV_SAMPLE_FMT_FLT || packed == AV_SAMPLE_FMT_DBL;
+        const std::size_t base = pendingSize();
+        if (m_floatPending)
+            m_pendingFloat.resize(base + (count - first) * ch, 0.0);
+        else
+            m_pending.resize(base + (count - first) * ch, 0);
 
-        auto convert = [&](auto sampleType, auto toS32) {
+        auto convert = [&](auto sampleType, auto toOut) {
             using T = decltype(sampleType);
             for (std::size_t i = first; i < count; ++i) {
-                int32_t* frameOut = out + (i - first) * ch;
+                const std::size_t at = base + (i - first) * ch;
                 for (std::size_t c = 0; c < used; ++c) {
                     const T v = planar ? reinterpret_cast<const T*>(f->extended_data[c])[i]
                                        : reinterpret_cast<const T*>(f->extended_data[0])[i * frameChannels + c];
-                    frameOut[c] = toS32(v);
+                    toOut(at + c, v);
                 }
             }
         };
-        auto fromFloat = [](double v) {
-            return static_cast<int32_t>(std::clamp(v * 2147483648.0, -2147483648.0, 2147483647.0));
-        };
+        auto toS32 = [this](auto conv) { return [this, conv](std::size_t at, auto v) { m_pending[at] = conv(v); }; };
+        auto toDouble = [this](std::size_t at, auto v) { m_pendingFloat[at] = static_cast<double>(v); };
 
-        switch (ff().av_get_packed_sample_fmt(fmt)) {
+        switch (packed) {
         case AV_SAMPLE_FMT_U8:
-            convert(uint8_t{}, [](uint8_t v) { return static_cast<int32_t>((static_cast<uint32_t>(v) - 128u) << 24); });
+            convert(uint8_t{}, toS32([](uint8_t v) { return static_cast<int32_t>((static_cast<uint32_t>(v) - 128u) << 24); }));
             break;
         case AV_SAMPLE_FMT_S16:
-            convert(int16_t{}, [](int16_t v) { return static_cast<int32_t>(static_cast<uint32_t>(v) << 16); });
+            convert(int16_t{}, toS32([](int16_t v) { return static_cast<int32_t>(static_cast<uint32_t>(v) << 16); }));
             break;
         case AV_SAMPLE_FMT_S32:
-            convert(int32_t{}, [](int32_t v) { return v; });
+            convert(int32_t{}, toS32([](int32_t v) { return v; }));
             break;
         case AV_SAMPLE_FMT_S64:
-            convert(int64_t{}, [](int64_t v) { return static_cast<int32_t>(v >> 32); });
+            convert(int64_t{}, toS32([](int64_t v) { return static_cast<int32_t>(v >> 32); }));
             break;
         case AV_SAMPLE_FMT_FLT:
-            convert(float{}, [&](float v) { return fromFloat(v); });
+            convert(float{}, toDouble);
             break;
         case AV_SAMPLE_FMT_DBL:
-            convert(double{}, [&](double v) { return fromFloat(v); });
+            convert(double{}, toDouble);
             break;
         default:
-            m_pending.resize(base); // unknown layout: drop the frame
+            // An unknown layout (none FFmpeg has today): silence, keeping the timing.
             break;
         }
     }
@@ -469,7 +499,9 @@ private:
     uint64_t m_position = 0; // frames delivered
     bool m_skipping = false;
     uint64_t m_skipTo = 0;
-    std::vector<int32_t> m_pending; // one decoded frame, interleaved s32
+    std::vector<int32_t> m_pending; // one decoded frame, interleaved s32 (integer formats)
+    std::vector<double> m_pendingFloat; // ... or doubles (float formats)
+    bool m_floatPending = false;
     std::size_t m_pendingPos = 0;
 };
 

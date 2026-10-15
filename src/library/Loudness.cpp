@@ -33,15 +33,24 @@ State measureFile(const std::filesystem::path& path, const std::atomic<bool>& ca
     State st(ebur128_init(info.channels, info.sampleRate, EBUR128_MODE_I | EBUR128_MODE_TRUE_PEAK | EBUR128_MODE_HISTOGRAM));
     if (!st)
         return nullptr;
+    // Channels weighed as they are heard: mono plays on both speakers (+3 dB
+    // over one), and the side pair of a 7.1 file (WAVE order FL FR FC LFE BL
+    // BR SL SR) counts like the back pair, which libebur128 would ignore.
+    if (info.channels == 1)
+        ebur128_set_channel(st.get(), 0, EBUR128_DUAL_MONO);
+    if (info.channels == 8) {
+        ebur128_set_channel(st.get(), 6, EBUR128_Mp090);
+        ebur128_set_channel(st.get(), 7, EBUR128_Mm090);
+    }
 
-    std::vector<int32_t> buffer(kBlockFrames * info.channels);
+    // Doubles: the true peak of a lossy or float file above full scale is
+    // measured, not clipped first (integer sources are exact either way).
+    std::vector<double> buffer(kBlockFrames * info.channels);
     for (;;) {
         if (cancel.load(std::memory_order_relaxed))
             return nullptr;
-        const uint64_t got = decoder->readS32(buffer.data(), kBlockFrames);
-        // Left-justified s32: libebur128 scales int input by 2^31, so full
-        // scale stays 1.0 whatever the source bit depth.
-        if (got > 0 && ebur128_add_frames_int(st.get(), buffer.data(), static_cast<size_t>(got)) != EBUR128_SUCCESS)
+        const uint64_t got = decoder->readDouble(buffer.data(), kBlockFrames);
+        if (got > 0 && ebur128_add_frames_double(st.get(), buffer.data(), static_cast<size_t>(got)) != EBUR128_SUCCESS)
             return nullptr;
         if (got < kBlockFrames)
             break;

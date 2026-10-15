@@ -58,7 +58,9 @@ enum class DitherMode { Off, Tpdf, NoiseShaped };
 // rates, and on outputs wider than 20 bits (where the flat floor, ~-144 dBFS
 // at 24 bits, is already far below any DAC's own noise and shaping would only
 // raise it by ~18 dB), noise shaping falls back to flat TPDF. Samples beyond
-// full scale are clamped and counted.
+// full scale are clamped and counted. Digital silence that lasts (track
+// lead-ins and gaps, the end of a DSP tail) comes out as true zeros, not as a
+// bed of dither noise: SoX's auto-blanking.
 class Quantizer {
 public:
     static constexpr int kMaxChannels = 8;
@@ -81,6 +83,8 @@ public:
         for (auto& e : m_error)
             for (double& v : e)
                 v = 0.0;
+        for (auto& r : m_zeroRun)
+            r = 0;
         m_pos = 0;
     }
     // Samples clamped at full scale since the last call (clipping).
@@ -100,6 +104,16 @@ public:
         for (std::size_t i = 0; i < count; ++i) {
             double v = in[i] * kS32FullScale / m_lsb; // in target LSB units
             const std::size_t c = i % ch;
+            m_zeroRun[c] = in[i] != 0.0 ? 0 : m_zeroRun[c] > kBlankAfter ? m_zeroRun[c] : m_zeroRun[c] + 1;
+            if (m_zeroRun[c] > kBlankAfter) {
+                out[i] = 0;
+                if (shaped) {
+                    m_error[c][(m_pos + 1) % kTaps] = 0.0;
+                    if (c == ch - 1)
+                        m_pos = (m_pos + 1) % kTaps;
+                }
+                continue;
+            }
             if (shaped) {
                 // w = x - sum(h[k] * e[n-k]); y = Q(w + d); e[n] = y - w
                 double fb = 0.0;
@@ -132,6 +146,7 @@ public:
 
 private:
     static constexpr int kTaps = 9;
+    static constexpr uint32_t kBlankAfter = 2048; // zero samples in a row (per channel) before silence is output as is
     // SoX "f-weighted" error-feedback coefficients (Wannamaker), 44.1 / 48 kHz.
     static constexpr double kFWeighted[kTaps] = {2.412, -3.370, 3.937, -4.174, 3.353, -2.205, 1.281, -0.569, 0.0847};
 
@@ -142,6 +157,7 @@ private:
     std::size_t m_channels = 2;
     bool m_shapingRate = true;
     double m_error[kMaxChannels][kTaps] = {};
+    uint32_t m_zeroRun[kMaxChannels] = {};
     int m_pos = 0;
     uint64_t m_clipped = 0;
 };

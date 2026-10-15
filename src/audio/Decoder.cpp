@@ -64,7 +64,13 @@ public:
         if (!m_open)
             return false;
         const bool isFloat = m_wav.translatedFormatTag == DR_WAVE_FORMAT_IEEE_FLOAT;
-        m_info = {m_wav.sampleRate, m_wav.channels, isFloat ? 0u : m_wav.bitsPerSample,
+        // WAVE_FORMAT_EXTENSIBLE says how many bits of each container are
+        // music (16 in 24, 24 in 32): the depth that counts for HDCD, for
+        // the device depth and for what the signal path shows.
+        uint32_t bits = m_wav.bitsPerSample;
+        if (m_wav.fmt.formatTag == DR_WAVE_FORMAT_EXTENSIBLE && m_wav.fmt.validBitsPerSample > 0)
+            bits = std::min<uint32_t>(bits, m_wav.fmt.validBitsPerSample);
+        m_info = {m_wav.sampleRate, m_wav.channels, isFloat ? 0u : bits,
                   m_wav.totalPCMFrameCount, "WAV", !isFloat || m_wav.bitsPerSample <= 32, StreamInfo::Dsd::None, 0, "dr_wav"};
         return true;
     }
@@ -73,11 +79,24 @@ public:
     {
         return drwav_read_pcm_frames_s32(&m_wav, frames, out);
     }
+    // 32-bit float files as they are (dr_wav's s32 read clips them at 1.0).
+    uint64_t readDouble(double* out, uint64_t frames) override
+    {
+        if (m_wav.translatedFormatTag != DR_WAVE_FORMAT_IEEE_FLOAT || m_wav.bitsPerSample != 32)
+            return Decoder::readDouble(out, frames);
+        const std::size_t samples = static_cast<std::size_t>(frames) * m_info.channels;
+        if (m_scratch.size() < samples)
+            m_scratch.resize(samples);
+        const uint64_t got = drwav_read_pcm_frames_f32(&m_wav, frames, m_scratch.data());
+        std::copy_n(m_scratch.data(), static_cast<std::size_t>(got) * m_info.channels, out);
+        return got;
+    }
     bool seek(uint64_t frame) override { return drwav_seek_to_pcm_frame(&m_wav, frame); }
 
 private:
     drwav m_wav{};
     bool m_open = false;
+    std::vector<float> m_scratch;
 };
 
 class Mp3Decoder final : public Decoder {
@@ -106,20 +125,29 @@ public:
 
     uint64_t readS32(int32_t* out, uint64_t frames) override
     {
-        const std::size_t samples = static_cast<std::size_t>(frames) * m_info.channels;
-        if (m_scratch.size() < samples)
-            m_scratch.resize(samples);
-        const uint64_t got = drmp3_read_pcm_frames_f32(&m_mp3, frames, m_scratch.data());
+        const uint64_t got = readFloat(frames);
         const std::size_t n = static_cast<std::size_t>(got) * m_info.channels;
-        for (std::size_t i = 0; i < n; ++i) {
-            const double v = static_cast<double>(m_scratch[i]) * 2147483648.0;
-            out[i] = static_cast<int32_t>(std::clamp(v, -2147483648.0, 2147483647.0));
-        }
+        for (std::size_t i = 0; i < n; ++i)
+            out[i] = doubleToS32(m_scratch[i]);
+        return got;
+    }
+    uint64_t readDouble(double* out, uint64_t frames) override
+    {
+        const uint64_t got = readFloat(frames);
+        std::copy_n(m_scratch.data(), static_cast<std::size_t>(got) * m_info.channels, out);
         return got;
     }
     bool seek(uint64_t frame) override { return drmp3_seek_to_pcm_frame(&m_mp3, frame); }
 
 private:
+    uint64_t readFloat(uint64_t frames)
+    {
+        const std::size_t samples = static_cast<std::size_t>(frames) * m_info.channels;
+        if (m_scratch.size() < samples)
+            m_scratch.resize(samples);
+        return drmp3_read_pcm_frames_f32(&m_mp3, frames, m_scratch.data());
+    }
+
     drmp3 m_mp3{};
     bool m_open = false;
     std::vector<float> m_scratch;
@@ -197,6 +225,13 @@ public:
         m_position += got;
         return got;
     }
+    uint64_t readDouble(double* out, uint64_t frames) override
+    {
+        frames = std::min(frames, m_info.totalFrames - std::min(m_info.totalFrames, m_position));
+        const uint64_t got = frames ? m_inner->readDouble(out, frames) : 0;
+        m_position += got;
+        return got;
+    }
     bool seek(uint64_t frame) override
     {
         m_position = std::min(frame, m_info.totalFrames);
@@ -216,6 +251,18 @@ uint64_t cdToFrames(uint64_t cd, uint32_t rate)
 }
 
 } // namespace
+
+uint64_t Decoder::readDouble(double* out, uint64_t frames)
+{
+    const std::size_t samples = static_cast<std::size_t>(frames) * m_info.channels;
+    if (m_s32Scratch.size() < samples)
+        m_s32Scratch.resize(samples);
+    const uint64_t got = readS32(m_s32Scratch.data(), frames);
+    const std::size_t n = static_cast<std::size_t>(got) * m_info.channels;
+    for (std::size_t i = 0; i < n; ++i)
+        out[i] = static_cast<double>(m_s32Scratch[i]) * (1.0 / 2147483648.0);
+    return got;
+}
 
 std::unique_ptr<Decoder> Decoder::open(const std::filesystem::path& path, std::string* error)
 {

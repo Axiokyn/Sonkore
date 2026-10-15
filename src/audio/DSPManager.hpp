@@ -288,6 +288,7 @@ private:
     void releaseTrack();            // unload() but the output device
     void noteOutputRate(uint32_t rate); // an output opened at `rate`: resync silence if it changed
     void applyRamp(int32_t* out, std::size_t frames, std::size_t& pos, bool down) const;
+    double rampNoise() const;
     void pushDsdPreroll();
     bool openDevice(uint32_t sampleRate, uint32_t channels, std::string* error);
     void closeDevice();
@@ -418,6 +419,7 @@ private:
     double m_appliedHeadroom = 1.0;    // worker: headroom on the last processed sample
     bool m_gainsToUnity = false;       // worker: gains gliding back to 1 before the untouched path
     bool m_snapGains = true;           // worker: take the gains as they are (new track), no glide
+    mutable uint32_t m_rampRng = 0x9E3779B9u; // device thread: the fades' dither
     hdcd_simple* m_hdcd = nullptr;     // worker-owned decoder state, reset per track
     std::shared_ptr<Preload> m_preload; // the current track's (guarded by m_nextMutex once loaded)
     mutable std::mutex m_nextMutex;
@@ -439,6 +441,7 @@ private:
     SuperEQ m_eq;
     LinearPhaseEq m_linearEq;                    // worker
     std::atomic<std::size_t> m_linearEqLatency{0}; // its frames held, at the track's rate
+    std::atomic<double> m_resamplerDelay{0.0}; // output frames inside the converter (worker -> control thread)
     Resampler m_resampler;
     uint32_t m_outputRate = 0; // rate handed to the device
     Quantizer m_quantizer;

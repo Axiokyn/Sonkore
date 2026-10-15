@@ -49,6 +49,7 @@ public:
     static Band secondStage(uint32_t dsdRate);
 
     uint64_t readS32(int32_t* out, uint64_t frames) override;
+    uint64_t readDouble(double* out, uint64_t frames) override;
     bool seek(uint64_t frame) override;
 
 private:
@@ -57,6 +58,8 @@ private:
     void restart(uint64_t start);
     // Converts the next block; false at the end of the stream.
     bool produce();
+    template <typename T>
+    uint64_t read(T* out, uint64_t frames);
 
     std::unique_ptr<DsdDecoder> m_dsd;
     uint32_t m_channels = 0;
@@ -76,7 +79,7 @@ private:
     std::vector<double> m_mid;
 
     Resampler m_stage2;
-    std::vector<int32_t> m_pending; // converted output not handed out yet
+    std::vector<double> m_pending;  // converted output not handed out yet (1.0 = full scale)
     std::size_t m_pendingPos = 0;
     uint64_t m_discard = 0;         // output frames to drop (the pre-roll of a seek)
     uint64_t m_position = 0;        // output frames handed out

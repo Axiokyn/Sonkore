@@ -12,7 +12,7 @@ namespace sonkore {
 
 // Sample-rate converter for outputs that refuse the track's rate (WASAPI
 // shared mode, DACs without 44.1 kHz...): SoX Resampler "very high quality"
-// (linear phase, 175 dB stop band, ~29-bit precision), double in and out.
+// (linear phase, 175 dB stop band, 28-bit precision), double in and out.
 //
 // The engine only builds one when it is needed, so a bit-perfect session
 // carries no resampler at all. Worker-thread only.
@@ -21,7 +21,8 @@ public:
     // Phase response of the anti-imaging / anti-aliasing filter (all SoX VHQ):
     // linear (symmetric, pre- and post-ringing), intermediate, minimum (no
     // pre-ringing, phase shift near the top of the band), or linear with a
-    // steeper transition (passband to 99.7 % of Nyquist).
+    // steeper transition (flat to 98.2 % of Nyquist, 21.7 kHz at 44.1 kHz,
+    // instead of 91.1 %, 20.1 kHz).
     enum class Filter { Linear, Intermediate, Minimum, LinearSteep };
 
     Resampler() = default;
@@ -45,6 +46,9 @@ public:
     std::size_t drain();
     const double* output() const { return m_out.data(); }
     void clear();
+    // Output frames the converter holds (its filter's delay plus what is
+    // buffered): heard later than the input that went in.
+    double delayFrames() const;
 
 private:
     bool create(uint32_t inRate, uint32_t outRate, uint32_t channels, const struct ::soxr_quality_spec& quality, std::string* error);

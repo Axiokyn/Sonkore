@@ -24,7 +24,7 @@ namespace {
 
 // 2: ReplayGain / R128 tags are read.
 // 3: DSF / DSDIFF lengths (read as 0 through FFmpeg 8); unreadable files dropped.
-constexpr int kCacheVersion = 3;
+constexpr int kCacheVersion = 4;
 
 // What a CD image track's entry was read from: the newer of its sheet and
 // image file (Metadata::read stores the same value in `modified`).
@@ -927,6 +927,14 @@ void LibraryModel::loadCache()
             // audio: only those are read again (measured loudness is kept).
             if (version < 2 || (version < 3 && (t.duration <= 0.0 || t.sampleRate <= 0)))
                 t.modified = 0;
+            // Version 3 measured mono as one channel (3 dB low), ignored the
+            // sides of 7.1 and clipped lossy peaks before reading them: those
+            // measurements are taken again (tag values are kept).
+            if (version < 4 && t.rgAnalyzed && (t.channels == 1 || t.channels == 8 || t.bits == 0)) {
+                t.rgTrackGain = t.rgAlbumGain = std::numeric_limits<double>::quiet_NaN();
+                t.rgTrackPeak = t.rgAlbumPeak = 0.0;
+                t.rgAnalyzed = false;
+            }
         }
     }
     setTracks(std::move(tracks));

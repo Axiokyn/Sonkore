@@ -4,6 +4,7 @@
 #include <cmath>
 #include <cstring>
 #include <numbers>
+#include <type_traits>
 
 namespace sonkore {
 
@@ -224,10 +225,7 @@ bool DsdToPcm::produce()
         const std::size_t n = frames * m_channels;
         const std::size_t at = m_pending.size();
         m_pending.resize(at + n);
-        for (std::size_t i = 0; i < n; ++i) {
-            const double v = std::clamp(x[i] * 2147483648.0, -2147483648.0, 2147483647.0);
-            m_pending[at + i] = static_cast<int32_t>(std::lrint(v));
-        }
+        std::copy_n(x, n, m_pending.data() + at);
     };
     if (count > 0)
         convert(m_stage2.output(), m_stage2.process(m_mid.data(), count));
@@ -241,6 +239,17 @@ bool DsdToPcm::produce()
 
 uint64_t DsdToPcm::readS32(int32_t* out, uint64_t frames)
 {
+    return read(out, frames);
+}
+
+uint64_t DsdToPcm::readDouble(double* out, uint64_t frames)
+{
+    return read(out, frames);
+}
+
+template <typename T>
+uint64_t DsdToPcm::read(T* out, uint64_t frames)
+{
     const std::size_t ch = m_channels;
     frames = std::min(frames, m_info.totalFrames - std::min(m_info.totalFrames, m_position));
     uint64_t done = 0;
@@ -250,7 +259,7 @@ uint64_t DsdToPcm::readS32(int32_t* out, uint64_t frames)
             m_pendingPos = 0;
             if (m_drained) {
                 // The filters gave a frame or two fewer than the length: silence.
-                std::fill_n(out + done * ch, (frames - done) * ch, 0);
+                std::fill_n(out + done * ch, (frames - done) * ch, T{});
                 done = frames;
                 break;
             }
@@ -265,7 +274,12 @@ uint64_t DsdToPcm::readS32(int32_t* out, uint64_t frames)
             continue;
         }
         const auto n = static_cast<std::size_t>(std::min<uint64_t>(available, frames - done));
-        std::copy_n(m_pending.data() + m_pendingPos, n * ch, out + done * ch);
+        if constexpr (std::is_same_v<T, double>) {
+            std::copy_n(m_pending.data() + m_pendingPos, n * ch, out + done * ch);
+        } else {
+            for (std::size_t i = 0; i < n * ch; ++i)
+                out[done * ch + i] = doubleToS32(m_pending[m_pendingPos + i]);
+        }
         m_pendingPos += n * ch;
         done += n;
     }

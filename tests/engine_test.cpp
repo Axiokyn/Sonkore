@@ -464,6 +464,26 @@ void precision()
             below16 += (v & 0xFFFF) != 0;
         CHECK_MSG(below16 > mp3.size() / 2, "MP3 output is on the 16-bit grid (%zu of %zu samples finer)", below16, mp3.size());
     }
+    {
+        g_test = "lossy overshoot kept";
+        // A loud square wave: the MP3 decoder overshoots full scale. The
+        // processed path reads doubles and keeps it, for the gains to lower.
+        auto d = Decoder::open(corpus("Formatos/hot.mp3"));
+        CHECK(d != nullptr);
+        double peak = 0;
+        if (d) {
+            std::vector<double> block(4096 * d->info().channels);
+            while (const uint64_t n = d->readDouble(block.data(), 4096))
+                for (std::size_t i = 0; i < n * d->info().channels; ++i)
+                    peak = std::max(peak, std::fabs(block[i]));
+        }
+        CHECK_MSG(peak > 1.0, "MP3 peak %.3f: clipped at full scale", peak);
+        Engine e;
+        e.dsp.setVolume(0.5);
+        CHECK(e.load(corpus("Formatos/hot.mp3")));
+        CHECK(e.playToEnd());
+        CHECK_MSG(e.dsp.clippedSamples() == 0, "%llu samples clipped at volume 0.5", static_cast<unsigned long long>(e.dsp.clippedSamples()));
+    }
     const fs::path hires = corpus("Formatos/hires-24-96.flac");
     const auto ref = trimmed(decodeAll(hires), 2);
     {
@@ -554,7 +574,7 @@ void precision()
             q.setTargetBits(bits);
             q.setFormat(44100, 2);
             q.setDither(mode);
-            std::vector<double> in(1 << 16, 0.0);
+            std::vector<double> in(1 << 16, 1e-9); // below one 24-bit LSB, but not silence (blanked)
             std::vector<int32_t> out(in.size());
             q.process(in.data(), out.data(), in.size());
             double sum = 0;
@@ -566,6 +586,21 @@ void precision()
         const double flat16 = rms(16, DitherMode::Tpdf), shaped16 = rms(16, DitherMode::NoiseShaped);
         CHECK_MSG(shaped24 < flat24 * 1.2, "24-bit noise-shaped floor %.1f dB above TPDF", 20 * std::log10(shaped24 / flat24));
         CHECK_MSG(shaped16 > flat16 * 3, "16-bit noise shaping is not engaged (%.1f dB)", 20 * std::log10(shaped16 / flat16));
+    }
+    {
+        g_test = "digital silence stays silent";
+        Quantizer q;
+        q.setTargetBits(16);
+        q.setFormat(44100, 2);
+        q.setDither(DitherMode::NoiseShaped);
+        std::vector<double> in(1 << 16, 0.0);
+        std::vector<int32_t> out(in.size());
+        q.process(in.data(), out.data(), in.size());
+        const auto noisy = std::count_if(out.begin() + 8192, out.end(), [](int32_t v) { return v != 0; });
+        CHECK_MSG(noisy == 0, "%lld dithered samples in digital silence", static_cast<long long>(noisy));
+        in.assign(4096, 0.25);
+        q.process(in.data(), out.data(), in.size());
+        CHECK_MSG(std::count(out.begin(), out.begin() + 4096, 0) == 0, "music after silence came out as zeros");
     }
 }
 

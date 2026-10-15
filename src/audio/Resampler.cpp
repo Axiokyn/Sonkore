@@ -108,4 +108,9 @@ void Resampler::clear()
         soxr_clear(m_soxr);
 }
 
+double Resampler::delayFrames() const
+{
+    return m_soxr ? soxr_delay(m_soxr) : 0.0;
+}
+
 } // namespace sonkore
