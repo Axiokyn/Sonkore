@@ -9,6 +9,7 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QJsonDocument>
+#include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QRegularExpression>
 #include <QSettings>
@@ -554,12 +555,19 @@ void EqController::parseAutoEqIndex(const QByteArray& markdown)
     }
 }
 
+QNetworkAccessManager& EqController::network()
+{
+    if (!m_network)
+        m_network = std::make_unique<QNetworkAccessManager>(this);
+    return *m_network;
+}
+
 void EqController::autoEqRefreshIndex()
 {
     if (m_autoEqBusy)
         return;
     setAutoEqState(true, tr("Downloading AutoEQ database…"));
-    QNetworkReply* reply = m_network.get(QNetworkRequest(QUrl(QString::fromLatin1(kAutoEqRaw) + "INDEX.md")));
+    QNetworkReply* reply = network().get(QNetworkRequest(QUrl(QString::fromLatin1(kAutoEqRaw) + "INDEX.md")));
     connect(reply, &QNetworkReply::finished, this, [this, reply] {
         reply->deleteLater();
         if (reply->error() != QNetworkReply::NoError) {
@@ -617,7 +625,7 @@ void EqController::autoEqApply(int resultIndex)
     const QByteArray url = QByteArray(kAutoEqRaw) + e.path.toUtf8() + '/' + leaf.toUtf8() + "%20ParametricEQ.txt";
 
     setAutoEqState(true, tr("Downloading %1…").arg(e.name));
-    QNetworkReply* reply = m_network.get(QNetworkRequest(QUrl::fromEncoded(url)));
+    QNetworkReply* reply = network().get(QNetworkRequest(QUrl::fromEncoded(url)));
     connect(reply, &QNetworkReply::finished, this, [this, reply, e] {
         reply->deleteLater();
         if (reply->error() != QNetworkReply::NoError) {

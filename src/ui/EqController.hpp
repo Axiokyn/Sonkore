@@ -3,8 +3,10 @@
 #include "QmlSingleton.hpp"
 #include "SuperEQ.hpp"
 
-#include <QNetworkAccessManager>
 #include <QObject>
+#include <memory>
+
+class QNetworkAccessManager;
 #include <QStringList>
 #include <QUrl>
 #include <QVariantList>
@@ -147,7 +149,9 @@ private:
     QString m_currentProfile;
     QVector<Profile> m_userProfiles;
 
-    QNetworkAccessManager m_network;
+    // Made on first use: Qt Network's TLS stack (OpenSSL) stays unloaded until AutoEQ is asked for.
+    QNetworkAccessManager& network();
+    std::unique_ptr<QNetworkAccessManager> m_network;
     QVector<AutoEqEntry> m_autoEqIndex;
     QVector<int> m_autoEqMatches;
     QVariantList m_autoEqResults;
