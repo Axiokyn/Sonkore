@@ -19,6 +19,9 @@ class AlsaDsdOutput {}; // no ALSA: never created (m_dsdOut stays empty)
 #include <hdcd_simple.h>
 
 #include <algorithm>
+#if defined(__SSE__) || defined(_M_X64)
+#include <xmmintrin.h>
+#endif
 #include <cmath>
 #include <numbers>
 #include <chrono>
@@ -693,6 +696,10 @@ bool DSPManager::openDevice(uint32_t sampleRate, uint32_t channels, std::string*
     st.deviceChannels = m_device.playback.internalChannels;
     st.deviceBits = static_cast<int>(ma_get_bytes_per_sample(fmt) * 8);
     st.deviceFloat = (fmt == ma_format_f32);
+    if (m_nullBackend && m_nullDeviceBits > 0) {
+        st.deviceBits = m_nullDeviceBits;
+        st.deviceFloat = false;
+    }
     st.sourceSampleRate = sampleRate;
     st.resampled = m_outputRate != sampleRate;
     m_status = st;
@@ -702,6 +709,7 @@ bool DSPManager::openDevice(uint32_t sampleRate, uint32_t channels, std::string*
     // Requantise processed audio onto the grid the DAC actually receives.
     m_quantizer.setTargetBits(st.deviceFloat ? 24 : std::min(st.deviceBits, 24));
     m_quantizer.setFormat(m_outputRate, channels);
+    m_deviceDepth = st.deviceFloat ? 24 : st.deviceBits;
     return true;
 }
 
@@ -781,6 +789,7 @@ bool DSPManager::openPipeWire(const DeviceEntry& entry, uint32_t rate, uint32_t 
     updateBitPerfectPath();
     m_quantizer.setTargetBits(24);
     m_quantizer.setFormat(m_outputRate, channels);
+    m_deviceDepth = 24;
     return true;
 }
 
@@ -841,6 +850,7 @@ bool DSPManager::openAsio(const DeviceEntry& entry, bool dsd, uint32_t rate, uin
     if (!dsd) {
         m_quantizer.setTargetBits(st.deviceFloat ? 24 : std::min(st.deviceBits, 24));
         m_quantizer.setFormat(m_outputRate, channels);
+        m_deviceDepth = st.deviceFloat ? 24 : st.deviceBits;
     }
     return true;
 }
@@ -974,6 +984,8 @@ void DSPManager::adoptDecoder(std::unique_ptr<Decoder> decoder, double gain)
     m_workerRate = m_track.sampleRate;
     m_workerChannels = m_track.channels;
     m_workerDsd = m_track.dsd;
+    m_workerBits = m_track.bitsPerSample;
+    m_snapGains = true; // a new track starts at its own gains, no glide from the last one's
 }
 
 // A DSD file sent as DSD, when the settings ask for it and the output takes it
@@ -1457,6 +1469,7 @@ void DSPManager::seek(double seconds)
             m_workerRate = m_track.sampleRate;
             m_workerChannels = m_track.channels;
             m_workerDsd = m_track.dsd;
+            m_workerBits = m_track.bitsPerSample;
             m_next.hdcd = m_workerHdcd;
             m_workerHdcd = m_trackHdcd;
             m_splicePoint.store(-1);
@@ -1863,6 +1876,13 @@ bool DSPManager::interrupted() const
 
 void DSPManager::workerLoop()
 {
+#if defined(__SSE__) || defined(_M_X64)
+    // Denormals flushed to zero on this thread (FTZ, and DAZ for the inputs):
+    // filter states decaying through digital silence otherwise fall into
+    // subnormal numbers, where the EQ, crossfeed and convolver run ~50 times
+    // slower. Values that small (below 2^-1022) are nothing to the output.
+    _mm_setcsr(_mm_getcsr() | 0x8040);
+#endif
     while (!m_quit.load(std::memory_order_acquire)) {
         if (m_parkFlag.load(std::memory_order_acquire)) {
             std::unique_lock lock(m_parkMutex);
@@ -1906,8 +1926,23 @@ bool DSPManager::produceBlock()
     const bool stActive = !raw && !m_stretch.isNeutral();
     const bool resampling = m_resampler.active();
     const bool hdcd = m_workerHdcd && m_hdcd;
-    // HDCD output with nothing else to do goes out as is: no float round trip.
-    const bool bypass = raw || (dspIsNeutral() && !resampling);
+    // Integers the device holds whole go out as is (HDCD's 20-bit output
+    // too): no float round trip. Wider ones (24-bit on a 16-bit device,
+    // 32-bit FLAC, lossy and DSD-converted words) are requantised with
+    // dither instead of having their low bits cut off.
+    const int sourceBits = hdcd ? 24 : m_workerBits > 0 ? static_cast<int>(m_workerBits) : 32;
+    const bool fits = sourceBits <= m_deviceDepth;
+    bool bypass = raw || (dspIsNeutral() && !resampling && fits);
+    if (m_snapGains) {
+        m_appliedGain = bypass ? 1.0 : m_volume.load(std::memory_order_relaxed) * m_trackGain.load(std::memory_order_relaxed);
+        m_appliedHeadroom = bypass ? 1.0 : m_headroom.load(std::memory_order_relaxed);
+        m_snapGains = false;
+    }
+    // Back to the untouched path only once the gains have glided to unity:
+    // one more processed block takes them there.
+    m_gainsToUnity = bypass && !raw && (m_appliedGain != 1.0 || m_appliedHeadroom != 1.0);
+    if (m_gainsToUnity)
+        bypass = false;
     m_bypassActive.store(bypass, std::memory_order_relaxed);
     m_quantizer.setDither(static_cast<DitherMode>(m_ditherMode.load(std::memory_order_relaxed)));
 
@@ -2037,7 +2072,9 @@ DSPManager::Splice DSPManager::spliceNext()
     m_preload = m_next.preload;
     m_decoder = std::move(m_next.decoder);
     m_trackGain.store(m_next.gain, std::memory_order_relaxed); // from the first sample of the new track
+    m_snapGains = true; // exactly there, not glided into
     m_workerHdcd = m_next.hdcd;
+    m_workerBits = info.bitsPerSample;
     m_splicedHdcd = m_next.hdcd;
     if (m_workerHdcd) {
         if (!m_hdcd)
@@ -2262,10 +2299,7 @@ std::size_t DSPManager::pendingDspFrames() const
 
 bool DSPManager::processAndPush(double* samples, std::size_t frames)
 {
-    const std::size_t count = frames * m_channels;
-    if (const double headroom = m_headroom.load(std::memory_order_relaxed); headroom != 1.0)
-        for (std::size_t i = 0; i < count; ++i)
-            samples[i] *= headroom;
+    applyGain(samples, frames, m_appliedHeadroom, m_gainsToUnity ? 1.0 : m_headroom.load(std::memory_order_relaxed));
     const bool linear = m_eq.linearPhase();
     if (linear || m_linearEq.active()) {
         m_linearEq.update(linear && !m_eq.isNeutral(), m_eq); // engaging: primed with what went before this block
@@ -2287,7 +2321,6 @@ bool DSPManager::processAndPush(double* samples, std::size_t frames)
 
 bool DSPManager::processRest(double* samples, std::size_t frames, bool biquads)
 {
-    const std::size_t count = frames * m_channels;
     if (m_convolver)
         m_convolver->process(samples, frames);
     if (biquads)
@@ -2296,15 +2329,38 @@ bool DSPManager::processRest(double* samples, std::size_t frames, bool biquads)
         m_crossfeed.process(samples, frames);
 
     const double vol = m_volume.load(std::memory_order_relaxed) * m_trackGain.load(std::memory_order_relaxed);
-    if (vol != 1.0)
-        for (std::size_t i = 0; i < count; ++i)
-            samples[i] *= vol;
+    applyGain(samples, frames, m_appliedGain, m_gainsToUnity ? 1.0 : vol);
 
     if (m_resampler.active()) {
         const std::size_t got = m_resampler.process(samples, frames);
         return m_toDsd ? modulateAndPush(m_resampler.output(), got) : quantizeAndPush(m_resampler.output(), got);
     }
     return quantizeAndPush(samples, frames);
+}
+
+// Multiplies a block by `target`. A gain that changed since the last block
+// (volume, ReplayGain, headroom) glides there sample by sample across the
+// block instead of stepping at its start: a step is a click (a 1 dB step on a
+// -6 dBFS passage is a -26 dBFS click), and dragging the volume a zipper.
+void DSPManager::applyGain(double* samples, std::size_t frames, double& applied, double target) const
+{
+    const std::size_t ch = m_channels;
+    if (applied == target) {
+        if (target != 1.0)
+            for (std::size_t i = 0, n = frames * ch; i < n; ++i)
+                samples[i] *= target;
+        return;
+    }
+    if (frames == 0)
+        return;
+    const double step = (target - applied) / static_cast<double>(frames);
+    double g = applied;
+    for (std::size_t f = 0; f < frames; ++f) {
+        g = f + 1 == frames ? target : g + step;
+        for (std::size_t c = 0; c < ch; ++c)
+            samples[f * ch + c] *= g;
+    }
+    applied = target;
 }
 
 // PCM at the DSD rate -> 1-bit stream, packed for the DSD output.

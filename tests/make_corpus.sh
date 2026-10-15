@@ -34,6 +34,12 @@ sox -R -n -r 44100 -e floating-point -b 32 -c 2 Formatos/float32.wav synth 3 sin
 sox -R -n -r 44100 -b 16 -c 1 Formatos/mono16.wav synth 3 sine 500 vol 0.5
 sox -R -n -r 88200 -b 24 -c 2 Formatos/r882.flac synth 3 sine 2000 vol 0.5
 sox -R -n -r 44100 -b 16 -c 2 Formatos/aiff16.aiff synth 3 sine 700 vol 0.5
+# 32-bit integer PCM, and the same as FLAC (32-bit FLAC needs flac 1.4+).
+sox -R -n -r 48000 -b 32 -e signed-integer -c 2 Formatos/pcm32.wav synth 2 sine 997 vol 0.5
+flac -s -f -o Formatos/flac32.flac Formatos/pcm32.wav
+# A loud master: the MP3 decoder's output overshoots full scale.
+sox -R -n -r 44100 -b 16 -c 2 "$tmp/hot.wav" synth 3 square 220 vol 0.97
+ffmpeg -nostdin -loglevel error -y -i "$tmp/hot.wav" -c:a libmp3lame -b:a 192k Formatos/hot.mp3
 ff() { ffmpeg -nostdin -loglevel error -y -i "$tmp/part1.wav" "$@"; }
 ff -c:a libmp3lame -b:a 192k Formatos/mp3.mp3
 ff -c:a libopus -b:a 128k Formatos/opus.opus

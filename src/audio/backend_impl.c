@@ -22,5 +22,8 @@
 #define DR_WAV_IMPLEMENTATION
 #include <dr_wav.h>
 
+/* MP3 decoded to float: the int16 build rounds every frame to 16 bits and
+ * clips the decoder's overshoot above full scale. */
+#define DR_MP3_FLOAT_OUTPUT
 #define DR_MP3_IMPLEMENTATION
 #include <dr_mp3.h>

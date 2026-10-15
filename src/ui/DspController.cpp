@@ -520,8 +520,14 @@ double DspController::gainFor(const QString& path, QVariantMap info, bool* known
     if (known)
         *known = true;
     double linear = std::pow(10.0, (gain + m_rgPreamp) / 20.0);
+    // The loudest peak lands at -1 dBTP (EBU R128's ceiling), not at full
+    // scale: a 4x-oversampled true-peak meter can read up to ~0.6 dB low, and
+    // tags from other scanners often hold the sample peak, lower still; what
+    // is left above full scale would be clipped by the resampler, the EQ or
+    // the DAC's own interpolation filter.
+    constexpr double kCeiling = 0.8912509381337456; // -1 dB
     if (m_rgPreventClipping && peak > 0.0)
-        linear = std::min(linear, 1.0 / peak); // the loudest peak lands at full scale, not beyond
+        linear = std::min(linear, kCeiling / peak);
     return linear;
 }
 
@@ -1926,11 +1932,18 @@ QVariantList DspController::buildSignalPath() const
                     + (fixedRate() != 0 && !s.upsampled ? tr(" · fixed output rate") : QString()),
                 s.upsampled ? "enhanced" : "high");
         }
-        if (!s.bitPerfectNow && !s.hdcd && !s.pcmToDsdRate && (s.resampled || crossfeedOn || conv.active || !m_engine.timeStretch().isNeutral() || !eq.isNeutral() || m_engine.volume() != 1.0
-                                 || (m_rgMode != ReplayGainOff && !std::isnan(m_currentGainDb) && m_currentGainDb != 0.0))) {
+        // A source wider than the device (24-bit on a 16-bit DAC, 32-bit,
+        // lossy or DSD-converted words) is requantised even untouched.
+        const int srcBits = s.hdcd ? 24 : t.bitsPerSample > 0 ? static_cast<int>(t.bitsPerSample) : 32;
+        const bool wider = !dsd && srcBits > (s.deviceFloat ? 24 : s.deviceBits);
+        if (!s.bitPerfectNow && !s.pcmToDsdRate
+            && (wider || (!s.hdcd && (s.resampled || crossfeedOn || conv.active || !m_engine.timeStretch().isNeutral() || !eq.isNeutral() || m_engine.volume() != 1.0
+                                      || (m_rgMode != ReplayGainOff && !std::isnan(m_currentGainDb) && m_currentGainDb != 0.0))))) {
             const int bits = s.deviceFloat ? 24 : std::min(s.deviceBits, 24);
-            add(tr("Requantisation"), m_ditherMode == DitherShaped ? tr("%1-bit with noise-shaped dither").arg(bits)
-                                      : m_ditherMode == DitherTpdf ? tr("%1-bit with TPDF dither").arg(bits) : tr("%1-bit").arg(bits), "high");
+            // Noise shaping only below 21 bits, at 44.1/48 kHz (Quantizer).
+            const bool shaped = m_ditherMode == DitherShaped && bits <= 20 && (s.deviceSampleRate == 44100 || s.deviceSampleRate == 48000);
+            add(tr("Requantisation"), shaped ? tr("%1-bit with noise-shaped dither").arg(bits)
+                                      : m_ditherMode != DitherOff ? tr("%1-bit with TPDF dither").arg(bits) : tr("%1-bit").arg(bits), "high");
         }
     }
     if (m_volumeFixed)

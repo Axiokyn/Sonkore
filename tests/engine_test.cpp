@@ -222,7 +222,7 @@ void bitPerfectAll()
                           "Formatos/float32.wav", "Formatos/mono16.wav", "Formatos/r882.flac", "Formatos/aiff16.aiff",
                           "Formatos/alac.m4a", "Formatos/wavpack.wv", "Formatos/tta.tta", "Formatos/mp3.mp3",
                           "Formatos/opus.opus", "Formatos/vorbis.ogg", "Formatos/aac.m4a", "Multicanal/51.flac",
-                          "Multicanal/71.wav"})
+                          "Multicanal/71.wav", "Formatos/pcm32.wav", "Formatos/flac32.flac"})
         bitPerfect(f);
 }
 
@@ -441,6 +441,131 @@ void volumeAndEq()
         const auto out = trimmed(e.capture.take(), 2);
         CHECK_MSG(std::llabs(static_cast<long long>(out.size()) - static_cast<long long>(ref.size())) <= 4, "length changed");
         CHECK(e.dsp.underrunCount() == 0);
+    }
+}
+
+// Precision at the edges of the chain: 32-bit FLAC, MP3 kept in float,
+// sources wider than the device dithered (not truncated), gain changes that
+// glide instead of stepping, noise shaping only where it helps.
+void precision()
+{
+    {
+        g_test = "flac 32-bit";
+        const auto flac = decodeAll(corpus("Formatos/flac32.flac"));
+        const auto wav = decodeAll(corpus("Formatos/pcm32.wav"));
+        CHECK_MSG(!flac.empty(), "a 32-bit FLAC decodes to nothing");
+        CHECK_MSG(flac == wav, "32-bit FLAC differs from its WAV (%zu vs %zu samples)", flac.size(), wav.size());
+    }
+    {
+        g_test = "mp3 in float";
+        const auto mp3 = decodeAll(corpus("Formatos/hot.mp3"));
+        std::size_t below16 = 0;
+        for (int32_t v : mp3)
+            below16 += (v & 0xFFFF) != 0;
+        CHECK_MSG(below16 > mp3.size() / 2, "MP3 output is on the 16-bit grid (%zu of %zu samples finer)", below16, mp3.size());
+    }
+    const fs::path hires = corpus("Formatos/hires-24-96.flac");
+    const auto ref = trimmed(decodeAll(hires), 2);
+    {
+        g_test = "24-bit source on a 16-bit device";
+        Engine e;
+        e.dsp.setNullDeviceBits(16);
+        e.dsp.setDither(DitherMode::Tpdf);
+        CHECK(e.load(hires));
+        CHECK(e.playToEnd());
+        CHECK(!e.dsp.outputStatus().bitPerfectNow);
+        const auto out = e.capture.take();
+        // Line the output up with the source (the dither may zero a first frame).
+        std::size_t first = 0;
+        while (first < out.size() / 2 && out[first * 2] == 0 && out[first * 2 + 1] == 0)
+            ++first;
+        double bestErr = 1e300;
+        long long bestShift = 0;
+        for (long long shift = -2; shift <= 2; ++shift) {
+            double err = 0;
+            for (std::size_t i = 0; i < 2000; ++i) {
+                const long long o = static_cast<long long>(first + i) + shift;
+                if (o >= 0 && std::size_t(o) * 2 + 1 < out.size())
+                    err += std::fabs(double(out[std::size_t(o) * 2]) - ref[i * 2]);
+            }
+            if (err < bestErr)
+                bestErr = err, bestShift = shift;
+        }
+        std::size_t offGrid = 0, n = 0, truncated = 0;
+        double bias = 0;
+        for (std::size_t i = 0; i < ref.size() / 2; ++i) {
+            const long long o = static_cast<long long>(first + i) + bestShift;
+            if (o < 0 || std::size_t(o) * 2 + 1 >= out.size())
+                break;
+            for (int c = 0; c < 2; ++c) {
+                const int32_t v = out[std::size_t(o) * 2 + c], r = ref[i * 2 + c];
+                offGrid += (v & 0xFFFF) != 0;
+                truncated += v == (r & ~0xFFFF);
+                bias += (double(v) - r) / 65536.0;
+                ++n;
+            }
+        }
+        CHECK_MSG(n > ref.size() * 9 / 10, "only %zu samples lined up", n);
+        CHECK_MSG(offGrid == 0, "%zu samples off the 16-bit grid", offGrid);
+        CHECK_MSG(truncated < n * 9 / 10, "looks truncated: %zu of %zu samples are the source cut to 16 bits", truncated, n);
+        CHECK_MSG(std::fabs(bias / n) < 0.05, "mean error %.3f LSB (truncation gives -0.5)", bias / n);
+    }
+    {
+        g_test = "24-bit source on a 24-bit device";
+        Engine e;
+        e.dsp.setNullDeviceBits(24);
+        CHECK(e.load(hires));
+        CHECK(e.playToEnd());
+        const auto out = trimmed(e.capture.take(), 2);
+        CHECK_MSG(firstDifference(out, ref, 2) < 0, "not bit-perfect on a device as wide as the source");
+    }
+    {
+        g_test = "volume glides";
+        // A steady 1 kHz sine: the gain each sample got is out / source.
+        const fs::path sine = corpus("Formatos/hires-24-192.wav");
+        const auto src = trimmed(decodeAll(sine), 2);
+        Engine e;
+        CHECK(e.load(sine));
+        e.dsp.play();
+        std::this_thread::sleep_for(500ms);
+        e.dsp.setVolume(0.5);
+        std::this_thread::sleep_for(500ms);
+        e.dsp.setVolume(1.0);
+        CHECK(waitFor([&] { return e.dsp.reachedEnd(); }, 20s));
+        const auto out = trimmed(e.capture.take(), 2);
+        CHECK(out.size() == src.size());
+        double worstStep = 0, lowest = 1, last = 1;
+        for (std::size_t i = 0; i < std::min(out.size(), src.size()); i += 2) {
+            if (std::abs(src[i]) < (1 << 29)) // |x| < 0.25 FS: ratio too coarse
+                continue;
+            const double g = double(out[i]) / src[i];
+            worstStep = std::max(worstStep, std::fabs(g - last));
+            lowest = std::min(lowest, g);
+            last = g;
+        }
+        CHECK_MSG(lowest < 0.51, "the volume never reached 0.5 (lowest gain %.3f)", lowest);
+        CHECK_MSG(worstStep < 0.05, "gain stepped by %.3f between samples", worstStep);
+        CHECK_MSG(sameTail(out, src, 96000 * 2, 2), "not bit-perfect again after the volume went back to 100 %%");
+    }
+    {
+        g_test = "noise shaping at 24 bits";
+        auto rms = [](int bits, DitherMode mode) {
+            Quantizer q;
+            q.setTargetBits(bits);
+            q.setFormat(44100, 2);
+            q.setDither(mode);
+            std::vector<double> in(1 << 16, 0.0);
+            std::vector<int32_t> out(in.size());
+            q.process(in.data(), out.data(), in.size());
+            double sum = 0;
+            for (int32_t v : out)
+                sum += double(v) * v;
+            return std::sqrt(sum / out.size());
+        };
+        const double flat24 = rms(24, DitherMode::Tpdf), shaped24 = rms(24, DitherMode::NoiseShaped);
+        const double flat16 = rms(16, DitherMode::Tpdf), shaped16 = rms(16, DitherMode::NoiseShaped);
+        CHECK_MSG(shaped24 < flat24 * 1.2, "24-bit noise-shaped floor %.1f dB above TPDF", 20 * std::log10(shaped24 / flat24));
+        CHECK_MSG(shaped16 > flat16 * 3, "16-bit noise shaping is not engaged (%.1f dB)", 20 * std::log10(shaped16 / flat16));
     }
 }
 
@@ -1710,6 +1835,7 @@ int main(int argc, char** argv)
         {"volumeAndEq", volumeAndEq},
         {"linearPhaseEq", linearPhaseEq},
         {"resampling", resampling},
+        {"precision", precision},
         {"timeStretch", timeStretch},
         {"timeStretchHighRate", timeStretchHighRate},
         {"dsd", dsd},

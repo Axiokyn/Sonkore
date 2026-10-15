@@ -266,6 +266,12 @@ std::unique_ptr<Decoder> Decoder::openFile(const std::filesystem::path& path, st
 #endif
         if (!flac)
             return fallback("Unreadable FLAC file");
+        // 32-bit FLAC (FLAC 1.4, RFC 9639): dr_flac opens it but reads no
+        // frame (the sample size code it takes as reserved); FFmpeg decodes it.
+        if (flac->bitsPerSample > 24) {
+            drflac_close(flac);
+            return fallback("32-bit FLAC needs FFmpeg");
+        }
         return std::make_unique<FlacDecoder>(flac);
     }
     if (ext == ".wav" || ext == ".wave") {

@@ -2114,7 +2114,7 @@ Item {
                 SettingRow {
                     title: qsTr("Dither")
                     description: qsTr("Only while DSP is active.")
-                    details: qsTr("When DSP is active, the result is requantised to the DAC's bit depth. TPDF adds inaudible noise so that step stays linear; noise shaping also moves that noise away from the frequencies the ear hears best (most useful with 16-bit DACs).")
+                    details: qsTr("When DSP is active, or the track has more bits than the DAC takes, the result is requantised to the DAC's bit depth. TPDF adds inaudible noise so that step stays linear; noise shaping also moves that noise away from the frequencies the ear hears best, on 16-bit DACs (at 24 bits the noise is already far below any DAC's own, so TPDF is used).")
                     LComboBox {
                         implicitWidth: 160
                         model: [qsTr("Off"), qsTr("TPDF"), qsTr("Noise shaped")]
@@ -2159,7 +2159,7 @@ Item {
                 SettingRow {
                     visible: DspController.replayGainMode !== 0
                     title: qsTr("Prevent clipping")
-                    details: qsTr("Lowers the gain when it would push the track's true peak above full scale.")
+                    details: qsTr("Lowers the gain when it would push the track's true peak above -1 dBTP (the EBU R128 ceiling), so the resampler, the EQ and the DAC's own filter never clip it.")
                     LSwitch { checked: DspController.replayGainPreventClipping; onToggled: DspController.replayGainPreventClipping = checked }
                 }
                 SettingRow {

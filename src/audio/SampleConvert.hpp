@@ -55,8 +55,10 @@ enum class DitherMode { Off, Tpdf, NoiseShaped };
 // Dither: TPDF (+-1 LSB, flat), or TPDF with F-weighted noise shaping (SoX's
 // 9-tap error-feedback filter for 44.1/48 kHz): the requantisation noise is
 // moved out of the 1-6 kHz region where the ear is most sensitive. At other
-// rates noise shaping falls back to flat TPDF. Samples beyond full scale are
-// clamped and counted.
+// rates, and on outputs wider than 20 bits (where the flat floor, ~-144 dBFS
+// at 24 bits, is already far below any DAC's own noise and shaping would only
+// raise it by ~18 dB), noise shaping falls back to flat TPDF. Samples beyond
+// full scale are clamped and counted.
 class Quantizer {
 public:
     static constexpr int kMaxChannels = 8;
@@ -93,7 +95,7 @@ public:
     {
         const double maxValue = kS32FullScale - m_lsb; // largest on-grid positive value
         const bool dither = m_mode != DitherMode::Off && m_bits < 32;
-        const bool shaped = m_mode == DitherMode::NoiseShaped && m_bits < 32 && m_shapingRate;
+        const bool shaped = m_mode == DitherMode::NoiseShaped && m_bits <= 20 && m_shapingRate;
         const std::size_t ch = m_channels;
         for (std::size_t i = 0; i < count; ++i) {
             double v = in[i] * kS32FullScale / m_lsb; // in target LSB units

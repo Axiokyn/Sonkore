@@ -2300,6 +2300,10 @@ Haz doble clic en cualquier pista, álbum o lista — o arrastra pistas aquí.</
         <translation>Esta pista está saturando: baja el headroom.</translation>
     </message>
     <message>
+        <source>When DSP is active, or the track has more bits than the DAC takes, the result is requantised to the DAC's bit depth. TPDF adds inaudible noise so that step stays linear; noise shaping also moves that noise away from the frequencies the ear hears best, on 16-bit DACs (at 24 bits the noise is already far below any DAC's own, so TPDF is used).</source>
+        <translation>Cuando el DSP está activo, o la pista tiene más bits de los que acepta el DAC, el resultado se recuantiza a la profundidad de bits del DAC. TPDF agrega un ruido inaudible para que ese paso sea lineal; el noise shaping además aleja ese ruido de las frecuencias que el oído percibe mejor, en DACs de 16 bits (a 24 bits el ruido ya está muy por debajo del propio de cualquier DAC, así que se usa TPDF).</translation>
+    </message>
+    <message>
         <source>ReplayGain</source>
         <translation>ReplayGain</translation>
     </message>
@@ -2326,10 +2330,6 @@ Haz doble clic en cualquier pista, álbum o lista — o arrastra pistas aquí.</
     <message>
         <source>Prevent clipping</source>
         <translation>Evitar saturación</translation>
-    </message>
-    <message>
-        <source>Lowers the gain when it would push the track's true peak above full scale.</source>
-        <translation>Reduce la ganancia cuando llevaría el pico real (true peak) de la pista por encima de la escala completa.</translation>
     </message>
     <message>
         <source>Loudness analysis</source>
@@ -2572,10 +2572,6 @@ Haz doble clic en cualquier pista, álbum o lista — o arrastra pistas aquí.</
         <translation>Dither</translation>
     </message>
     <message>
-        <source>When DSP is active, the result is requantised to the DAC's bit depth. TPDF adds inaudible noise so that step stays linear; noise shaping also moves that noise away from the frequencies the ear hears best (most useful with 16-bit DACs).</source>
-        <translation>Cuando el DSP está activo, el resultado se recuantiza a la profundidad de bits del DAC. TPDF agrega un ruido inaudible para que ese paso sea lineal; el noise shaping además aleja ese ruido de las frecuencias que el oído percibe mejor (más útil con DACs de 16 bits).</translation>
-    </message>
-    <message>
         <source>TPDF</source>
         <translation>TPDF</translation>
     </message>
@@ -2634,6 +2630,10 @@ Haz doble clic en cualquier pista, álbum o lista — o arrastra pistas aquí.</
     <message>
         <source>Alternating row colours</source>
         <translation>Filas de color alterno</translation>
+    </message>
+    <message>
+        <source>Lowers the gain when it would push the track's true peak above -1 dBTP (the EBU R128 ceiling), so the resampler, the EQ and the DAC's own filter never clip it.</source>
+        <translation>Reduce la ganancia cuando llevaría el pico real (true peak) de la pista por encima de −1 dBTP (el techo de EBU R128), así el remuestreador, el ecualizador y el filtro del propio DAC nunca lo recortan.</translation>
     </message>
     <message>
         <source>Track list columns</source>

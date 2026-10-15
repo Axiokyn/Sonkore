@@ -241,6 +241,9 @@ public:
     // device thread, exactly as the DAC would receive it.
     using OutputTap = void (*)(void* user, const int32_t* samples, uint32_t frames, uint32_t channels);
     void useNullBackend() { m_nullBackend = true; }
+    // Tests: the null device presents itself as this many integer bits
+    // (16, 24...), as a DAC that takes no more would.
+    void setNullDeviceBits(int bits) { m_nullDeviceBits = bits; }
     void setOutputTap(OutputTap tap, void* user)
     {
         m_tapUser.store(user, std::memory_order_relaxed);
@@ -300,6 +303,7 @@ private:
     bool drainResampler();
     bool processAndPush(double* samples, std::size_t frames);
     bool processRest(double* samples, std::size_t frames, bool biquads); // after the linear-phase EQ
+    void applyGain(double* samples, std::size_t frames, double& applied, double target) const;
     std::size_t pendingDspFrames() const; // worker: frames of music inside the DSP chain, at the output rate
     bool quantizeAndPush(const double* samples, std::size_t frames);
     void ensureBuffers(bool stretch);
@@ -316,6 +320,7 @@ private:
 
     // miniaudio
     bool m_nullBackend = false;
+    int m_nullDeviceBits = 0;
     std::atomic<OutputTap> m_tap{nullptr};
     std::atomic<void*> m_tapUser{nullptr};
     std::vector<Backend> m_backends;
@@ -407,6 +412,12 @@ private:
     bool m_trackHdcd = false;          // the track being heard (control thread)
     bool m_splicedHdcd = false;        // guarded by m_nextMutex
     bool m_workerHdcd = false;         // worker: what it decodes now
+    uint32_t m_workerBits = 0;         // worker: the source's bits per sample (0: float / lossy)
+    int m_deviceDepth = 32;            // integer bits the output carries exactly (float32: 24)
+    double m_appliedGain = 1.0;        // worker: volume x track gain on the last processed sample
+    double m_appliedHeadroom = 1.0;    // worker: headroom on the last processed sample
+    bool m_gainsToUnity = false;       // worker: gains gliding back to 1 before the untouched path
+    bool m_snapGains = true;           // worker: take the gains as they are (new track), no glide
     hdcd_simple* m_hdcd = nullptr;     // worker-owned decoder state, reset per track
     std::shared_ptr<Preload> m_preload; // the current track's (guarded by m_nextMutex once loaded)
     mutable std::mutex m_nextMutex;
