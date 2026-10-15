@@ -197,6 +197,16 @@ Rectangle {
                     SectionHeader { title: qsTr("Library"); canAdd: false; visible: !sidebar.collapsed }
                     NavItem {
                         collapsed: sidebar.collapsed
+                        text: qsTr("Now playing")
+                        iconName: "headphones"
+                        badge: DspController.queue.length > 0 ? DspController.queue.length : ""
+                        current: sidebar.page === "playing"
+                        acceptsDrops: true
+                        onClicked: sidebar.navigate("playing", "")
+                        onTracksDropped: (paths) => DspController.enqueue(paths)
+                    }
+                    NavItem {
+                        collapsed: sidebar.collapsed
                         text: qsTr("Tracks")
                         iconName: "music"
                         badge: Library.count > 0 ? Library.count : ""

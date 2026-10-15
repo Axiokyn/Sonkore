@@ -12,7 +12,7 @@ ApplicationWindow {
     property string playlist
     property string folder      // folder picked in the sidebar tree ("" = all)
     property var pendingPlaylistPaths: []
-    readonly property var pageNames: ["tracks", "albums", "folders", "playlist", "queue", "artists", "genres", "favorites"]
+    readonly property var pageNames: ["tracks", "albums", "folders", "playlist", "queue", "artists", "genres", "favorites", "playing"]
     // Pages filtered by the title bar's search.
     readonly property bool libraryPage: ["tracks", "albums", "folders", "artists", "genres", "favorites"].indexOf(page) >= 0
 
@@ -996,6 +996,7 @@ ApplicationWindow {
             PageLoader { name: "artists"; sourceComponent: Component { BrowsePage { field: "artist" } } }
             PageLoader { name: "genres"; sourceComponent: Component { BrowsePage { field: "genre" } } }
             PageLoader { name: "favorites"; sourceComponent: Component { TracksPage { favoritesOnly: true } } }
+            PageLoader { name: "playing"; keepAlive: false; sourceComponent: Component { NowPlayingPage {} } }
         }
         }
     }

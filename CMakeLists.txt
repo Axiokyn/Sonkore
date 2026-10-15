@@ -191,6 +191,7 @@ qt_add_qml_module(Sonkore
         qml/components/SectionLabel.qml
         qml/components/Sidebar.qml
         qml/components/SignalPathPopup.qml
+        qml/components/SignalPathList.qml
         qml/components/TrackMenu.qml
         qml/components/TrackRow.qml
         qml/components/TrackTable.qml
@@ -213,6 +214,7 @@ qt_add_qml_module(Sonkore
         qml/pages/PlaylistDialogs.qml
         qml/pages/PlaylistPage.qml
         qml/pages/QueuePage.qml
+        qml/pages/NowPlayingPage.qml
         qml/pages/SettingsDialogs.qml
         qml/pages/SettingsPage.qml
         qml/pages/TracksPage.qml

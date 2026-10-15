@@ -1112,8 +1112,8 @@ Item {
                     details: qsTr("What Sonkore shows when it opens. Last place: the folder you had open, or the playing track's.")
                     LComboBox {
                         implicitWidth: 160
-                        readonly property var pages: ["last", "tracks", "favorites", "albums", "artists", "genres", "folders", "queue"]
-                        model: [qsTr("Last place"), qsTr("Tracks"), qsTr("Favorites"), qsTr("Albums"), qsTr("Artists"), qsTr("Genres"), qsTr("Folders"), qsTr("Play queue")]
+                        readonly property var pages: ["last", "playing", "tracks", "favorites", "albums", "artists", "genres", "folders", "queue"]
+                        model: [qsTr("Last place"), qsTr("Now playing"), qsTr("Tracks"), qsTr("Favorites"), qsTr("Albums"), qsTr("Artists"), qsTr("Genres"), qsTr("Folders"), qsTr("Play queue")]
                         currentIndex: Math.max(0, pages.indexOf(Prefs.store.startPage))
                         onActivated: (index) => Prefs.store.startPage = pages[index]
                     }

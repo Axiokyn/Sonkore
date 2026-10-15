@@ -92,10 +92,18 @@ Rectangle {
             spacing: 12
 
             CoverArt {
+                id: barCover
                 Layout.preferredWidth: Theme.compact ? 44 : Theme.spacious ? 66 : 58
                 Layout.preferredHeight: Layout.preferredWidth
                 path: DspController.currentPath
                 radius: Theme.radiusSmall
+                // A click: the Now playing page (the track in large, the
+                // signal path and the queue).
+                HoverHandler { id: coverHover; cursorShape: Qt.PointingHandCursor }
+                TapHandler { onTapped: AppActions.navigate("playing", "") }
+                ToolTip.visible: coverHover.hovered
+                ToolTip.delay: 600
+                ToolTip.text: qsTr("Now playing: the track, the signal path and the queue")
             }
             ColumnLayout {
                 Layout.fillWidth: true

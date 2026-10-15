@@ -66,4 +66,9 @@ T = {
 "Upsampled · %1": ("Sobremuestreado · %1", "Sobreamostrado · %1", "Suréchantillonné · %1", "Hochgetastet · %1", "Sovracampionato · %1"),
 "Resampled · %1": ("Remuestreado · %1", "Reamostrado · %1", "Rééchantillonné · %1", "Umgetastet · %1", "Ricampionato · %1"),
 "Processed · %1": ("Procesado · %1", "Processado · %1", "Traité · %1", "Verarbeitet · %1", "Elaborato · %1"),
+"Now playing": ("Sonando ahora", "Tocando agora", "En cours de lecture", "Aktuelle Wiedergabe", "In riproduzione"),
+" in the queue": (" en la cola", " na fila", " dans la file", " in der Warteschlange", " in coda"),
+"Now playing: the track, the signal path and the queue": ("Sonando ahora: la pista, el signal path y la cola", "Tocando agora: a faixa, o signal path e a fila", "En cours de lecture : la piste, le signal path et la file", "Aktuelle Wiedergabe: der Titel, der Signalpfad und die Warteschlange", "In riproduzione: il brano, il signal path e la coda"),
+"Pick something from your library: double-click a track, an album or a playlist.": ("Elige algo de tu biblioteca: doble clic en una pista, un álbum o una lista.", "Escolha algo da sua biblioteca: clique duas vezes em uma faixa, um álbum ou uma lista.", "Choisissez quelque chose dans votre bibliothèque : double-cliquez sur une piste, un album ou une liste.", "Wähle etwas aus deiner Mediathek: Doppelklick auf einen Titel, ein Album oder eine Wiedergabeliste.", "Scegli qualcosa dalla tua libreria: doppio clic su un brano, un album o una playlist."),
+"Show in library": ("Mostrar en la biblioteca", "Mostrar na biblioteca", "Afficher dans la bibliothèque", "In der Mediathek zeigen", "Mostra nella libreria"),
 }

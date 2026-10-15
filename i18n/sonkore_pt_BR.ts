@@ -1416,6 +1416,10 @@
 <context>
     <name>NowPlayingBar</name>
     <message>
+        <source>Now playing: the track, the signal path and the queue</source>
+        <translation>Tocando agora: a faixa, o signal path e a fila</translation>
+    </message>
+    <message>
         <source>Nothing playing</source>
         <translation>Nada tocando</translation>
     </message>
@@ -1510,6 +1514,63 @@
     <message>
         <source>Volume · %1</source>
         <translation>Volume · %1</translation>
+    </message>
+</context>
+<context>
+    <name>NowPlayingPage</name>
+    <message>
+        <source>Now playing</source>
+        <translation>Tocando agora</translation>
+    </message>
+    <message>
+        <source> in the queue</source>
+        <translation> na fila</translation>
+    </message>
+    <message>
+        <source> · shuffle on</source>
+        <translation> · aleatório ativado</translation>
+    </message>
+    <message>
+        <source>Nothing playing</source>
+        <translation>Nada tocando</translation>
+    </message>
+    <message>
+        <source>Unknown artist</source>
+        <translation>Artista desconhecido</translation>
+    </message>
+    <message>
+        <source>Pick something from your library: double-click a track, an album or a playlist.</source>
+        <translation>Escolha algo da sua biblioteca: clique duas vezes em uma faixa, um álbum ou uma lista.</translation>
+    </message>
+    <message>
+        <source>Show in library</source>
+        <translation>Mostrar na biblioteca</translation>
+    </message>
+    <message>
+        <source>Signal path</source>
+        <translation>Caminho do sinal</translation>
+    </message>
+    <message>
+        <source>BIT-PERFECT</source>
+        <translation>BIT-PERFECT</translation>
+    </message>
+    <message>
+        <source>Play queue</source>
+        <translation>Fila de reprodução</translation>
+    </message>
+    <message>
+        <source>Save as playlist</source>
+        <translation>Salvar como playlist</translation>
+    </message>
+    <message>
+        <source>Clear</source>
+        <translation>Limpar</translation>
+    </message>
+    <message>
+        <source>The queue is empty.
+Double-click any track, album or playlist — or drag tracks here.</source>
+        <translation>A fila está vazia.
+Clique duas vezes em qualquer faixa, álbum ou playlist — ou arraste faixas para cá.</translation>
     </message>
 </context>
 <context>
@@ -2216,6 +2277,10 @@ Clique duas vezes em qualquer faixa, álbum ou playlist — ou arraste faixas pa
         <translation>Tocar</translation>
     </message>
     <message>
+        <source>Now playing</source>
+        <translation>Tocando agora</translation>
+    </message>
+    <message>
         <source>List only</source>
         <translation>Só a lista</translation>
     </message>
@@ -2899,6 +2964,10 @@ Clique duas vezes em qualquer faixa, álbum ou playlist — ou arraste faixas pa
         <translation>Biblioteca</translation>
     </message>
     <message>
+        <source>Now playing</source>
+        <translation>Tocando agora</translation>
+    </message>
+    <message>
         <source>Tracks</source>
         <translation>Faixas</translation>
     </message>
@@ -2996,7 +3065,7 @@ Clique duas vezes em qualquer faixa, álbum ou playlist — ou arraste faixas pa
     </message>
 </context>
 <context>
-    <name>SignalPathPopup</name>
+    <name>SignalPathList</name>
     <message>
         <source>Lossless</source>
         <translation>Sem perdas</translation>
@@ -3018,20 +3087,23 @@ Clique duas vezes em qualquer faixa, álbum ou playlist — ou arraste faixas pa
         <translation>Baixa qualidade</translation>
     </message>
     <message>
-        <source>Signal path</source>
-        <translation>Caminho do sinal</translation>
-    </message>
-    <message>
-        <source>BIT-PERFECT</source>
-        <translation>BIT-PERFECT</translation>
-    </message>
-    <message>
         <source>Nothing is playing.</source>
         <translation>Nada está tocando.</translation>
     </message>
     <message>
         <source>Use automatic headroom</source>
         <translation>Usar headroom automático</translation>
+    </message>
+</context>
+<context>
+    <name>SignalPathPopup</name>
+    <message>
+        <source>Signal path</source>
+        <translation>Caminho do sinal</translation>
+    </message>
+    <message>
+        <source>BIT-PERFECT</source>
+        <translation>BIT-PERFECT</translation>
     </message>
 </context>
 <context>
