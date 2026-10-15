@@ -4,18 +4,27 @@
 #include <QImage>
 #include <QMutex>
 #include <QQuickImageProvider>
+#include <QStringList>
 
 // image://cover/r<radius px>/<percent-encoded track path>
 // Embedded artwork first (FLAC PICTURE / ID3 APIC), then cover.jpg & co. in
-// the track's folder. The image is decoded straight at the requested size
-// (JPEG scales inside the decoder), cropped square and given its rounded
-// corners here, so QML shows a plain Image: no shader, no offscreen layer.
+// the track's folder, then a cover fetched from the internet (OnlineArt),
+// which is asked for when there is nothing on disk. The image is decoded
+// straight at the requested size (JPEG scales inside the decoder), cropped
+// square and given its rounded corners here, so QML shows a plain Image: no
+// shader, no offscreen layer.
 class CoverImageProvider : public QQuickImageProvider {
 public:
     CoverImageProvider();
+    ~CoverImageProvider() override;
     QImage requestImage(const QString& id, QSize* size, const QSize& requestedSize) override;
 
+    // A cover arrived for these tracks: what was remembered for them is dropped.
+    void forget(const QStringList& paths);
+    static CoverImageProvider* instance() { return s_instance; }
+
 private:
+    static inline CoverImageProvider* s_instance = nullptr;
     QMutex m_mutex;
     QCache<QString, QImage> m_cache; // recently shown covers, by id and size
 };

@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.21)
 
 project(Sonkore
-    VERSION 1.3.1
+    VERSION 1.3.2
     DESCRIPTION "Hi-Fi music player: bit-perfect output, SoundTouch, SuperEQ"
     LANGUAGES C CXX)
 
@@ -260,6 +260,10 @@ qt_add_qml_module(Sonkore
         src/library/PlaylistManager.cpp
         src/library/CoverImageProvider.hpp
         src/library/CoverImageProvider.cpp
+        src/library/OnlineArt.hpp
+        src/library/OnlineArt.cpp
+        src/library/Lyrics.hpp
+        src/library/Lyrics.cpp
 )
 
 # Precompiled shaders (sources and build.sh next to them; Qt Shader Tools is

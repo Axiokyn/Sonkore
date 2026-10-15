@@ -31,12 +31,23 @@ Item {
         }
     }
 
+    // A cover fetched from the internet for this track: shown now.
+    Connections {
+        target: OnlineArt
+        function onCoverArrived(paths) {
+            if (paths.indexOf(root.path) >= 0)
+                image.generation += 1
+        }
+    }
+
     Image {
         id: image
         readonly property real dpr: Screen.devicePixelRatio
+        property int generation: 0
         anchors.fill: parent
         source: root.path.length > 0 && root.width > 0
-                ? "image://cover/r" + Math.round(root.radius * dpr) + "/" + encodeURIComponent(root.path) : ""
+                ? "image://cover/r" + Math.round(root.radius * dpr) + "/" + encodeURIComponent(root.path)
+                  + (generation > 0 ? "?v=" + generation : "") : ""
         sourceSize: Qt.size(Math.ceil(root.width * dpr), Math.ceil(root.height * dpr))
         asynchronous: true
         cache: true

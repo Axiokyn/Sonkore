@@ -4,6 +4,8 @@
 #include "DSPManager.hpp"
 #include "DspController.hpp"
 #include "EqController.hpp"
+#include "Lyrics.hpp"
+#include "OnlineArt.hpp"
 #include "LibraryModel.hpp"
 #include "Metadata.hpp"
 #include "PlaylistManager.hpp"
@@ -247,6 +249,12 @@ int main(int argc, char* argv[])
     QObject::connect(&controller, &DspController::trackChanged, &waveform,
                      [&] { waveform.setPath(controller.currentPath()); });
     waveform.setPath(controller.currentPath());
+    OnlineArt onlineArt(nullptr);
+    OnlineArt::setInstance(&onlineArt);
+    Lyrics lyrics(nullptr);
+    Lyrics::setInstance(&lyrics);
+    QObject::connect(&controller, &DspController::trackChanged, &lyrics, [&] { lyrics.setPath(controller.currentPath()); });
+    lyrics.setPath(controller.currentPath());
 
 #if defined(SONKORE_HAVE_MPRIS)
     MprisService mpris(&controller);

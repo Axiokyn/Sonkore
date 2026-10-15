@@ -1022,6 +1022,21 @@
     </message>
 </context>
 <context>
+    <name>Lyrics</name>
+    <message>
+        <source>No lyrics found for this track</source>
+        <translation>Nessun testo trovato per questo brano</translation>
+    </message>
+    <message>
+        <source>Looking for the lyrics…</source>
+        <translation>Ricerca del testo…</translation>
+    </message>
+    <message>
+        <source>LRCLIB did not answer: %1</source>
+        <translation>LRCLIB non ha risposto: %1</translation>
+    </message>
+</context>
+<context>
     <name>Main</name>
     <message>
         <source>Another app asked for the DAC — playback paused</source>
@@ -1559,6 +1574,14 @@
         <translation>Coda di riproduzione</translation>
     </message>
     <message>
+        <source>Lyrics</source>
+        <translation>Testo</translation>
+    </message>
+    <message>
+        <source>Queue</source>
+        <translation>Coda</translation>
+    </message>
+    <message>
         <source>Save as playlist</source>
         <translation>Salva come playlist</translation>
     </message>
@@ -1567,10 +1590,45 @@
         <translation>Svuota</translation>
     </message>
     <message>
+        <source>Looking for the lyrics…</source>
+        <translation>Ricerca del testo…</translation>
+    </message>
+    <message>
+        <source>No lyrics for this track</source>
+        <translation>Nessun testo per questo brano</translation>
+    </message>
+    <message>
+        <source>A .lrc file beside the track, its LYRICS tag, or LRCLIB with the switch in Settings › Library.</source>
+        <translation>Un file .lrc accanto al brano, il suo tag LYRICS, o LRCLIB con l'interruttore in Impostazioni › Libreria.</translation>
+    </message>
+    <message>
+        <source>From a .lrc file beside the track</source>
+        <translation>Da un file .lrc accanto al brano</translation>
+    </message>
+    <message>
+        <source>From the file's tags</source>
+        <translation>Dai tag del file</translation>
+    </message>
+    <message>
+        <source>From LRCLIB</source>
+        <translation>Da LRCLIB</translation>
+    </message>
+    <message>
         <source>The queue is empty.
 Double-click any track, album or playlist — or drag tracks here.</source>
         <translation>La coda è vuota.
 Fai doppio clic su un brano, un album o una playlist — oppure trascina qui i brani.</translation>
+    </message>
+</context>
+<context>
+    <name>OnlineArt</name>
+    <message>
+        <source>MusicBrainz did not answer: %1</source>
+        <translation>MusicBrainz non ha risposto: %1</translation>
+    </message>
+    <message>
+        <source>Cover Art Archive did not answer: %1</source>
+        <translation>Cover Art Archive non ha risposto: %1</translation>
     </message>
 </context>
 <context>
@@ -2539,6 +2597,50 @@ Fai doppio clic su un brano, un album o una playlist — oppure trascina qui i b
     <message>
         <source>Current track: %1 dB</source>
         <translation>Brano attuale: %1 dB</translation>
+    </message>
+    <message>
+        <source>From the internet</source>
+        <translation>Da Internet</translation>
+    </message>
+    <message>
+        <source>Missing covers</source>
+        <translation>Copertine mancanti</translation>
+    </message>
+    <message>
+        <source>Looking up %1 albums… %2 covers fetched so far.</source>
+        <translation>Ricerca di %1 album… %2 copertine scaricate finora.</translation>
+    </message>
+    <message>
+        <source>Albums without a picture get one from the Cover Art Archive as they are shown.</source>
+        <translation>Gli album senza immagine ne ricevono una dal Cover Art Archive quando vengono mostrati.</translation>
+    </message>
+    <message>
+        <source>Only the pictures in your files and folders are shown.</source>
+        <translation>Vengono mostrate solo le immagini dei tuoi file e cartelle.</translation>
+    </message>
+    <message>
+        <source>The artist and album names are sent to MusicBrainz to find the album; the picture comes from the Cover Art Archive and is kept in Sonkore's cache, never written into your music folders.</source>
+        <translation>I nomi di artista e album vengono inviati a MusicBrainz per trovare l'album; l'immagine viene dal Cover Art Archive e resta nella cache di Sonkore, mai nelle tue cartelle musicali.</translation>
+    </message>
+    <message>
+        <source>Lyrics</source>
+        <translation>Testo</translation>
+    </message>
+    <message>
+        <source>A .lrc file beside the track or its own tag comes first; otherwise LRCLIB, a public-domain database of timed lyrics.</source>
+        <translation>Prima un file .lrc accanto al brano o il suo tag; altrimenti LRCLIB, un database di pubblico dominio di testi sincronizzati.</translation>
+    </message>
+    <message>
+        <source>Only lyrics from a .lrc file beside the track or from its own tag.</source>
+        <translation>Solo testi da un file .lrc accanto al brano o dal suo tag.</translation>
+    </message>
+    <message>
+        <source>The title, artist, album and length of the playing track are sent to lrclib.net. Lyrics found are kept in Sonkore's cache.</source>
+        <translation>Titolo, artista, album e durata del brano in riproduzione vengono inviati a lrclib.net. I testi trovati restano nella cache di Sonkore.</translation>
+    </message>
+    <message>
+        <source>Clear downloaded covers and lyrics</source>
+        <translation>Elimina copertine e testi scaricati</translation>
     </message>
     <message>
         <source>Library folders</source>

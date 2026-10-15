@@ -31,6 +31,10 @@ struct TrackMeta {
     qint64 modified = 0;   // ms since epoch
     qint64 added = 0;      // ms since epoch, first time the library saw the file
     bool hasEmbeddedCover = false;
+    // Lyrics from the file's tags, read only on request (wantLyrics), never
+    // kept in the library.
+    bool wantLyrics = false;
+    QString lyrics;
 
     // ReplayGain 2.0: gains in dB towards -18 LUFS, peaks as linear sample
     // values (1.0 = full scale). NaN = unknown. Read from the file's tags, or
@@ -65,6 +69,7 @@ bool read(const QString& path, TrackMeta& out);
 // audio files it splits (listed through the sheet, not on their own).
 QStringList cueTracks(const QString& sheet, QStringList* imageFiles = nullptr);
 QByteArray embeddedCover(const QString& path); // raw image bytes or empty
+QString embeddedLyrics(const QString& path);   // LYRICS / USLT text, LRC timestamps kept, or empty
 QString folderCover(const QString& directory); // cover.jpg / folder.png ... or empty
 } // namespace Metadata
 

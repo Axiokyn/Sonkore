@@ -1,6 +1,7 @@
 #include "CoverImageProvider.hpp"
 
 #include "Metadata.hpp"
+#include "OnlineArt.hpp"
 
 #include <QBuffer>
 #include <QFile>
@@ -66,10 +67,12 @@ QImage loadSource(const QString& path, int side)
         if (!image.isNull())
             return image;
     }
-    const QString folderImage = sonkore::Metadata::folderCover(QFileInfo(path).absolutePath());
-    if (folderImage.isEmpty())
+    QString image = sonkore::Metadata::folderCover(QFileInfo(path).absolutePath());
+    if (image.isEmpty())
+        image = OnlineArt::cachedCover(path); // fetched before, or asked for now
+    if (image.isEmpty())
         return {};
-    QFile file(folderImage);
+    QFile file(image);
     if (!file.open(QIODevice::ReadOnly))
         return {};
     QImageReader reader(&file);
@@ -100,6 +103,24 @@ CoverImageProvider::CoverImageProvider()
     : QQuickImageProvider(QQuickImageProvider::Image, QQmlImageProviderBase::ForceAsynchronousImageLoading)
 {
     m_cache.setMaxCost(16 * 1024 * 1024); // bytes
+    s_instance = this;
+}
+
+CoverImageProvider::~CoverImageProvider()
+{
+    if (s_instance == this)
+        s_instance = nullptr;
+}
+
+void CoverImageProvider::forget(const QStringList& paths)
+{
+    QMutexLocker lock(&m_mutex);
+    const QStringList keys = m_cache.keys();
+    for (const QString& key : keys) {
+        const QString keyPath = key.left(key.lastIndexOf(u'@'));
+        if (paths.contains(keyPath))
+            m_cache.remove(key);
+    }
 }
 
 QImage CoverImageProvider::requestImage(const QString& id, QSize* size, const QSize& requestedSize)
@@ -116,6 +137,9 @@ QImage CoverImageProvider::requestImage(const QString& id, QSize* size, const QS
             encoded = id.mid(slash + 1);
         }
     }
+    // "?v=N" after the path: a reload asked by QML once a cover arrived.
+    if (const qsizetype query = encoded.lastIndexOf(u'?'); query >= 0)
+        encoded.truncate(query);
     const QString path = QUrl::fromPercentEncoding(encoded.toUtf8());
     const int side = std::clamp(requestedSize.isValid() ? std::max(requestedSize.width(), requestedSize.height()) : 512, 8, 2048);
     radius = std::clamp(radius, 0, side / 2);

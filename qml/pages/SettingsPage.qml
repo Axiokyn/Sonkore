@@ -2205,6 +2205,38 @@ Item {
             // --- Library ------------------------------------------------------
             SettingsCard {
                 tab: "library"
+                title: qsTr("From the internet")
+                iconName: "globe"
+                SettingRow {
+                    title: qsTr("Missing covers")
+                    description: OnlineArt.enabled
+                        ? (OnlineArt.pending > 0 ? qsTr("Looking up %1 albums… %2 covers fetched so far.").arg(OnlineArt.pending).arg(OnlineArt.fetched)
+                           : OnlineArt.lastError.length > 0 ? OnlineArt.lastError
+                           : qsTr("Albums without a picture get one from the Cover Art Archive as they are shown."))
+                        : qsTr("Only the pictures in your files and folders are shown.")
+                    details: qsTr("The artist and album names are sent to MusicBrainz to find the album; the picture comes from the Cover Art Archive and is kept in Sonkore's cache, never written into your music folders.")
+                    LSwitch { checked: OnlineArt.enabled; onToggled: OnlineArt.enabled = checked }
+                }
+                SettingRow {
+                    title: qsTr("Lyrics")
+                    description: Lyrics.onlineEnabled
+                        ? qsTr("A .lrc file beside the track or its own tag comes first; otherwise LRCLIB, a public-domain database of timed lyrics.")
+                        : qsTr("Only lyrics from a .lrc file beside the track or from its own tag.")
+                    details: qsTr("The title, artist, album and length of the playing track are sent to lrclib.net. Lyrics found are kept in Sonkore's cache.")
+                    LSwitch { checked: Lyrics.onlineEnabled; onToggled: Lyrics.onlineEnabled = checked }
+                }
+                RowLayout {
+                    spacing: 8
+                    PillButton {
+                        iconName: "trash"
+                        text: qsTr("Clear downloaded covers and lyrics")
+                        onClicked: { OnlineArt.clearCache(); Lyrics.clearCache() }
+                    }
+                }
+            }
+            // --- Library ------------------------------------------------------
+            SettingsCard {
+                tab: "library"
                 title: qsTr("Library folders")
                 iconName: "folder"
 

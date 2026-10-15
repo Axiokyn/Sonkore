@@ -72,3 +72,74 @@ T = {
 "Pick something from your library: double-click a track, an album or a playlist.": ("Elige algo de tu biblioteca: doble clic en una pista, un álbum o una lista.", "Escolha algo da sua biblioteca: clique duas vezes em uma faixa, um álbum ou uma lista.", "Choisissez quelque chose dans votre bibliothèque : double-cliquez sur une piste, un album ou une liste.", "Wähle etwas aus deiner Mediathek: Doppelklick auf einen Titel, ein Album oder eine Wiedergabeliste.", "Scegli qualcosa dalla tua libreria: doppio clic su un brano, un album o una playlist."),
 "Show in library": ("Mostrar en la biblioteca", "Mostrar na biblioteca", "Afficher dans la bibliothèque", "In der Mediathek zeigen", "Mostra nella libreria"),
 }
+
+# Covers from the Cover Art Archive and lyrics from LRCLIB (1.3.2).
+T.update({
+"From the internet": ("De internet", "Da internet", "Depuis Internet", "Aus dem Internet", "Da Internet"),
+"Missing covers": ("Carátulas que faltan", "Capas que faltam", "Pochettes manquantes", "Fehlende Cover", "Copertine mancanti"),
+"Looking up %1 albums… %2 covers fetched so far.": (
+    "Buscando %1 álbumes… %2 carátulas descargadas hasta ahora.",
+    "Procurando %1 álbuns… %2 capas baixadas até agora.",
+    "Recherche de %1 albums… %2 pochettes récupérées pour l'instant.",
+    "%1 Alben werden gesucht… bisher %2 Cover geladen.",
+    "Ricerca di %1 album… %2 copertine scaricate finora."),
+"Albums without a picture get one from the Cover Art Archive as they are shown.": (
+    "Los álbumes sin imagen reciben una del Cover Art Archive cuando se muestran.",
+    "Álbuns sem imagem recebem uma do Cover Art Archive quando são exibidos.",
+    "Les albums sans image en reçoivent une du Cover Art Archive lorsqu'ils s'affichent.",
+    "Alben ohne Bild bekommen eines aus dem Cover Art Archive, sobald sie angezeigt werden.",
+    "Gli album senza immagine ne ricevono una dal Cover Art Archive quando vengono mostrati."),
+"Only the pictures in your files and folders are shown.": (
+    "Solo se muestran las imágenes de tus archivos y carpetas.",
+    "Só são mostradas as imagens dos seus arquivos e pastas.",
+    "Seules les images de vos fichiers et dossiers sont affichées.",
+    "Nur die Bilder aus deinen Dateien und Ordnern werden gezeigt.",
+    "Vengono mostrate solo le immagini dei tuoi file e cartelle."),
+"The artist and album names are sent to MusicBrainz to find the album; the picture comes from the Cover Art Archive and is kept in Sonkore's cache, never written into your music folders.": (
+    "Se envían el nombre del artista y del álbum a MusicBrainz para encontrar el álbum; la imagen viene del Cover Art Archive y se guarda en la caché de Sonkore, nunca en tus carpetas de música.",
+    "Os nomes do artista e do álbum são enviados ao MusicBrainz para encontrar o álbum; a imagem vem do Cover Art Archive e fica no cache do Sonkore, nunca nas suas pastas de música.",
+    "Les noms de l'artiste et de l'album sont envoyés à MusicBrainz pour trouver l'album ; l'image vient du Cover Art Archive et reste dans le cache de Sonkore, jamais dans vos dossiers de musique.",
+    "Künstler- und Albumname werden an MusicBrainz gesendet, um das Album zu finden; das Bild kommt aus dem Cover Art Archive und bleibt im Cache von Sonkore, nie in deinen Musikordnern.",
+    "I nomi di artista e album vengono inviati a MusicBrainz per trovare l'album; l'immagine viene dal Cover Art Archive e resta nella cache di Sonkore, mai nelle tue cartelle musicali."),
+"Lyrics": ("Letra", "Letra", "Paroles", "Liedtext", "Testo"),
+"A .lrc file beside the track or its own tag comes first; otherwise LRCLIB, a public-domain database of timed lyrics.": (
+    "Primero un archivo .lrc junto a la pista o su propia etiqueta; si no, LRCLIB, una base de datos de dominio público de letras sincronizadas.",
+    "Primeiro um arquivo .lrc ao lado da faixa ou a própria tag; senão, o LRCLIB, um banco de dados de domínio público de letras sincronizadas.",
+    "D'abord un fichier .lrc à côté du morceau ou sa propre balise ; sinon LRCLIB, une base de paroles synchronisées du domaine public.",
+    "Zuerst eine .lrc-Datei neben dem Titel oder sein eigener Tag; sonst LRCLIB, eine gemeinfreie Datenbank synchronisierter Liedtexte.",
+    "Prima un file .lrc accanto al brano o il suo tag; altrimenti LRCLIB, un database di pubblico dominio di testi sincronizzati."),
+"Only lyrics from a .lrc file beside the track or from its own tag.": (
+    "Solo letras de un archivo .lrc junto a la pista o de su propia etiqueta.",
+    "Só letras de um arquivo .lrc ao lado da faixa ou da própria tag.",
+    "Seulement les paroles d'un fichier .lrc à côté du morceau ou de sa propre balise.",
+    "Nur Liedtexte aus einer .lrc-Datei neben dem Titel oder aus seinem eigenen Tag.",
+    "Solo testi da un file .lrc accanto al brano o dal suo tag."),
+"The title, artist, album and length of the playing track are sent to lrclib.net. Lyrics found are kept in Sonkore's cache.": (
+    "Se envían el título, el artista, el álbum y la duración de la pista que suena a lrclib.net. Las letras encontradas se guardan en la caché de Sonkore.",
+    "O título, o artista, o álbum e a duração da faixa tocando são enviados a lrclib.net. As letras encontradas ficam no cache do Sonkore.",
+    "Le titre, l'artiste, l'album et la durée du morceau en cours sont envoyés à lrclib.net. Les paroles trouvées restent dans le cache de Sonkore.",
+    "Titel, Künstler, Album und Länge des laufenden Titels werden an lrclib.net gesendet. Gefundene Liedtexte bleiben im Cache von Sonkore.",
+    "Titolo, artista, album e durata del brano in riproduzione vengono inviati a lrclib.net. I testi trovati restano nella cache di Sonkore."),
+"Clear downloaded covers and lyrics": (
+    "Borrar carátulas y letras descargadas",
+    "Apagar capas e letras baixadas",
+    "Effacer les pochettes et paroles téléchargées",
+    "Geladene Cover und Liedtexte löschen",
+    "Elimina copertine e testi scaricati"),
+"Queue": ("Cola", "Fila", "File", "Warteschlange", "Coda"),
+"Looking for the lyrics…": ("Buscando la letra…", "Procurando a letra…", "Recherche des paroles…", "Liedtext wird gesucht…", "Ricerca del testo…"),
+"No lyrics for this track": ("No hay letra para esta pista", "Sem letra para esta faixa", "Pas de paroles pour ce morceau", "Kein Liedtext für diesen Titel", "Nessun testo per questo brano"),
+"No lyrics found for this track": ("No se encontró letra para esta pista", "Nenhuma letra encontrada para esta faixa", "Aucune parole trouvée pour ce morceau", "Kein Liedtext für diesen Titel gefunden", "Nessun testo trovato per questo brano"),
+"A .lrc file beside the track, its LYRICS tag, or LRCLIB with the switch in Settings › Library.": (
+    "Un archivo .lrc junto a la pista, su etiqueta LYRICS, o LRCLIB con el interruptor en Ajustes › Biblioteca.",
+    "Um arquivo .lrc ao lado da faixa, a tag LYRICS, ou o LRCLIB com a chave em Configurações › Biblioteca.",
+    "Un fichier .lrc à côté du morceau, sa balise LYRICS, ou LRCLIB avec l'interrupteur dans Réglages › Bibliothèque.",
+    "Eine .lrc-Datei neben dem Titel, sein LYRICS-Tag oder LRCLIB über den Schalter in Einstellungen › Bibliothek.",
+    "Un file .lrc accanto al brano, il suo tag LYRICS, o LRCLIB con l'interruttore in Impostazioni › Libreria."),
+"From a .lrc file beside the track": ("De un archivo .lrc junto a la pista", "De um arquivo .lrc ao lado da faixa", "D'un fichier .lrc à côté du morceau", "Aus einer .lrc-Datei neben dem Titel", "Da un file .lrc accanto al brano"),
+"From the file's tags": ("De las etiquetas del archivo", "Das tags do arquivo", "Des balises du fichier", "Aus den Tags der Datei", "Dai tag del file"),
+"From LRCLIB": ("De LRCLIB", "Do LRCLIB", "De LRCLIB", "Von LRCLIB", "Da LRCLIB"),
+"MusicBrainz did not answer: %1": ("MusicBrainz no respondió: %1", "O MusicBrainz não respondeu: %1", "MusicBrainz n'a pas répondu : %1", "MusicBrainz hat nicht geantwortet: %1", "MusicBrainz non ha risposto: %1"),
+"Cover Art Archive did not answer: %1": ("Cover Art Archive no respondió: %1", "O Cover Art Archive não respondeu: %1", "Cover Art Archive n'a pas répondu : %1", "Cover Art Archive hat nicht geantwortet: %1", "Cover Art Archive non ha risposto: %1"),
+"LRCLIB did not answer: %1": ("LRCLIB no respondió: %1", "O LRCLIB não respondeu: %1", "LRCLIB n'a pas répondu : %1", "LRCLIB hat nicht geantwortet: %1", "LRCLIB non ha risposto: %1"),
+})
