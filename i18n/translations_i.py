@@ -73,7 +73,7 @@ T = {
 "Show in library": ("Mostrar en la biblioteca", "Mostrar na biblioteca", "Afficher dans la bibliothèque", "In der Mediathek zeigen", "Mostra nella libreria"),
 }
 
-# Covers from the Cover Art Archive and lyrics from LRCLIB (1.3.2).
+# Covers from the Cover Art Archive and lyrics from LRCLIB.
 T.update({
 "From the internet": ("De internet", "Da internet", "Depuis Internet", "Aus dem Internet", "Da Internet"),
 "Missing covers": ("Carátulas que faltan", "Capas que faltam", "Pochettes manquantes", "Fehlende Cover", "Copertine mancanti"),
@@ -143,7 +143,7 @@ T.update({
 "Cover Art Archive did not answer: %1": ("Cover Art Archive no respondió: %1", "O Cover Art Archive não respondeu: %1", "Cover Art Archive n'a pas répondu : %1", "Cover Art Archive hat nicht geantwortet: %1", "Cover Art Archive non ha risposto: %1"),
 })
 
-# The DAC's PipeWire output kept in the menu while Sonkore holds the card (1.3.4).
+# The DAC's PipeWire output kept in the menu while Sonkore holds the card.
 T.update({
 "Given back to PipeWire when chosen": (
     "Se devuelve a PipeWire al elegirla",
@@ -153,7 +153,7 @@ T.update({
     "Restituito a PipeWire quando scelto"),
 })
 
-# LRCLIB, MusicBrainz and Cover Art Archive busy: retries and plain messages (1.3.8).
+# LRCLIB, MusicBrainz and Cover Art Archive busy: retries and plain messages.
 T.update({
 "LRCLIB is busy; trying again…": ("LRCLIB está ocupado; se vuelve a intentar…", "O LRCLIB está ocupado; tentando de novo…", "LRCLIB est occupé ; nouvelle tentative…", "LRCLIB ist ausgelastet; neuer Versuch…", "LRCLIB è occupato; nuovo tentativo…"),
 "LRCLIB is busy right now. The lyrics are looked up again the next time this track plays.": (
