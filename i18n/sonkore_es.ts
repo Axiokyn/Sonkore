@@ -448,6 +448,18 @@
         <translation>Digital · silenciado</translation>
     </message>
     <message>
+        <source>Limiter</source>
+        <translation>Limitador</translation>
+    </message>
+    <message>
+        <source>True peak, ceiling %1 dBTP · reducing %2 dB</source>
+        <translation>True peak, techo %1 dBTP · reduciendo %2 dB</translation>
+    </message>
+    <message>
+        <source>True peak, ceiling %1 dBTP · not reducing</source>
+        <translation>True peak, techo %1 dBTP · sin reducir</translation>
+    </message>
+    <message>
         <source>linear phase</source>
         <translation>fase lineal</translation>
     </message>
@@ -2370,6 +2382,22 @@ Haz doble clic en cualquier pista, álbum o lista — o arrastra pistas aquí.</
     <message>
         <source>This track is clipping: lower the headroom.</source>
         <translation>Esta pista está saturando: baja el headroom.</translation>
+    </message>
+    <message>
+        <source>True-peak limiter</source>
+        <translation>Limitador true-peak</translation>
+    </message>
+    <message>
+        <source>Peaks above %1 dBTP are brought down to it.</source>
+        <translation>Los picos por encima de %1 dBTP se bajan hasta ahí.</translation>
+    </message>
+    <message>
+        <source>What the EQ pushes above full scale is clipped.</source>
+        <translation>Lo que el EQ empuja por encima de la escala completa se recorta.</translation>
+    </message>
+    <message>
+        <source>At the end of the processing: the true peak (4× oversampled, as a DAC reconstructs the waveform between the samples) is held under the ceiling with a 1.5 ms look-ahead and a 50 ms release, all channels together. Only while some DSP runs; a bit-perfect path is never touched. −1 dBTP is EBU R128's ceiling.</source>
+        <translation>Al final del procesamiento: el pico real (sobremuestreado 4×, como reconstruye un DAC la onda entre las muestras) se mantiene bajo el techo con 1,5 ms de anticipación y 50 ms de liberación, todos los canales juntos. Solo mientras corre algún DSP; un camino bit-perfect nunca se toca. −1 dBTP es el techo de EBU R128.</translation>
     </message>
     <message>
         <source>When DSP is active, or the track has more bits than the DAC takes, the result is requantised to the DAC's bit depth. TPDF adds inaudible noise so that step stays linear; noise shaping also moves that noise away from the frequencies the ear hears best, on 16-bit DACs (at 24 bits the noise is already far below any DAC's own, so TPDF is used).</source>

@@ -14,6 +14,7 @@
 #include "FfmpegDecoder.hpp"
 #endif
 #include "TestSignals.hpp"
+#include "Limiter.hpp"
 #include "LinearPhaseEq.hpp"
 #include "PipeWireOutput.hpp"
 #include "SampleConvert.hpp"
@@ -732,6 +733,86 @@ void resampling()
         const auto out = trimmed(e.capture.take(), 2);
         const double expect = double(ref.size()) * 48000 / 44100;
         CHECK_MSG(std::abs(double(out.size()) - expect) < 0.002 * expect + 400, "%zu frames", out.size() / 2);
+    }
+}
+
+// The true-peak limiter: transparent (bit-exact, same length) below the
+// ceiling, also across a gapless join; what a boost pushes over full scale
+// is held under the ceiling instead of clipping.
+void limiter()
+{
+    const fs::path path = corpus("Formatos/hires-24-96.flac");
+    const auto ref = trimmed(decodeAll(path), 2);
+    {
+        g_test = "limiter transparent";
+        Engine e;
+        e.dsp.setLimiter(true, -1.0);
+        e.dsp.setVolume(0.5); // the processed path, nothing near the ceiling
+        CHECK(e.load(path));
+        CHECK(e.playToEnd());
+        const auto out = trimmed(e.capture.take(), 2);
+        CHECK_MSG(out.size() == ref.size(), "%zu vs %zu samples: the limiter kept or added frames", out.size(), ref.size());
+        int64_t worst = 0;
+        for (std::size_t i = 0; i < std::min(out.size(), ref.size()); ++i)
+            worst = std::max<int64_t>(worst, std::llabs(int64_t(out[i]) - std::llround(ref[i] * 0.5)));
+        CHECK_MSG(worst <= 256, "off by %lld with the limiter on (24-bit LSB = 256)", static_cast<long long>(worst));
+        CHECK(e.dsp.limiterReductionDb() == 0.0);
+    }
+    {
+        g_test = "limiter gapless";
+        std::vector<int32_t> joined;
+        for (const char* p : {"Álbum Uno/01 - Pista número 1.flac", "Álbum Uno/02 - Pista número 2.flac"}) {
+            const auto pcm = decodeAll(corpus(p));
+            joined.insert(joined.end(), pcm.begin(), pcm.end());
+        }
+        Engine e;
+        e.dsp.setLimiter(true, -1.0);
+        e.dsp.setVolume(0.5);
+        CHECK(e.load(corpus("Álbum Uno/01 - Pista número 1.flac")));
+        e.dsp.setNext(corpus("Álbum Uno/02 - Pista número 2.flac"));
+        CHECK(e.playToEnd());
+        const auto out = trimmed(e.capture.take(), 2);
+        const auto want = trimmed(joined, 2);
+        CHECK_MSG(out.size() == want.size(), "%zu vs %zu samples across the join", out.size(), want.size());
+        int64_t worst = 0;
+        for (std::size_t i = 0; i < std::min(out.size(), want.size()); ++i)
+            worst = std::max<int64_t>(worst, std::llabs(int64_t(out[i]) - std::llround(want[i] * 0.5)));
+        CHECK_MSG(worst <= 65536, "off by %lld across the join (16-bit LSB = 65536)", static_cast<long long>(worst));
+    }
+    // A square wave near full scale, boosted 6 dB: clipped without the
+    // limiter, held under -1 dBTP with it (measured 4x oversampled).
+    const fs::path hot = corpus("Formatos/hot.mp3");
+    std::size_t clippedWithout = 0, lengthWithout = 0;
+    {
+        g_test = "boost without limiter";
+        Engine e;
+        e.dsp.equalizer().setPreampDb(6.0);
+        e.dsp.equalizer().setEnabled(true);
+        CHECK(e.load(hot));
+        CHECK(e.playToEnd());
+        const auto out = e.capture.take();
+        clippedWithout = e.dsp.clippedSamples();
+        lengthWithout = out.size();
+        CHECK_MSG(clippedWithout > 1000, "only %zu samples clipped: the test signal is not hot enough", clippedWithout);
+    }
+    {
+        g_test = "boost with limiter";
+        Engine e;
+        e.dsp.setLimiter(true, -1.0);
+        e.dsp.equalizer().setPreampDb(6.0);
+        e.dsp.equalizer().setEnabled(true);
+        CHECK(e.load(hot));
+        CHECK(e.playToEnd());
+        const auto out = e.capture.take();
+        CHECK_MSG(e.dsp.clippedSamples() == 0, "%zu samples still clipped with the limiter", static_cast<std::size_t>(e.dsp.clippedSamples()));
+        CHECK_MSG(out.size() == lengthWithout, "%zu vs %zu samples: the limiter changed the length", out.size(), lengthWithout);
+        std::vector<double> d(out.size());
+        for (std::size_t i = 0; i < out.size(); ++i)
+            d[i] = out[i] * kS32InvFullScale;
+        const double peak = Limiter::truePeak(d.data(), d.size() / 2, 2, 44100);
+        const double peakDb = 20.0 * std::log10(peak);
+        CHECK_MSG(peakDb <= -1.0 + 0.3, "true peak %.2f dBTP, ceiling -1 dBTP", peakDb);
+        CHECK_MSG(peakDb >= -1.0 - 1.5, "true peak %.2f dBTP: the limiter took more than it had to", peakDb);
     }
 }
 
@@ -2003,6 +2084,7 @@ int main(int argc, char** argv)
         {"gaplessCue", gaplessCue},
         {"seekAndPause", seekAndPause},
         {"volumeAndEq", volumeAndEq},
+        {"limiter", limiter},
         {"linearPhaseEq", linearPhaseEq},
         {"resampling", resampling},
         {"precision", precision},

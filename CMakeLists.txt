@@ -60,6 +60,8 @@ add_library(sonkore_audio STATIC
     src/audio/LinearPhaseEq.hpp
     src/audio/LinearPhaseEq.cpp
     src/audio/Crossfeed.hpp
+    src/audio/Limiter.hpp
+    src/audio/Limiter.cpp
     src/audio/Convolver.hpp
     src/audio/Convolver.cpp
     src/audio/DSPManager.hpp

@@ -2118,6 +2118,24 @@ Item {
                     }
                 }
                 SettingRow {
+                    title: qsTr("True-peak limiter")
+                    description: DspController.limiter ? qsTr("Peaks above %1 dBTP are brought down to it.").arg(DspController.limiterCeilingDb.toFixed(1))
+                                                       : qsTr("What the EQ pushes above full scale is clipped.")
+                    details: qsTr("At the end of the processing: the true peak (4× oversampled, as a DAC reconstructs the waveform between the samples) is held under the ceiling with a 1.5 ms look-ahead and a 50 ms release, all channels together. Only while some DSP runs; a bit-perfect path is never touched. −1 dBTP is EBU R128's ceiling.")
+                    RowLayout {
+                        spacing: 8
+                        LComboBox {
+                            visible: DspController.limiter
+                            implicitWidth: 120
+                            readonly property var ceilings: [-0.1, -0.5, -1, -2, -3]
+                            model: ["−0.1 dBTP", "−0.5 dBTP", "−1 dBTP", "−2 dBTP", "−3 dBTP"]
+                            currentIndex: Math.max(0, ceilings.indexOf(Math.round(DspController.limiterCeilingDb * 10) / 10))
+                            onActivated: (index) => DspController.limiterCeilingDb = ceilings[index]
+                        }
+                        LSwitch { checked: DspController.limiter; onToggled: DspController.limiter = checked }
+                    }
+                }
+                SettingRow {
                     title: qsTr("Dither")
                     description: qsTr("Only while DSP is active.")
                     details: qsTr("When DSP is active, or the track has more bits than the DAC takes, the result is requantised to the DAC's bit depth. TPDF adds inaudible noise so that step stays linear; noise shaping also moves that noise away from the frequencies the ear hears best, on 16-bit DACs (at 24 bits the noise is already far below any DAC's own, so TPDF is used).")

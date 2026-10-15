@@ -692,6 +692,27 @@ void DspController::setCrossfeed(int preset)
     scheduleSave();
 }
 
+void DspController::setLimiter(bool on)
+{
+    if (on == m_limiter)
+        return;
+    m_limiter = on;
+    m_engine.setLimiter(m_limiter, m_limiterCeilingDb);
+    emit limiterChanged();
+    scheduleSave();
+}
+
+void DspController::setLimiterCeilingDb(double db)
+{
+    db = std::clamp(db, -6.0, 0.0);
+    if (db == m_limiterCeilingDb)
+        return;
+    m_limiterCeilingDb = db;
+    m_engine.setLimiter(m_limiter, m_limiterCeilingDb);
+    emit limiterChanged();
+    scheduleSave();
+}
+
 void DspController::setUpsampling(int mode)
 {
     mode = std::clamp(mode, 0, 3);
@@ -1064,6 +1085,7 @@ QVariantMap DspController::soundSnapshot() const
 {
     QVariantMap m{{"ditherMode", m_ditherMode},       {"headroomDb", m_headroomDb},   {"headroomAuto", m_headroomAuto},
                   {"crossfeed", m_crossfeed},         {"upsampling", m_upsampling},   {"convolutionFile", m_convolutionFile},
+                  {"limiter", m_limiter},             {"limiterCeilingDb", m_limiterCeilingDb},
                   {"convolution", m_convolutionEnabled}, {"resampleFilter", m_resampleFilter}, {"dsdOutput", m_dsdMode},
                   {"pcmToDsd", m_pcmToDsd}};
     if (EqController* eq = EqController::instance())
@@ -1077,6 +1099,8 @@ void DspController::restoreSound(const QVariantMap& m)
     setHeadroomAuto(m.value("headroomAuto", m_headroomAuto).toBool());
     setHeadroomDb(m.value("headroomDb", m_headroomDb).toDouble());
     setCrossfeed(m.value("crossfeed", m_crossfeed).toInt());
+    setLimiterCeilingDb(m.value("limiterCeilingDb", m_limiterCeilingDb).toDouble());
+    setLimiter(m.value("limiter", m_limiter).toBool());
     setUpsampling(m.value("upsampling", m_upsampling).toInt());
     setResampleFilter(m.value("resampleFilter", m_resampleFilter).toInt());
     setDsdMode(m.value("dsdOutput", m_dsdMode).toInt());
@@ -2103,6 +2127,12 @@ QVariantList DspController::buildSignalPath() const
             add(tr("ReplayGain"), tr("%1 · %2 dB").arg(m_rgMode == ReplayGainAlbum ? tr("Album") : tr("Track"), signedDb(m_currentGainDb)), "enhanced");
         if (!m_hwVolumeActive && m_engine.volume() != 1.0)
             add(tr("Volume"), m_engine.volume() > 0.0 ? tr("Digital · %1 dB").arg(signedDb(20.0 * std::log10(m_engine.volume()))) : tr("Digital · muted"), "high");
+        if (m_limiter && dspActive) {
+            const double reduction = m_engine.limiterReductionDb();
+            add(tr("Limiter"), reduction < -0.05 ? tr("True peak, ceiling %1 dBTP · reducing %2 dB").arg(QLocale().toString(m_limiterCeilingDb, 'f', 1), QLocale().toString(reduction, 'f', 1))
+                                                  : tr("True peak, ceiling %1 dBTP · not reducing").arg(QLocale().toString(m_limiterCeilingDb, 'f', 1)),
+                reduction < -0.05 ? "enhanced" : "lossless");
+        }
         if (s.pcmToDsdRate) {
             const QString filters[] = {tr("linear phase"), tr("intermediate phase"), tr("minimum phase"), tr("linear phase, steep")};
             add(tr("PCM → DSD"), tr("SoX VHQ, %1 · %2 kHz → %3 MHz · 8th-order sigma-delta modulator")
@@ -2190,6 +2220,8 @@ void DspController::loadSettings()
     m_headroomDb = std::clamp(s.value("headroomDb", 0.0).toDouble(), -24.0, 0.0);
     m_headroomAuto = s.value("headroomAuto", false).toBool(); // default: manual, 0 dB
     m_crossfeed = std::clamp(s.value("crossfeed", 0).toInt(), 0, 3);
+    m_limiter = s.value("limiter", false).toBool();
+    m_limiterCeilingDb = std::clamp(s.value("limiterCeilingDb", -1.0).toDouble(), -6.0, 0.0);
     m_upsampling = std::clamp(s.value("upsampling", 0).toInt(), 0, 3);
     m_convolutionFile = s.value("convolutionFile").toString();
     m_convolutionEnabled = s.value("convolution", false).toBool();
@@ -2232,6 +2264,7 @@ void DspController::loadSettings()
     m_effectiveHeadroomDb = 1.0; // forces the first apply
     applyHeadroom();
     m_engine.setCrossfeed(static_cast<sonkore::Crossfeed::Preset>(m_crossfeed));
+    m_engine.setLimiter(m_limiter, m_limiterCeilingDb);
     if (!applyConvolution())
         m_convolutionEnabled = false; // the file is gone or unreadable
 
@@ -2329,6 +2362,8 @@ void DspController::savePreferences() const
     s.setValue("headroomDb", m_headroomDb);
     s.setValue("headroomAuto", m_headroomAuto);
     s.setValue("crossfeed", m_crossfeed);
+    s.setValue("limiter", m_limiter);
+    s.setValue("limiterCeilingDb", m_limiterCeilingDb);
     s.setValue("upsampling", m_upsampling);
     s.setValue("convolutionFile", m_convolutionFile);
     s.setValue("convolution", m_convolutionEnabled);

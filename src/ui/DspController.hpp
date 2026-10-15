@@ -87,6 +87,10 @@ class DspController : public QObject {
     Q_PROPERTY(double clippedSamples READ clippedSamples NOTIFY signalPathChanged)
     // Headphone crossfeed: 0 off, 1 default (700 Hz, 4.5 dB), 2 Chu Moy, 3 Jan Meier.
     Q_PROPERTY(int crossfeed READ crossfeed WRITE setCrossfeed NOTIFY crossfeedChanged)
+    // True-peak limiter at the end of the processed path (never on a
+    // bit-perfect one): peaks above the ceiling (dBTP) are brought down to it.
+    Q_PROPERTY(bool limiter READ limiter WRITE setLimiter NOTIFY limiterChanged)
+    Q_PROPERTY(double limiterCeilingDb READ limiterCeilingDb WRITE setLimiterCeilingDb NOTIFY limiterChanged)
     // PCM upsampling: 0 off, 1 x2, 2 x4, 3 highest the DAC takes; and the
     // resampling filter: 0 linear, 1 intermediate, 2 minimum phase, 3 linear steep.
     Q_PROPERTY(int upsampling READ upsampling WRITE setUpsampling NOTIFY resamplingChanged)
@@ -220,6 +224,10 @@ public:
     double effectiveHeadroomDb() const { return m_effectiveHeadroomDb; }
     double clippedSamples() const;
     int crossfeed() const { return m_crossfeed; }
+    bool limiter() const { return m_limiter; }
+    void setLimiter(bool on);
+    double limiterCeilingDb() const { return m_limiterCeilingDb; }
+    void setLimiterCeilingDb(double db);
     int upsampling() const { return m_upsampling; }
     QString convolutionFile() const { return m_convolutionFile; }
     bool convolutionEnabled() const { return m_convolutionEnabled; }
@@ -372,6 +380,7 @@ signals:
     void ditherChanged();
     void headroomChanged();
     void crossfeedChanged();
+    void limiterChanged();
     void resamplingChanged();
     void convolutionChanged();
     void replayGainChanged();
@@ -454,6 +463,8 @@ private:
     bool m_convolutionEnabled = false;
     bool applyConvolution(QString* error = nullptr);
     int m_resampleFilter = 0;
+    bool m_limiter = false;
+    double m_limiterCeilingDb = -1.0;
     int m_volumeMode = VolumeAuto;
     bool m_soundPerOutput = true;
     // The sound settings as one map (what soundPerOutput stores per device).

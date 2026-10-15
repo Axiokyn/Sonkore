@@ -1501,6 +1501,8 @@ void DSPManager::seek(double seconds)
     m_crossfeed.reset();
     if (m_convolver)
         m_convolver->reset();
+    if (m_limiterRunning)
+        m_limiter.reset();
     if (m_toDsd)
         m_modulator.reset();
     m_decodedFrames.store(target);
@@ -2000,6 +2002,9 @@ bool DSPManager::produceBlock()
         m_eq.reset(); // filter memory is stale after bypassed blocks
         m_crossfeed.reset();
     }
+    syncLimiter();
+    if (bypass && !m_wasBypassed && !flushLimiter())
+        return false; // the limiter's held frames go out before the untouched ones
     m_wasBypassed = bypass;
     if (!bypass)
         ensureBuffers(stActive);
@@ -2075,6 +2080,8 @@ bool DSPManager::finishStream()
     }
     if (ok && !raw && m_resampler.active())
         ok = drainResampler();
+    if (ok && !raw)
+        ok = flushLimiter();
     if (ok && m_toDsd) { // the last partial DSD word
         int32_t last[kMaxChannels];
         if (m_modulator.flush(last))
@@ -2322,7 +2329,7 @@ bool DSPManager::drainResampler()
         const std::size_t got = m_resampler.drain();
         if (got == 0)
             return true;
-        if (!(m_toDsd ? modulateAndPush(m_resampler.output(), got) : quantizeAndPush(m_resampler.output(), got)))
+        if (!limitAndPush(m_resampler.output(), got))
             return false;
     }
 }
@@ -2333,7 +2340,8 @@ std::size_t DSPManager::pendingDspFrames() const
         return 0;
     const std::size_t held = (m_convolver ? Convolver::kBlock : 0) + m_linearEq.latency();
     const std::size_t converting = m_resampler.active() ? static_cast<std::size_t>(std::lround(m_resampler.delayFrames())) : 0;
-    return (m_workerRate ? static_cast<std::size_t>(static_cast<uint64_t>(held) * m_outputRate / m_workerRate) : held) + converting;
+    return (m_workerRate ? static_cast<std::size_t>(static_cast<uint64_t>(held) * m_outputRate / m_workerRate) : held) + converting
+        + (m_limiterRunning ? m_limiter.latency() : 0);
 }
 
 bool DSPManager::processAndPush(double* samples, std::size_t frames)
@@ -2373,9 +2381,61 @@ bool DSPManager::processRest(double* samples, std::size_t frames, bool biquads)
     if (m_resampler.active()) {
         const std::size_t got = m_resampler.process(samples, frames);
         m_resamplerDelay.store(m_resampler.delayFrames(), std::memory_order_relaxed);
-        return m_toDsd ? modulateAndPush(m_resampler.output(), got) : quantizeAndPush(m_resampler.output(), got);
+        return limitAndPush(m_resampler.output(), got);
     }
-    return quantizeAndPush(samples, frames);
+    return limitAndPush(samples, frames);
+}
+
+// The last stage of the processed path: the true-peak limiter when it is
+// on, then the DSD modulator or the quantiser.
+bool DSPManager::limitAndPush(const double* samples, std::size_t frames)
+{
+    if (m_limiterRunning) {
+        const std::size_t got = m_limiter.process(samples, frames, m_limitBuf);
+        m_limiterReduction.store(m_limiter.lastReductionDb(), std::memory_order_relaxed);
+        if (got == 0)
+            return true;
+        return m_toDsd ? modulateAndPush(m_limitBuf.data(), got) : quantizeAndPush(m_limitBuf.data(), got);
+    }
+    return m_toDsd ? modulateAndPush(samples, frames) : quantizeAndPush(samples, frames);
+}
+
+// What the limiter still holds goes out (the end of the track, or the path
+// going back to untouched: nothing may stay behind).
+bool DSPManager::flushLimiter()
+{
+    if (!m_limiterRunning || m_limiter.latency() == 0)
+        return true;
+    const std::size_t got = m_limiter.flush(m_limitBuf);
+    m_limiterReduction.store(0.0, std::memory_order_relaxed);
+    if (got == 0)
+        return true;
+    return m_toDsd ? modulateAndPush(m_limitBuf.data(), got) : quantizeAndPush(m_limitBuf.data(), got);
+}
+
+void DSPManager::syncLimiter()
+{
+    const bool on = m_limiterOn.load(std::memory_order_relaxed) && m_workerDsd == StreamInfo::Dsd::None;
+    const double ceiling = m_limiterCeilingDb.load(std::memory_order_relaxed);
+    const uint32_t rate = m_toDsd ? m_dsdRate : m_outputRate; // the modulator takes PCM at the 1-bit rate
+    if (!on) {
+        if (m_limiterRunning) {
+            flushLimiter();
+            m_limiter.release();
+            m_limitBuf = {};
+            m_limiterRunning = false;
+            m_limiterReduction.store(0.0, std::memory_order_relaxed);
+        }
+        return;
+    }
+    if (!m_limiterRunning || m_limiter.sampleRate() != rate || m_limiter.channels() != m_channels) {
+        if (m_limiterRunning)
+            flushLimiter();
+        m_limiter.setup(rate, m_channels, ceiling);
+        m_limiterRunning = true;
+    } else if (m_limiter.ceilingDb() != ceiling) {
+        m_limiter.setCeilingDb(ceiling);
+    }
 }
 
 // Multiplies a block by `target`. A gain that changed since the last block
@@ -2438,6 +2498,11 @@ void DSPManager::ensureBuffers(bool stretch)
 
 void DSPManager::releaseBuffers()
 {
+    if (m_limiterRunning) {
+        m_limiter.release();
+        m_limiterRunning = false;
+    }
+    m_limitBuf = {};
     m_floatIn = {};
     m_floatOut = {};
     m_doubleBuf = {};

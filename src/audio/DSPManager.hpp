@@ -6,6 +6,7 @@
 #include "DsdDecoder.hpp"
 #include "FilePreload.hpp"
 #include "LinearPhaseEq.hpp"
+#include "Limiter.hpp"
 #include "Resampler.hpp"
 #include "SigmaDelta.hpp"
 #include "SampleConvert.hpp"
@@ -198,6 +199,17 @@ public:
     double headroomDb() const { return 20.0 * std::log10(m_headroom.load(std::memory_order_relaxed)); }
     // Headphone crossfeed (stereo tracks only).
     void setCrossfeed(Crossfeed::Preset preset) { m_crossfeedPreset.store(static_cast<int>(preset), std::memory_order_relaxed); }
+    // True-peak limiter at the end of the processed path (never on the
+    // untouched one): what a boost pushes above `ceilingDb` (dBTP, <= 0) is
+    // brought down to it instead of clipping.
+    void setLimiter(bool on, double ceilingDb)
+    {
+        m_limiterCeilingDb.store(std::min(0.0, ceilingDb), std::memory_order_relaxed);
+        m_limiterOn.store(on, std::memory_order_relaxed);
+    }
+    bool limiterEnabled() const { return m_limiterOn.load(std::memory_order_relaxed); }
+    // Most reduction in the last processed block, in dB (0: not reducing).
+    double limiterReductionDb() const { return m_limiterReduction.load(std::memory_order_relaxed); }
     Crossfeed::Preset crossfeed() const { return static_cast<Crossfeed::Preset>(m_crossfeedPreset.load(std::memory_order_relaxed)); }
     // FIR convolution with an impulse response file ("" = off). It is fitted
     // to each track's rate and channels; false (with a reason) when the file
@@ -452,6 +464,15 @@ private:
     std::atomic<int> m_crossfeedPreset{0};
     Crossfeed m_crossfeed;           // worker
     int m_crossfeedFor = -1;         // worker: preset the filter is set up for (-1 = redo)
+    std::atomic<bool> m_limiterOn{false};
+    std::atomic<double> m_limiterCeilingDb{-1.0};
+    std::atomic<double> m_limiterReduction{0.0};
+    Limiter m_limiter;               // worker
+    std::vector<double> m_limitBuf;  // worker: its output
+    bool m_limiterRunning = false;   // worker: set up for the current output
+    bool limitAndPush(const double* samples, std::size_t frames); // limiter (if on) -> DSD modulator / quantiser
+    bool flushLimiter();
+    void syncLimiter();              // worker: follows m_limiterOn and the output format
     // Convolution: the response as loaded, and the filter built from it for
     // the current track (handed to the worker through m_pendingConvolver).
     void fitConvolution(); // control thread: builds for m_track
