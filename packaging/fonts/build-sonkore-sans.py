@@ -6,8 +6,10 @@ Inter with San Francisco's habits as defaults:
   * the t's stem cut on a slant at the top (all weights: the cut drops 0.55
     of the stem's width on the left);
   * compact f and t (Inter's cv12, cv13) and round quotes and commas (ss03);
+  * for legibility at list sizes: the l with a tail (cv05), so l, I and 1
+    differ, and open 4, 6 and 9 (ss01), which keep their counters at small
+    sizes; the double-storey a, the u and the G stay Inter's;
     Inter's shapes stay reachable through those same features;
-  * plain l and closed digits, as in Inter;
   * the Sonkore mark at U+E000; own names; fsType 0.
 Output, in <outdir>: variable roman and italic (TTF + WOFF2); static/ with
 hinted statics (ttfautohint), text cut (opsz 14) and display cut (opsz 32),
@@ -194,7 +196,7 @@ def set_names(font, family, subfamily, italic):
 
 def swap_defaults(font):
     loc, moved = {}, set()
-    for tag in ("cv12", "cv13", "ss03"):
+    for tag in ("cv12", "cv13", "ss03", "cv05", "ss01"):
         for a, b in lookup_pairs(font, tag):
             swap_glyphs(font, a, b)
             moved.update((a, b))
@@ -257,7 +259,8 @@ def build(src, italic):
     set_names(font, FAMILY, "Italic" if italic else "Regular", italic)
     os2 = font["OS/2"]; os2.fsType = 0; os2.achVendID = b"AXKN"
     font["head"].fontRevision = 3.0
-    labels = {"cv12": "Wide f (Inter)", "cv13": "Wide t (Inter)", "ss03": "Angular quotes & commas (Inter)"}
+    labels = {"cv12": "Wide f (Inter)", "cv13": "Wide t (Inter)", "ss03": "Angular quotes & commas (Inter)",
+              "cv05": "Straight l (Inter)", "ss01": "Closed digits (Inter)"}
     for fr in font["GSUB"].table.FeatureList.FeatureRecord:
         fp = fr.Feature.FeatureParams
         if fr.FeatureTag in labels and fp is not None and hasattr(fp, "UINameID"):
