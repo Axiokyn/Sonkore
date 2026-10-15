@@ -34,6 +34,13 @@ public:
 
     // ISO 10-band graphic layout (31 Hz .. 16 kHz), all at 0 dB.
     static std::vector<Band> graphic10Band();
+    // The gains to give the ten graphic bands so the cascade passes through
+    // `sliders` (dB) at the band centres: neighbouring one-octave bands
+    // overlap (one at +6 dB adds +1.1 dB at the next centre, ten at +6 dB
+    // give +8.8 dB), so each is solved against the others.
+    static std::array<double, 10> graphicGains(const std::array<double, 10>& sliders);
+    // Response (dB) of the ten graphic bands at `gains`, at their centres.
+    static std::array<double, 10> graphicResponse(const std::array<double, 10>& gains);
 
     // --- any thread ---
     void setEnabled(bool enabled);
@@ -50,6 +57,9 @@ public:
     };
     Curve curve() const;
     void setBands(std::vector<Band> bands);
+    // Bands and preamp together, as one change: the worker never runs a
+    // block with the new bands and the old preamp (or the other way round).
+    void setCurve(Curve curve);
     bool setBand(int index, const Band& band);
     std::vector<Band> bands() const;
     void setPreampDb(double db);

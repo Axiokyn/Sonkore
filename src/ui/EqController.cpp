@@ -269,19 +269,47 @@ void EqController::autoPreamp()
 
 // --- Response --------------------------------------------------------------------
 
-double EqController::responseAt(double hz) const
+namespace {
+
+double sectionsDb(const std::vector<sonkore::BiquadCoeffs>& sections, double hz)
 {
     const std::complex<double> z1 = std::polar(1.0, -2.0 * std::numbers::pi * hz / kResponseRate);
     const std::complex<double> z2 = z1 * z1;
-    double db = m_preamp;
-    for (const Band& b : m_bands) {
-        if (!b.enabled)
-            continue;
-        const auto c = sonkore::designBiquad(toFilterType(b.type), kResponseRate, b.freq, b.q, b.gain);
+    double db = 0.0;
+    for (const auto& c : sections) {
         const std::complex<double> h = (c.b0 + c.b1 * z1 + c.b2 * z2) / (1.0 + c.a1 * z1 + c.a2 * z2);
         db += 20.0 * std::log10(std::max(std::abs(h), 1e-9));
     }
     return db;
+}
+
+} // namespace
+
+QVector<EqController::Band> EqController::engineBands() const
+{
+    if (m_mode != "graphic" || m_bands.size() != 10)
+        return m_bands;
+    std::array<double, 10> sliders{};
+    for (int i = 0; i < 10; ++i)
+        sliders[i] = m_bands[i].enabled ? m_bands[i].gain : 0.0;
+    const auto gains = sonkore::SuperEQ::graphicGains(sliders);
+    QVector<Band> bands = m_bands;
+    for (int i = 0; i < 10; ++i)
+        bands[i].gain = std::round(gains[i] * 1000.0) / 1000.0;
+    return bands;
+}
+
+void EqController::updateSections()
+{
+    m_sections.clear();
+    for (const Band& b : engineBands())
+        if (b.enabled)
+            m_sections.push_back(sonkore::designBiquad(toFilterType(b.type), kResponseRate, b.freq, b.q, b.gain));
+}
+
+double EqController::responseAt(double hz) const
+{
+    return m_preamp + sectionsDb(m_sections, hz);
 }
 
 QVariantList EqController::response() const
@@ -308,19 +336,20 @@ double EqController::peakGain() const
 
 void EqController::apply(bool markCustom)
 {
-    std::vector<sonkore::SuperEQ::Band> engineBands;
-    for (const Band& b : m_bands) {
+    sonkore::SuperEQ::Curve curve;
+    for (const Band& b : engineBands()) {
         sonkore::SuperEQ::Band eb;
         eb.type = toFilterType(b.type);
         eb.freqHz = b.freq;
         eb.gainDb = b.gain;
         eb.q = b.q;
         eb.enabled = b.enabled;
-        engineBands.push_back(eb);
+        curve.bands.push_back(eb);
     }
-    m_eq.setBands(std::move(engineBands));
-    m_eq.setPreampDb(m_preamp);
+    curve.preampDb = m_preamp;
+    m_eq.setCurve(std::move(curve));
     m_eq.setEnabled(m_enabled);
+    updateSections();
     m_eq.setLinearPhase(m_linearPhase);
     if (markCustom)
         setCurrentProfile(QString());

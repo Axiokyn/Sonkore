@@ -121,6 +121,12 @@ private:
     static Band bandFromMap(const QVariantMap& m);
     static bool parseParametric(const QString& text, double& preamp, QVector<Band>& bands);
     double responseAt(double hz) const;
+    // The bands the engine runs: in graphic mode each gain is solved so the
+    // cascade passes through the slider values at the band centres
+    // (neighbouring one-octave bands overlap: ten sliders at +6 dB would
+    // otherwise give +8.8 dB).
+    QVector<Band> engineBands() const;
+    void updateSections();
 
     void apply(bool markCustom = true);
     void setCurrentProfile(const QString& name);
@@ -137,6 +143,7 @@ private:
     QString m_mode = QStringLiteral("graphic");
     double m_preamp = 0.0;
     QVector<Band> m_bands;
+    std::vector<sonkore::BiquadCoeffs> m_sections; // what the response curve is drawn from (m_bands as the engine runs them)
     QString m_currentProfile;
     QVector<Profile> m_userProfiles;
 

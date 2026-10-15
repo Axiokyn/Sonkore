@@ -12,18 +12,88 @@ SuperEQ::SuperEQ()
 {
 }
 
+namespace {
+constexpr double kGraphicCenters[] = {31.25, 62.5, 125, 250, 500, 1000, 2000, 4000, 8000, 16000};
+constexpr double kGraphicQ = 1.41421356237; // ~1 octave bandwidth
+constexpr double kGraphicRate = 48000.0;    // the matched designs barely depend on it
+} // namespace
+
 std::vector<SuperEQ::Band> SuperEQ::graphic10Band()
 {
-    static constexpr double kCenters[] = {31.25, 62.5, 125, 250, 500, 1000, 2000, 4000, 8000, 16000};
     std::vector<Band> bands;
-    for (double f : kCenters) {
+    for (double f : kGraphicCenters) {
         Band b;
         b.type = FilterType::Peaking;
         b.freqHz = f;
-        b.q = 1.41421356237; // ~1 octave bandwidth
+        b.q = kGraphicQ;
         bands.push_back(b);
     }
     return bands;
+}
+
+std::array<double, 10> SuperEQ::graphicResponse(const std::array<double, 10>& gains)
+{
+    std::vector<BiquadCoeffs> sections;
+    for (int j = 0; j < 10; ++j)
+        if (gains[j] != 0.0)
+            sections.push_back(designBiquad(FilterType::Peaking, kGraphicRate, kGraphicCenters[j], kGraphicQ, gains[j]));
+    std::array<double, 10> r{};
+    for (int i = 0; i < 10; ++i) {
+        const std::complex<double> z1 = std::polar(1.0, -2.0 * std::numbers::pi * kGraphicCenters[i] / kGraphicRate), z2 = z1 * z1;
+        for (const BiquadCoeffs& c : sections)
+            r[i] += 20.0 * std::log10(std::abs((c.b0 + c.b1 * z1 + c.b2 * z2) / (1.0 + c.a1 * z1 + c.a2 * z2)));
+    }
+    return r;
+}
+
+std::array<double, 10> SuperEQ::graphicGains(const std::array<double, 10>& sliders)
+{
+    if (std::all_of(sliders.begin(), sliders.end(), [](double g) { return g == 0.0; }))
+        return sliders;
+    // The overlap, inverted once: column j is band j's response per dB of
+    // its gain at the ten centres.
+    static const auto inverse = [] {
+        std::array<std::array<double, 20>, 10> m{};
+        for (int j = 0; j < 10; ++j) {
+            std::array<double, 10> g{};
+            g[j] = 1.0;
+            const auto r = graphicResponse(g);
+            for (int i = 0; i < 10; ++i)
+                m[i][j] = r[i];
+            m[j][10 + j] = 1.0;
+        }
+        for (int c = 0; c < 10; ++c) { // Gauss-Jordan; diagonally dominant, no pivoting needed
+            const double p = m[c][c];
+            for (double& v : m[c])
+                v /= p;
+            for (int r = 0; r < 10; ++r)
+                if (r != c) {
+                    const double f = m[r][c];
+                    for (int k = 0; k < 20; ++k)
+                        m[r][k] -= f * m[c][k];
+                }
+        }
+        std::array<std::array<double, 10>, 10> inv{};
+        for (int i = 0; i < 10; ++i)
+            for (int j = 0; j < 10; ++j)
+                inv[i][j] = m[i][10 + j];
+        return inv;
+    }();
+    // Newton steps (the overlap is nearly linear in dB; a few land within
+    // 0.01 dB even at +-12 dB).
+    std::array<double, 10> gains = sliders;
+    for (int step = 0; step < 5; ++step) {
+        const auto got = graphicResponse(gains);
+        std::array<double, 10> next = gains;
+        for (int i = 0; i < 10; ++i) {
+            double d = 0.0;
+            for (int j = 0; j < 10; ++j)
+                d += inverse[i][j] * (sliders[j] - got[j]);
+            next[i] = std::clamp(gains[i] + d, -36.0, 36.0);
+        }
+        gains = next;
+    }
+    return gains;
 }
 
 void SuperEQ::setEnabled(bool enabled)
@@ -44,6 +114,17 @@ void SuperEQ::setBands(std::vector<Band> bands)
         bands.resize(kMaxBands);
     std::lock_guard lock(m_mutex);
     m_pendingBands = std::move(bands);
+    m_dirty.store(true, std::memory_order_release);
+    m_generation.fetch_add(1, std::memory_order_release);
+}
+
+void SuperEQ::setCurve(Curve curve)
+{
+    if (curve.bands.size() > static_cast<std::size_t>(kMaxBands))
+        curve.bands.resize(kMaxBands);
+    std::lock_guard lock(m_mutex);
+    m_pendingBands = std::move(curve.bands);
+    m_pendingPreampDb = curve.preampDb;
     m_dirty.store(true, std::memory_order_release);
     m_generation.fetch_add(1, std::memory_order_release);
 }

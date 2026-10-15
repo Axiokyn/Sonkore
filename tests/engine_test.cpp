@@ -604,6 +604,45 @@ void precision()
     }
 }
 
+// EQ designs: matched peaking/shelving biquads (no squeeze toward Nyquist),
+// always stable, and graphic sliders that mean what they show.
+void eqDesign()
+{
+    auto gainAt = [](const BiquadCoeffs& c, double hz, double rate) {
+        const std::complex<double> z1 = std::polar(1.0, -2.0 * std::numbers::pi * hz / rate), z2 = z1 * z1;
+        return 20.0 * std::log10(std::abs((c.b0 + c.b1 * z1 + c.b2 * z2) / (1.0 + c.a1 * z1 + c.a2 * z2)));
+    };
+    g_test = "16 kHz band at 44.1 kHz";
+    const double top = gainAt(designBiquad(FilterType::Peaking, 44100, 16000, 1.41421356237, 6.0), 16000, 44100);
+    CHECK_MSG(std::fabs(top - 6.0) < 0.05, "+6 dB at 16 kHz realised as %.2f dB", top);
+    g_test = "rate invariance";
+    for (double rate : {48000.0, 96000.0, 192000.0}) {
+        const double at = gainAt(designBiquad(FilterType::Peaking, rate, 16000, 1.41421356237, 6.0), 16000, rate);
+        CHECK_MSG(std::fabs(at - top) < 0.05, "16 kHz band: %.2f dB at %.0f Hz vs %.2f dB at 44.1 kHz", at, rate, top);
+    }
+    g_test = "biquad stability";
+    int unstable = 0;
+    for (auto type : {FilterType::Peaking, FilterType::LowShelf, FilterType::HighShelf})
+        for (double rate : {44100.0, 48000.0, 96000.0, 384000.0})
+            for (double f = 10; f < rate * 0.49; f *= 1.25)
+                for (double q : {0.1, 0.5, 0.707, 1.41, 4.0, 30.0})
+                    for (double g : {-24.0, -6.0, -0.5, 0.5, 6.0, 24.0}) {
+                        const BiquadCoeffs c = designBiquad(type, rate, f, q, g);
+                        unstable += !(std::fabs(c.a2) < 1.0 && std::fabs(c.a1) < 1.0 + c.a2);
+                    }
+    CHECK_MSG(unstable == 0, "%d unstable designs", unstable);
+    g_test = "graphic sliders";
+    for (const std::array<double, 10>& sliders : {std::array<double, 10>{6, 6, 6, 6, 6, 6, 6, 6, 6, 6},
+                                                   std::array<double, 10>{12, -12, 12, -12, 12, -12, 12, -12, 12, -12},
+                                                   std::array<double, 10>{7, 5, 3, 0, 0, 0, 0, 2, 4, 6}}) {
+        const auto r = SuperEQ::graphicResponse(SuperEQ::graphicGains(sliders));
+        double worst = 0;
+        for (int i = 0; i < 10; ++i)
+            worst = std::max(worst, std::fabs(r[i] - sliders[i]));
+        CHECK_MSG(worst < 0.05, "the curve misses a slider by %.2f dB", worst);
+    }
+}
+
 void resampling()
 {
     const fs::path path = corpus("Álbum Uno/01 - Pista número 1.flac");
@@ -1871,6 +1910,7 @@ int main(int argc, char** argv)
         {"linearPhaseEq", linearPhaseEq},
         {"resampling", resampling},
         {"precision", precision},
+        {"eqDesign", eqDesign},
         {"timeStretch", timeStretch},
         {"timeStretchHighRate", timeStretchHighRate},
         {"dsd", dsd},
