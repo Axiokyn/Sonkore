@@ -2,11 +2,14 @@
 
 #include <QObject>
 #include <QPointer>
+#include <QHash>
+#include <QRectF>
 #include <QRegion>
 
 #include <atomic>
 
 class QQuickWindow;
+class QSGNode;
 class QSGSoftwareRenderer;
 
 // The software renderer's repaint area, chosen per frame.
@@ -27,6 +30,7 @@ class QSGSoftwareRenderer;
 //   clip and a damage rectangle for the compositor), the next frames are
 //   repainted whole; every eighth frame is left to the renderer to see
 //   whether the movement is over.
+// And at any scale but 1, text is drawn whole (widenText).
 // Measured on a 4K desktop at a ratio of 1.67, playing with the visualizer:
 // 29-37 % of a core down to 9 %; scrolling 88-93 fps became 100-109 (with
 // FrameAnimationDriver). In a headless mutter at 100-200 % with interface
@@ -41,7 +45,7 @@ public:
     // Before the window exists: partial repaints for the software renderer,
     // unless the environment already says otherwise.
     static void prepare();
-    // The software renderer draws this window.
+    // The software renderer draws this window, with partial repaints.
     static bool wanted(QQuickWindow* window);
     // Every Qt Quick window, the ones shown later included (Settings, the
     // SoundTouch editor): partial repaints are asked for all of them.
@@ -52,8 +56,10 @@ private:
     void beforeFrame(); // render thread (the GUI thread with the basic loop)
     void afterFrame();
     void snapToGrid(QSGSoftwareRenderer& renderer);
+    void widenText(QSGSoftwareRenderer& renderer);
 
     QPointer<QQuickWindow> m_window;
+    const bool m_partial;  // partial repaints (else only widenText)
     const bool m_canSnap;  // built against the running Qt's minor version
     std::atomic<bool> m_wholeFrames{false};
     int m_sinceProbe = 0;
@@ -61,4 +67,5 @@ private:
     bool m_forced = false; // this frame was marked whole by us
     QRegion m_snapped;     // what this frame was widened to
     QRegion m_mend;        // missed by the last frame: repainted on the next
+    QHash<const QSGNode*, QRectF> m_widened; // glyph runs and the box given them
 };

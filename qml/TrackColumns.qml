@@ -107,17 +107,16 @@ QtObject {
             return 40 // its head is a heart, not the word
         return c ? Math.max(48, headerWidth(c.title)) : 48
     }
-    // Header text as drawn (SectionLabel): default widths grow to fit it,
+    // Header text as drawn (TrackTable's header): default widths grow to fit it,
     // so a longer translation is never cut off.
     // FontMetrics (not TextMetrics): measuring must not change any property,
     // or every binding that reads a column width loops.
     property FontMetrics headerMetrics: FontMetrics {
-        font.pixelSize: 10
-        font.weight: Font.Bold
-        font.letterSpacing: 1.2
+        font.pixelSize: Theme.fontSmall
+        font.weight: Font.Medium
     }
     function headerWidth(text) {
-        return Math.ceil(headerMetrics.advanceWidth(text.toUpperCase())) + 2 * cellPadding + 15 // room for the sort arrow
+        return Math.ceil(headerMetrics.advanceWidth(text)) + 2 * cellPadding + 15 // room for the sort arrow
     }
     function widthOf(key) {
         const w = widths[key]

@@ -6,6 +6,7 @@
 #include <QVersionNumber>
 #include <QtGui/private/qhighdpiscaling_p.h>
 #include <QtQuick/private/qquickwindow_p.h>
+#include <QtQuick/private/qsgadaptationlayer_p.h>
 #include <QtQuick/private/qsgsoftwarerenderablenode_p.h>
 #include <QtQuick/private/qsgsoftwarerenderer_p.h>
 
@@ -33,6 +34,7 @@ namespace {
 constexpr int kProbeEvery = 8;      // frames repainted whole between two left to the renderer
 constexpr double kLargeShare = 0.5; // of the window's area: "the whole window changes"
 constexpr int kManyPieces = 64;     // a region in more rectangles than this costs more than a whole repaint
+constexpr qreal kTextMargin = 2;    // around a run of glyphs, in the window's units (see widenText)
 
 QSGSoftwareRenderer* softwareRenderer(QQuickWindow* window)
 {
@@ -90,11 +92,17 @@ void SoftwareRepaint::prepare()
         qputenv("QSG_SOFTWARE_RENDERER_FORCE_PARTIAL_UPDATES", "1");
 }
 
-bool SoftwareRepaint::wanted(QQuickWindow* window)
+namespace {
+bool software(QQuickWindow* window)
 {
     const QSGRendererInterface* renderer = window ? window->rendererInterface() : nullptr;
-    return renderer && renderer->graphicsApi() == QSGRendererInterface::Software
-        && qEnvironmentVariableIntValue("QSG_SOFTWARE_RENDERER_FORCE_PARTIAL_UPDATES") == 1;
+    return renderer && renderer->graphicsApi() == QSGRendererInterface::Software;
+}
+} // namespace
+
+bool SoftwareRepaint::wanted(QQuickWindow* window)
+{
+    return software(window) && qEnvironmentVariableIntValue("QSG_SOFTWARE_RENDERER_FORCE_PARTIAL_UPDATES") == 1;
 }
 
 namespace {
@@ -123,13 +131,14 @@ void SoftwareRepaint::watchWindows()
 
 void SoftwareRepaint::attach(QQuickWindow* window)
 {
-    if (window && wanted(window) && !window->findChild<SoftwareRepaint*>(Qt::FindDirectChildrenOnly))
+    if (window && software(window) && !window->findChild<SoftwareRepaint*>(Qt::FindDirectChildrenOnly))
         new SoftwareRepaint(window);
 }
 
 SoftwareRepaint::SoftwareRepaint(QQuickWindow* window)
     : QObject(window)
     , m_window(window)
+    , m_partial(wanted(window))
     , m_canSnap(sameQtAsBuilt())
 {
     connect(window, &QQuickWindow::beforeRendering, this, &SoftwareRepaint::beforeFrame, Qt::DirectConnection);
@@ -142,6 +151,10 @@ void SoftwareRepaint::beforeFrame()
     m_snapped = QRegion();
     QSGSoftwareRenderer* renderer = softwareRenderer(m_window);
     if (!renderer)
+        return;
+    if (m_window->effectiveDevicePixelRatio() != 1.0)
+        widenText(*renderer);
+    if (!m_partial)
         return;
     m_grid = gridFor(QHighDpiScaling::factor(static_cast<QWindow*>(m_window.data())));
     if (m_grid != 1 && (m_grid == 0 || !m_canSnap)) { // as Qt itself would
@@ -219,9 +232,36 @@ void SoftwareRepaint::snapToGrid(QSGSoftwareRenderer& renderer)
     m_snapped = seed;
 }
 
+// Text drawn whole at any scale but 1. The renderer clips each run of
+// glyphs to its box, measured at the font's size in the window's units, and
+// draws the glyphs at the platform's size: hinted there (Sonkore asks for
+// full hinting), their outlines move by up to a pixel of each size, and the
+// edges of the first and last glyph were cut (the left of "0:00", the right
+// of "98"), on every frame, whole ones too. New and changed runs get a
+// margin before the frame is built.
+void SoftwareRepaint::widenText(QSGSoftwareRenderer& renderer)
+{
+    const RenderableNodes& nodes = renderableNodes(renderer);
+    for (auto [handle, node] : nodes.asKeyValueRange()) {
+        if (node->type() != QSGSoftwareRenderableNode::Glyph || !node->isDirty())
+            continue;
+        auto* glyphs = static_cast<QSGGlyphNode*>(handle);
+        const QRectF box = glyphs->boundingRect();
+        const auto known = m_widened.constFind(handle);
+        if (known != m_widened.cend() && *known == box)
+            continue; // already widened, changed only in colour or opacity
+        const QRectF wide = box.adjusted(-kTextMargin, -kTextMargin, kTextMargin, kTextMargin);
+        glyphs->setBoundingRect(wide);
+        m_widened.insert(handle, wide);
+        node->update(); // measured again, with the margin
+    }
+    if (m_widened.size() > 2 * nodes.size() + 256) // forget the runs gone since
+        m_widened.removeIf([&nodes](const auto& entry) { return !nodes.contains(const_cast<QSGNode*>(entry.key())); });
+}
+
 void SoftwareRepaint::afterFrame()
 {
-    if (m_forced)
+    if (m_forced || !m_partial)
         return; // whole by our own doing: says nothing about what changed
     QSGSoftwareRenderer* renderer = softwareRenderer(m_window);
     if (!renderer || !m_window)

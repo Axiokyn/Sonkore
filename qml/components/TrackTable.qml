@@ -34,7 +34,18 @@ Item {
     signal removeRequested(var rows)
 
     readonly property real leadingWidth: 36
-    readonly property real coverWidth: Theme.listCovers ? (Theme.listSpacious ? 62 : 52) : 0
+    // When even the narrowest columns leave no room for the covers (the
+    // queue beside the large cover on the Now playing page), the covers go;
+    // only below that does the list scroll sideways.
+    readonly property real coverFull: Theme.listSpacious ? 62 : 52
+    readonly property real narrowestRow: { // every column at its least, no covers
+        let w = 14 + leadingWidth + trailingWidth + TrackColumns.widthOf(flexKey)
+        for (const k of TrackColumns.keys)
+            if (!TrackColumns.isFlex(k))
+                w += k === primaryKey ? primaryMin : TrackColumns.minWidthOf(k)
+        return w
+    }
+    readonly property real coverWidth: Theme.listCovers && list.width >= narrowestRow + coverFull ? coverFull : 0
     readonly property real fixedWidth: {
         let w = 0
         for (const k of TrackColumns.keys)
@@ -46,13 +57,15 @@ Item {
     readonly property real availableFlex: list.width - 14 - leadingWidth - coverWidth - fixedWidth - trailingWidth
     // The last column fills the free space down to its own width. When the
     // window is too narrow for that, the first column (the title or file
-    // name, whose text elides) gives up space first, down to primaryMin; then
-    // the other columns, each in proportion down to its title's width; only
-    // below that the list scrolls sideways.
+    // name, whose text elides) gives up space first, down to primaryMin (200,
+    // or a quarter of a narrow list); then the other columns, each in
+    // proportion down to its title's width; then the covers (coverWidth);
+    // only below that the list scrolls sideways.
     readonly property string flexKey: TrackColumns.flexKey
     readonly property string primaryKey: TrackColumns.keys.length > 1 ? TrackColumns.keys[0] : ""
     readonly property real primaryFull: primaryKey.length > 0 ? TrackColumns.widthOf(primaryKey) : 0
-    readonly property real primaryMin: primaryKey.length > 0 ? Math.min(primaryFull, Math.max(TrackColumns.minWidthOf(primaryKey), 200)) : 0
+    readonly property real primaryMin: primaryKey.length > 0
+        ? Math.min(primaryFull, Math.max(TrackColumns.minWidthOf(primaryKey), Math.min(200, Math.round(list.width / 4)))) : 0
     readonly property real shortfall: Math.max(0, TrackColumns.widthOf(flexKey) - availableFlex)
     readonly property real primaryWidth: Math.max(primaryMin, primaryFull - shortfall) // 0 without a separate first column
     readonly property real primaryShrink: primaryFull - primaryWidth
@@ -627,7 +640,7 @@ Item {
             rowIndex: index
             rowData: table.isArray ? model.modelData : model
             leadingWidth: table.leadingWidth
-            showCover: Theme.listCovers
+            showCover: table.coverWidth > 0
             flexWidth: table.flexWidth
             primaryWidth: table.primaryWidth
             restRatio: table.restRatio
