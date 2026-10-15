@@ -762,8 +762,10 @@ bool DSPManager::outputOpen() const
 // the settings allow), or at the graph's rate with the engine converting.
 bool DSPManager::openPipeWire(const DeviceEntry& entry, uint32_t rate, uint32_t channels, std::string* error)
 {
-    if (!m_pwOut)
+    if (!m_pwOut) {
         m_pwOut = std::make_unique<PipeWireOutput>();
+        m_pwOut->setGraphChangedCallback(m_outputChanged);
+    }
     const OutputConfig cfg = outputConfig();
     // Mono goes to both speakers, sample for sample (render() copies it):
     // PipeWire would otherwise mix it, or leave one side silent.
@@ -1551,7 +1553,10 @@ DSPManager::OutputStatus DSPManager::outputStatus() const
     st.modulatorResets = m_modulatorResets.load(std::memory_order_relaxed);
     if (pwOpen()) {
         // PipeWire: untouched only while the graph runs at the stream's rate
-        // and no software volume scales it.
+        // and no software volume scales it. The sink may have changed under
+        // the stream (its sink went away, the default changed).
+        if (const std::string sink = m_pwOut->sinkDescription(); !sink.empty())
+            st.deviceName = sink;
         st.graphRate = m_pwOut->graphRate();
         st.systemVolumeNeutral = m_pwOut->volumeNeutral();
         if ((st.graphRate != 0 && st.graphRate != st.deviceSampleRate) || !st.systemVolumeNeutral)
@@ -1559,6 +1564,18 @@ DSPManager::OutputStatus DSPManager::outputStatus() const
     }
     st.bitPerfectNow = st.pathCanBeBitPerfect && !st.hdcd && (dspIsNeutral() || m_outputDsd != StreamInfo::Dsd::None);
     return st;
+}
+
+bool DSPManager::outputLostVirtualSink(unsigned withinMs) const
+{
+    return pwOpen() && m_pwOut->lostVirtualSink(withinMs);
+}
+
+void DSPManager::setOutputChangedCallback(std::function<void()> callback)
+{
+    m_outputChanged = std::move(callback);
+    if (m_pwOut)
+        m_pwOut->setGraphChangedCallback(m_outputChanged);
 }
 
 bool DSPManager::dspIsNeutral() const

@@ -366,6 +366,9 @@ public slots:
     bool load(const QUrl& url);
     void play();
     void pause();
+    // A pause asked by the desktop (MPRIS), which may come from the sound
+    // server's own policy rather than the listener.
+    void pauseFromDesktop();
     void togglePlayPause();
     void stop();
     void next();
@@ -419,6 +422,7 @@ private:
     void applyQueueOrder(const QVector<int>& order);
     void poll();
     void devicesChangedOnSystem();
+    void outputGraphChanged();
     void updateSpectrum();
     void updateSpectrumTimer();
     void setVisualizerActive(bool on);

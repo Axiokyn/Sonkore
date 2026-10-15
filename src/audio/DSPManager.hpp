@@ -23,6 +23,7 @@
 #include <condition_variable>
 #include <cstdint>
 #include <filesystem>
+#include <functional>
 #include <map>
 #include <memory>
 #include <mutex>
@@ -181,6 +182,13 @@ public:
     State state() const { return m_state.load(std::memory_order_relaxed); }
     TrackInfo trackInfo() const { return m_track; }
     OutputStatus outputStatus() const;
+    // Called from the output's own thread when the device behind the open
+    // output changed under it (PipeWire moved the stream to another sink,
+    // sinks came or went): the status above is worth reading again.
+    void setOutputChangedCallback(std::function<void()> callback);
+    // PipeWire: the virtual sink the stream fed (a filter program's) went
+    // away in the last `withinMs`; the stream carries on through another.
+    bool outputLostVirtualSink(unsigned withinMs) const;
     // The open output is Sonkore's alone (WASAPI exclusive, ASIO, an ALSA hw:
     // device, native DSD): other programs get no sound from it until it is
     // closed, so an idle player should let go of it.
@@ -362,6 +370,7 @@ private:
     bool asioOpen() const;
     bool openAsio(const DeviceEntry& entry, bool dsd, uint32_t rate, uint32_t channels, std::string* error);
     std::unique_ptr<PipeWireOutput> m_pwOut; // Linux: native PipeWire instead of miniaudio
+    std::function<void()> m_outputChanged;
     bool m_pipewireNative = false;           // PipeWire answered at the last enumeration
     bool m_pipewireRunning = false;          // a PipeWire daemon in this session
     bool m_lazyServers = false;              // the PulseAudio / JACK contexts are made on demand

@@ -19,6 +19,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <map>
+#include <mutex>
 #include <thread>
 #include <type_traits>
 #endif
@@ -61,6 +62,7 @@ struct Api {
     SONKORE_PW_FN(pw_stream_queue_buffer);
     SONKORE_PW_FN(pw_stream_set_active);
     SONKORE_PW_FN(pw_stream_set_control);
+    SONKORE_PW_FN(pw_stream_get_node_id);
 #undef SONKORE_PW_FN
 };
 
@@ -103,6 +105,7 @@ const Api& api()
         SONKORE_PW_LOAD(pw_stream_queue_buffer);
         SONKORE_PW_LOAD(pw_stream_set_active);
         SONKORE_PW_LOAD(pw_stream_set_control);
+        SONKORE_PW_LOAD(pw_stream_get_node_id);
 #undef SONKORE_PW_LOAD
         if (!all) {
             dlclose(lib);
@@ -189,6 +192,11 @@ struct SinkNode {
     bool hardware = false; // a device's node (ALSA...): its volume may be split between hardware and software
 };
 
+struct LinkInfo {
+    uint32_t id = SPA_ID_INVALID;
+    uint32_t outputNode = SPA_ID_INVALID, inputNode = SPA_ID_INVALID;
+};
+
 // One connection to the daemon: the registry, the "settings" and "default"
 // metadata, and the volume of the sink being played to.
 struct Connection {
@@ -224,7 +232,78 @@ struct Connection {
     std::string watchedName;       // what watch() asked for ("" = the default)
     std::string watchedDescription;
     bool followDefault = false;    // re-watch when the default sink changes
+    bool keepAlive = false;        // stay connected without a stream or a watched sink (graph events)
     std::function<void()> sinkChanged;
+    // Sinks came or went, the default changed, or the stream was moved.
+    std::function<void()> graphChanged;
+    // The graph's links, to know which sink the stream really feeds (the
+    // session manager moves it when its sink goes away or the default changes).
+    std::vector<LinkInfo> links;
+    uint32_t streamNode = SPA_ID_INVALID;
+    std::mutex linkedMutex;
+    std::string linkedSinkName, linkedSinkDescription; // guarded by linkedMutex
+    bool linkedKnown = false;
+    // The sink the stream fed went away: the link to it, its node, and
+    // whether it was a device's (a filter unlinks the streams before its
+    // sink goes; a DAC unplugged takes its links down with its node).
+    uint32_t lostSink = SPA_ID_INVALID;
+    std::chrono::steady_clock::time_point sinkLostAt{};
+    bool sinkLostHardware = false;
+    bool lostSinkGone = false;
+
+    void noteSinkLost(const SinkNode& sink, bool gone) // lock held
+    {
+        std::lock_guard<std::mutex> g(linkedMutex);
+        if (lostSink != sink.id || !lostSinkGone) {
+            lostSink = sink.id;
+            sinkLostHardware = sink.hardware;
+            lostSinkGone = gone;
+        } else {
+            lostSinkGone = lostSinkGone || gone;
+        }
+        sinkLostAt = std::chrono::steady_clock::now();
+    }
+
+    void notifyGraph()
+    {
+        if (synced && graphChanged)
+            graphChanged();
+    }
+    // The sink the stream's node is linked to (lock held).
+    const SinkNode* linkedSink() const
+    {
+        if (streamNode == SPA_ID_INVALID)
+            return nullptr;
+        for (const LinkInfo& l : links)
+            if (l.outputNode == streamNode)
+                for (const SinkNode& s : sinks)
+                    if (s.id == l.inputNode)
+                        return &s;
+        return nullptr;
+    }
+    void updateLinkedSink()
+    {
+        const SinkNode* s = linkedSink();
+        std::string name = s ? s->name : std::string(), desc = s ? s->description : std::string();
+        bool changed = false;
+        {
+            std::lock_guard<std::mutex> g(linkedMutex);
+            changed = !linkedKnown || name != linkedSinkName;
+            linkedKnown = s != nullptr;
+            linkedSinkName = std::move(name);
+            linkedSinkDescription = std::move(desc);
+        }
+        if (!s)
+            return;
+        // The volume shown is that of the sink actually fed.
+        if (s->id != watchedSink) {
+            watchSink(s->name);
+            if (sinkChanged)
+                sinkChanged();
+        }
+        if (changed)
+            notifyGraph();
+    }
 
     static void onCoreDone(void* data, uint32_t id, int seq)
     {
@@ -255,6 +334,25 @@ struct Connection {
                 return;
             const char* desc = spa_dict_lookup(props, PW_KEY_NODE_DESCRIPTION);
             c->sinks.push_back({id, name, desc ? desc : name, spa_dict_lookup(props, PW_KEY_DEVICE_ID) != nullptr});
+            if (c->synced) {
+                // The sink asked for by name is back: its volume again.
+                if (!c->followDefault && c->watchedName == name && c->watchedSink == SPA_ID_INVALID) {
+                    c->watchSink(name);
+                    if (c->sinkChanged)
+                        c->sinkChanged();
+                }
+                c->updateLinkedSink();
+                c->notifyGraph();
+            }
+        } else if (std::strcmp(type, PW_TYPE_INTERFACE_Link) == 0) {
+            const char* out = spa_dict_lookup(props, PW_KEY_LINK_OUTPUT_NODE);
+            const char* in = spa_dict_lookup(props, PW_KEY_LINK_INPUT_NODE);
+            if (!out || !in)
+                return;
+            c->links.push_back({id, static_cast<uint32_t>(std::strtoul(out, nullptr, 10)),
+                                static_cast<uint32_t>(std::strtoul(in, nullptr, 10))});
+            if (c->synced)
+                c->updateLinkedSink();
         } else if (std::strcmp(type, PW_TYPE_INTERFACE_Metadata) == 0) {
             const char* name = spa_dict_lookup(props, PW_KEY_METADATA_NAME);
             if (name && std::strcmp(name, "settings") == 0)
@@ -266,7 +364,32 @@ struct Connection {
     static void onGlobalRemove(void* data, uint32_t id)
     {
         auto* c = static_cast<Connection*>(data);
-        std::erase_if(c->sinks, [id](const SinkNode& s) { return s.id == id; });
+        if (const SinkNode* fed = c->linkedSink(); fed && fed->id == id) // its links are still listed
+            c->noteSinkLost(*fed, true);
+        else if (id == c->lostSink) { // the sink the stream was unlinked from a moment ago
+            std::lock_guard<std::mutex> g(c->linkedMutex);
+            c->lostSinkGone = true;
+        }
+        for (const LinkInfo& l : c->links)
+            if (l.id == id && l.outputNode == c->streamNode)
+                for (const SinkNode& s : c->sinks)
+                    if (s.id == l.inputNode)
+                        c->noteSinkLost(s, false);
+        const bool sink = std::erase_if(c->sinks, [id](const SinkNode& s) { return s.id == id; }) > 0;
+        const bool link = std::erase_if(c->links, [id](const LinkInfo& l) { return l.id == id; }) > 0;
+        if (sink && id == c->watchedSink) {
+            // The sink being watched is gone: the desktop's default takes its
+            // place (where the session manager moves the streams too).
+            c->unwatchSink();
+            c->sinkVolumeKnown.store(false, std::memory_order_relaxed);
+            c->watchSink(c->defaultSink);
+            if (c->sinkChanged)
+                c->sinkChanged();
+        }
+        if (sink || link)
+            c->updateLinkedSink();
+        if (sink)
+            c->notifyGraph();
     }
     static int onSetting(void* data, uint32_t subject, const char* key, const char* /*type*/, const char* value)
     {
@@ -285,6 +408,7 @@ struct Connection {
                 if (c->sinkChanged)
                     c->sinkChanged();
             }
+            c->notifyGraph();
         }
         return 0;
     }
@@ -534,6 +658,16 @@ struct Connection {
         loop = nullptr;
         context = nullptr;
         sinks.clear();
+        links.clear();
+        streamNode = SPA_ID_INVALID;
+        {
+            std::lock_guard<std::mutex> g(linkedMutex);
+            linkedKnown = false;
+            linkedSinkName.clear();
+            linkedSinkDescription.clear();
+            lostSink = SPA_ID_INVALID;
+            lostSinkGone = false;
+        }
         settingValues.clear();
         defaultSink.clear();
         settingsId = defaultsId = SPA_ID_INVALID;
@@ -651,6 +785,15 @@ struct PipeWireOutput::Impl {
         spa_hook_remove(&streamHook);
         c.P.pw_stream_destroy(stream);
         stream = nullptr;
+        c.streamNode = SPA_ID_INVALID;
+        {
+            std::lock_guard<std::mutex> g(c.linkedMutex);
+            c.linkedKnown = false;
+            c.linkedSinkName.clear();
+            c.linkedSinkDescription.clear();
+            c.lostSink = SPA_ID_INVALID;
+            c.lostSinkGone = false;
+        }
         position.store(nullptr);
         graphRate.store(0);
         state = PW_STREAM_STATE_UNCONNECTED;
@@ -797,7 +940,9 @@ bool PipeWireOutput::open(const std::string& target, uint32_t channels, uint32_t
         if (s.name == sinkName)
             d->sinkDescription = s.description;
     c.watchSink(sinkName);
-    c.roundtrip();
+    c.streamNode = P.pw_stream_get_node_id(d->stream);
+    c.roundtrip(); // the links made for the stream are in by now
+    c.updateLinkedSink();
     c.unlock();
     return true;
 }
@@ -826,6 +971,7 @@ void PipeWireOutput::release()
         c.unlock();
         d->forcedRate = 0;
     }
+    c.keepAlive = false;
     c.disconnect();
 }
 
@@ -884,7 +1030,56 @@ uint32_t PipeWireOutput::bufferFrames() const
 
 std::string PipeWireOutput::sinkDescription() const
 {
-    return d->sinkDescription;
+    std::lock_guard<std::mutex> g(d->c.linkedMutex);
+    return d->c.linkedKnown ? d->c.linkedSinkDescription : d->sinkDescription;
+}
+
+std::string PipeWireOutput::sinkName() const
+{
+    std::lock_guard<std::mutex> g(d->c.linkedMutex);
+    return d->c.linkedSinkName;
+}
+
+bool PipeWireOutput::lostVirtualSink(unsigned withinMs) const
+{
+    std::lock_guard<std::mutex> g(d->c.linkedMutex);
+    if (!d->stream || d->c.lostSink == SPA_ID_INVALID || !d->c.lostSinkGone || d->c.sinkLostHardware)
+        return false;
+    return std::chrono::steady_clock::now() - d->c.sinkLostAt < std::chrono::milliseconds(withinMs);
+}
+
+bool PipeWireOutput::watchGraph(std::string* error)
+{
+    Connection& c = d->c;
+    if (!c.connected() && !c.connect(error))
+        return false;
+    c.lock();
+    c.keepAlive = true;
+    c.unlock();
+    return true;
+}
+
+void PipeWireOutput::setGraphChangedCallback(std::function<void()> callback)
+{
+    Connection& c = d->c;
+    if (c.connected())
+        c.lock();
+    c.graphChanged = std::move(callback);
+    if (c.connected())
+        c.unlock();
+}
+
+std::vector<PipeWireOutput::Sink> PipeWireOutput::currentSinks() const
+{
+    std::vector<Sink> result;
+    Connection& c = d->c;
+    if (!c.connected())
+        return result;
+    c.lock();
+    for (const SinkNode& s : c.sinks)
+        result.push_back({s.name, s.description, s.name == c.defaultSink});
+    c.unlock();
+    return result;
 }
 
 bool PipeWireOutput::watch(const std::string& target, std::string* error)
@@ -917,7 +1112,7 @@ void PipeWireOutput::unwatch()
     if (!d->stream)
         c.unwatchSink();
     c.unlock();
-    if (!d->stream)
+    if (!d->stream && !c.keepAlive)
         c.disconnect();
 }
 
@@ -1011,6 +1206,16 @@ uint32_t PipeWireOutput::graphRate() const { return 0; }
 bool PipeWireOutput::volumeNeutral() const { return true; }
 uint32_t PipeWireOutput::bufferFrames() const { return 0; }
 std::string PipeWireOutput::sinkDescription() const { return {}; }
+std::string PipeWireOutput::sinkName() const { return {}; }
+bool PipeWireOutput::lostVirtualSink(unsigned) const { return false; }
+bool PipeWireOutput::watchGraph(std::string* error)
+{
+    if (error)
+        *error = "Built without PipeWire";
+    return false;
+}
+void PipeWireOutput::setGraphChangedCallback(std::function<void()>) {}
+std::vector<PipeWireOutput::Sink> PipeWireOutput::currentSinks() const { return {}; }
 bool PipeWireOutput::watch(const std::string&, std::string* error)
 {
     if (error)

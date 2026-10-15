@@ -67,7 +67,26 @@ public:
     uint32_t graphRate() const;  // the graph's now (0: not known yet)
     bool volumeNeutral() const;  // nothing scales the samples on the way
     uint32_t bufferFrames() const;
+    // What the desktop calls the sink the stream feeds now: the session
+    // manager moves a stream when its sink goes away (a filter program
+    // closing) or the default changes, and this follows.
     std::string sinkDescription() const;
+    std::string sinkName() const; // its node.name ("" until linked)
+    // The sink the stream fed went away less than `withinMs` ago and was not
+    // a device's (a filter program's sink, a loopback). The session manager
+    // moves the stream on, and may ask players to pause as for an unplugged
+    // DAC: that pause is not meant for this case.
+    bool lostVirtualSink(unsigned withinMs) const;
+
+    // --- The graph ---------------------------------------------------------
+    // Keeps the connection open without a stream or a watched sink, so the
+    // callback below reports while nothing plays.
+    bool watchGraph(std::string* error);
+    // Called from PipeWire's thread when a sink appeared or disappeared, the
+    // default sink changed, or the stream was moved to another sink.
+    void setGraphChangedCallback(std::function<void()> callback);
+    // The sinks as this connection sees them (no new connection, unlike sinks()).
+    std::vector<Sink> currentSinks() const;
 
     // --- The sink's volume, with or without a stream ------------------------
     // Watches the sink `target` ("" = the desktop's default, followed when it

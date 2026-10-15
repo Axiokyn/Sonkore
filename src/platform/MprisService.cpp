@@ -241,7 +241,7 @@ bool MprisPlayerAdaptor::canSeek() const { return m_service->player()->duration(
 
 void MprisPlayerAdaptor::Next() { m_service->player()->next(); }
 void MprisPlayerAdaptor::Previous() { m_service->player()->previous(); }
-void MprisPlayerAdaptor::Pause() { m_service->player()->pause(); }
+void MprisPlayerAdaptor::Pause() { m_service->player()->pauseFromDesktop(); }
 void MprisPlayerAdaptor::PlayPause() { m_service->player()->togglePlayPause(); }
 void MprisPlayerAdaptor::Stop() { m_service->player()->stop(); }
 void MprisPlayerAdaptor::Play() { m_service->player()->play(); }

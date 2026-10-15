@@ -13,12 +13,29 @@ PipeWireVolume::PipeWireVolume(QObject* parent)
 {
     // PipeWire's thread reports; the signal goes out on this object's thread.
     m_pw->setSinkChangedCallback([this] { QMetaObject::invokeMethod(this, &PipeWireVolume::volumeChanged, Qt::QueuedConnection); });
+    m_pw->setGraphChangedCallback([this] { QMetaObject::invokeMethod(this, &PipeWireVolume::graphChanged, Qt::QueuedConnection); });
 }
 
 PipeWireVolume::~PipeWireVolume()
 {
     m_pw->setSinkChangedCallback({});
+    m_pw->setGraphChangedCallback({});
     close();
+    m_pw->release();
+}
+
+bool PipeWireVolume::watchGraph()
+{
+    std::string error;
+    return m_pw->watchGraph(&error);
+}
+
+QStringList PipeWireVolume::sinkNames() const
+{
+    QStringList out;
+    for (const auto& s : m_pw->currentSinks())
+        out << QString::fromStdString(s.name);
+    return out;
 }
 
 bool PipeWireVolume::open(const QString& sink)

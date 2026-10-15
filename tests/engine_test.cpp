@@ -2056,6 +2056,63 @@ void pipewire()
         }
         dsp.unload();
     }
+    // A filter program (Easy Effects, a loopback) puts its own sink in front
+    // of the DAC and makes it the default; when it closes, the stream goes
+    // back to the DAC. The engine's status names the sink really being fed,
+    // and the graph callback reports every step, also when nothing plays.
+    {
+        g_test = "pipewire sink moved";
+        DSPManager dsp;
+        std::string error;
+        CHECK(dsp.initialize(&error));
+        std::atomic<int> graphEvents{0};
+        dsp.setOutputChangedCallback([&] { graphEvents.fetch_add(1); });
+        DSPManager::OutputConfig cfg;
+        cfg.deviceKey = ""; // the desktop's default output
+        dsp.setOutputConfig(cfg);
+        CHECK(dsp.load(corpus("Formatos/hires-24-96.flac"), &error));
+        dsp.play();
+        CHECK(waitFor([&] { return dsp.outputStatus().bitPerfectNow; }, 3s));
+        CHECK_MSG(dsp.outputStatus().deviceName == "Test DAC", "playing to \"%s\"", dsp.outputStatus().deviceName.c_str());
+
+        PipeWireOutput watcher; // what the volume control keeps open: the graph without a stream
+        std::atomic<int> watcherEvents{0};
+        watcher.setGraphChangedCallback([&] { watcherEvents.fetch_add(1); });
+        CHECK(watcher.watchGraph(&error));
+        const auto hasSink = [&](const std::string& name) { // the session also sees the machine's own cards
+            const auto sinks = watcher.currentSinks();
+            return std::any_of(sinks.begin(), sinks.end(), [&](const PipeWireOutput::Sink& s) { return s.name == name; });
+        };
+        CHECK(hasSink("test-dac") && !hasSink("filter-sink"));
+
+        const char* loopback[] = {"pw-loopback", "-n", "filter-sink", "--capture-props",
+                                  "media.class=Audio/Sink node.name=filter-sink node.description=\"Filter Sink\"", nullptr};
+        pid_t filter = 0;
+        CHECK(posix_spawnp(&filter, "pw-loopback", nullptr, nullptr, const_cast<char**>(loopback), environ) == 0);
+        CHECK_MSG(waitFor([&] { return hasSink("filter-sink"); }, 5s), "the filter's sink was not noticed");
+        CHECK(watcherEvents.load() > 0);
+        const int before = graphEvents.load();
+        const std::string id = run("pw-cli ls Node | awk '/^[[:space:]]*id /{id=$2} /node.name = \"filter-sink\"/{print id}' | tr -d ','");
+        run("wpctl set-default " + id);
+        CHECK_MSG(waitFor([&] { return dsp.outputStatus().deviceName == "Filter Sink"; }, 5s),
+                  "the stream moved to the filter went unnoticed: still \"%s\"", dsp.outputStatus().deviceName.c_str());
+        CHECK(graphEvents.load() > before);
+        CHECK(waitFor([&] { return dsp.outputStatus().bitPerfectNow; }, 3s)); // the loopback at 100 %, the graph at 96 kHz
+
+        kill(filter, SIGTERM);
+        int status = 0;
+        waitpid(filter, &status, 0);
+        CHECK_MSG(waitFor([&] { return dsp.outputStatus().deviceName == "Test DAC"; }, 5s),
+                  "the filter closed, but the status still says \"%s\"", dsp.outputStatus().deviceName.c_str());
+        CHECK_MSG(waitFor([&] { return !hasSink("filter-sink"); }, 5s), "the filter's sink lingers");
+        CHECK(waitFor([&] { return dsp.outputStatus().bitPerfectNow; }, 3s));
+        // What the session manager's "pause the player, its sink is gone"
+        // is answered with: the sink was a filter's, not a DAC unplugged.
+        CHECK(dsp.outputLostVirtualSink(10000));
+        watcher.release();
+        dsp.unload();
+        g_test = "pipewire";
+    }
     // Released: the graph is free to go back to the desktop's rate.
     const std::string forced = run("pw-metadata -n settings 0 clock.force-rate 2>/dev/null");
     CHECK_MSG(forced.find("value:'0'") != std::string::npos, "clock.force-rate left set: %s", forced.c_str());

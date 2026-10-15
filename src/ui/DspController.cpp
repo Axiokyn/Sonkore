@@ -198,7 +198,13 @@ DspController::DspController(sonkore::DSPManager& engine, QObject* parent)
 #if defined(SONKORE_HAVE_PIPEWIRE_VOLUME)
     m_pwVolume = new PipeWireVolume(this);
     connect(m_pwVolume, &PipeWireVolume::volumeChanged, this, &DspController::volumeChanged);
+    // PipeWire's sinks come and go without anything in /dev/snd changing (a
+    // filter program such as Easy Effects opening or closing): the list of
+    // outputs follows them, as does the signal path when the stream is moved.
+    connect(m_pwVolume, &PipeWireVolume::graphChanged, this, &DspController::outputGraphChanged);
+    m_pwVolume->watchGraph();
 #endif
+    m_engine.setOutputChangedCallback([this] { QMetaObject::invokeMethod(this, &DspController::outputGraphChanged, Qt::QueuedConnection); });
     updateMixer();
     m_pollTimer.start();
 }
@@ -1045,6 +1051,16 @@ void DspController::updateSpectrum()
         m_spectrum[b] = std::clamp((db + 66.0) / 66.0, 0.0, 1.0);
     }
     emit spectrumChanged();
+}
+
+void DspController::outputGraphChanged()
+{
+    // Where the stream went shows in the signal path at once; the list of
+    // outputs a moment later (a sink's description can follow its node).
+    emit outputStatusChanged();
+    emit volumeChanged();
+    emit volumeModeChanged(); // hardwareVolumeInfo names the sink
+    m_hotplugTimer.start();
 }
 
 void DspController::devicesChangedOnSystem()
@@ -1944,6 +1960,18 @@ void DspController::play()
     }
     m_engine.play();
     emit stateChanged();
+}
+
+void DspController::pauseFromDesktop()
+{
+    // WirePlumber pauses every player whose sink was removed, which is right
+    // for a DAC unplugged but not for a filter program (Easy Effects) closing:
+    // the stream is moved to the next output and the music goes on.
+    if (m_engine.outputLostVirtualSink(3000)) {
+        qInfo() << "Sonkore: the output's sink went away and the sound server asked to pause; playing on through the next one";
+        return;
+    }
+    pause();
 }
 
 void DspController::pause()

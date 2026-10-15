@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QObject>
+#include <QStringList>
 #include <QString>
 
 #include <memory>
@@ -36,8 +37,15 @@ public:
     bool hardware() const;
     QString sinkName() const; // what the desktop calls it
 
+    // Stays connected to the daemon and reports its sinks coming and going
+    // (and the default changing) through graphChanged(). False without PipeWire.
+    bool watchGraph();
+    // The sinks of the graph, by name, as last seen (empty without a connection).
+    QStringList sinkNames() const;
+
 signals:
     void volumeChanged();
+    void graphChanged();
 
 private:
     std::unique_ptr<sonkore::PipeWireOutput> m_pw;
