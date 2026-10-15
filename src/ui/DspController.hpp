@@ -5,6 +5,7 @@
 
 #include <QFileSystemWatcher>
 #include <QHash>
+#include <QElapsedTimer>
 #include <QObject>
 #include <QSettings>
 #include <QString>
@@ -502,6 +503,9 @@ private:
     QVariantList m_devices;
     QString m_deviceKey;
     DeviceReservation m_reservation;
+    // When Sonkore last took a card from the sound server: the sink it had
+    // there goes away and WirePlumber asks the player to pause for it.
+    QElapsedTimer m_cardTakenAt;
     QTimer m_idleReleaseTimer;
     bool m_releaseWhenIdle = true;
     // A test signal plays instead of the queue; where the queue was.

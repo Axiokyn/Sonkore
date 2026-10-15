@@ -1209,6 +1209,9 @@ bool DspController::reserveOutput(bool* justTaken)
     if (card < 0)
         return true;
     QString holder;
+    // Set before asking: WirePlumber's pause can arrive while the card is
+    // still being handed over.
+    m_cardTakenAt.start();
     bool ok = m_reservation.acquire(card, &holder);
     // Held by an earlier Sonkore that is still closing (it answered the
     // release request but has not dropped the name yet): wait for it a little
@@ -1969,6 +1972,12 @@ void DspController::pauseFromDesktop()
     // the stream is moved to the next output and the music goes on.
     if (m_engine.outputLostVirtualSink(3000)) {
         qInfo() << "Sonkore: the output's sink went away and the sound server asked to pause; playing on through the next one";
+        return;
+    }
+    // Nor for the DAC's own sink, removed because Sonkore just took the card
+    // for direct playback: the music is already on its way there.
+    if (m_cardTakenAt.isValid() && m_cardTakenAt.elapsed() < 3000 && m_reservation.held()) {
+        qInfo() << "Sonkore: the sound server asked to pause as it handed the DAC over; playing on";
         return;
     }
     pause();
