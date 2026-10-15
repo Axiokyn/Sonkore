@@ -178,7 +178,8 @@ AppController::AppController(QObject* parent)
     m_language = s.value("appearance/language").toString();
     m_mprisEnabled = s.value("system/mpris", true).toBool();
     installTranslators();
-    m_font = s.value("appearance/font").toString();
+    // Sonkore Sans unless a font (or the system's, "") was picked.
+    m_font = s.value("appearance/font", QStringLiteral("sonkore-sans")).toString();
     m_fontFamily = loadFont(m_font);
     if (m_fontFamily.isEmpty())
         m_font.clear();
@@ -601,7 +602,8 @@ void AppController::releaseMemory()
 // Open fonts (SIL OFL) shipped in the binary: ":/fonts/<id>/<weight>.ttf",
 // regular to bold. Loaded only when picked.
 static const struct { const char* id; const char* name; } kFonts[] = {
-    {"inter", "Inter"}, {"manrope", "Manrope"}, {"plus-jakarta-sans", "Plus Jakarta Sans"},
+    {"sonkore-sans", "Sonkore Sans"}, {"inter", "Inter"}, {"manrope", "Manrope"},
+    {"plus-jakarta-sans", "Plus Jakarta Sans"},
     {"figtree", "Figtree"}, {"outfit", "Outfit"}, {"dm-sans", "DM Sans"},
     {"nunito-sans", "Nunito Sans"}, {"rubik", "Rubik"},
 };

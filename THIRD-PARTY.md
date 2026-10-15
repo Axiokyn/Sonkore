@@ -32,6 +32,7 @@ font's license is in `fonts/<font>/OFL.txt`.
 
 | Font | Copyright |
 |---|---|
+| Sonkore Sans (the default; derived from Inter) | © 2026 Axiokyn; Inter © 2016 The Inter Project Authors — https://github.com/rsms/inter |
 | Inter | © 2016 The Inter Project Authors — https://github.com/rsms/inter |
 | Manrope | © 2019 The Manrope Project Authors — https://github.com/sharanda/manrope |
 | Plus Jakarta Sans | © 2020 The Plus Jakarta Sans Project Authors — https://github.com/tokotype/PlusJakartaSans |

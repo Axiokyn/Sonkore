@@ -79,8 +79,9 @@ Sonkore/
 │   └── platform/   # MprisService, AlsaMixer, RealtimeKit (Linux); WinTaskbar, WinEndpointVolume (Windows)
 ├── tests/          # engine_test (bit-perfect, gapless, DSP, DSD, ASIO, stress) y make_corpus.sh (el audio que reproduce)
 ├── .github/        # workflows/build.yml: tests, AppImage, paquete de Windows y releases
-├── fonts/          # fuentes de la interfaz (SIL Open Font License, licencia en cada <fuente>/OFL.txt): Inter, Manrope,
-│                   # Plus Jakarta Sans, Figtree, Outfit, DM Sans, Nunito Sans, Rubik; pesos 400-700, subconjunto latino
+├── fonts/          # fuentes de la interfaz (SIL Open Font License, licencia en cada <fuente>/OFL.txt): Sonkore Sans
+│                   # (la predeterminada, derivada de Inter: latino, griego y cirílico, con hinting), Inter, Manrope,
+│                   # Plus Jakarta Sans, Figtree, Outfit, DM Sans, Nunito Sans, Rubik; pesos 400-700
 ├── packaging/      # icons/ (SVG maestros + generate.py), linux/ (.desktop, metainfo, install-user.sh), appimage/ (build.sh),
 │                   # ffmpeg/ (configuración común), windows/ (.rc, .ico, build-ffmpeg.sh, package.ps1)
 └── qml/

@@ -298,11 +298,17 @@ qt_add_resources(Sonkore "appicon"
 )
 
 # Interface fonts (SIL Open Font License; fonts/<id>/OFL.txt), regular to
-# bold, latin subset; other scripts fall back to the system's fonts.
+# bold. Sonkore Sans, the default, covers Latin (Vietnamese included), Greek
+# and Cyrillic and is hinted for Windows; the others are latin subsets, and
+# other scripts fall back to the system's fonts.
 qt_add_resources(Sonkore "fonts"
     PREFIX "/fonts"
     BASE fonts
     FILES
+        fonts/sonkore-sans/400.ttf
+        fonts/sonkore-sans/500.ttf
+        fonts/sonkore-sans/600.ttf
+        fonts/sonkore-sans/700.ttf
         fonts/inter/400.ttf
         fonts/inter/500.ttf
         fonts/inter/600.ttf
