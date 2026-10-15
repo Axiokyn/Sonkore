@@ -3106,10 +3106,6 @@ Doppelklicke auf einen Titel, ein Album oder eine Playlist — oder ziehe Titel 
         <source>Drop to create a playlist</source>
         <translation>Ablegen, um eine Playlist zu erstellen</translation>
     </message>
-    <message>
-        <source>Drag tracks here, or right-click a track → Add to playlist</source>
-        <translation>Titel hierher ziehen oder Rechtsklick auf einen Titel → Zur Playlist hinzufügen</translation>
-    </message>
 </context>
 <context>
     <name>SignalPathList</name>

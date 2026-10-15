@@ -3106,10 +3106,6 @@ Haz doble clic en cualquier pista, álbum o lista — o arrastra pistas aquí.</
         <source>Drop to create a playlist</source>
         <translation>Suelta para crear una lista</translation>
     </message>
-    <message>
-        <source>Drag tracks here, or right-click a track → Add to playlist</source>
-        <translation>Arrastra pistas aquí, o clic derecho en una pista → Agregar a la lista</translation>
-    </message>
 </context>
 <context>
     <name>SignalPathList</name>

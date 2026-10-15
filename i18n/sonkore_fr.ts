@@ -3106,10 +3106,6 @@ Double-cliquez sur une piste, un album ou une playlist — ou glissez des pistes
         <source>Drop to create a playlist</source>
         <translation>Déposez pour créer une playlist</translation>
     </message>
-    <message>
-        <source>Drag tracks here, or right-click a track → Add to playlist</source>
-        <translation>Glissez des pistes ici, ou clic droit sur une piste → Ajouter à la playlist</translation>
-    </message>
 </context>
 <context>
     <name>SignalPathList</name>

@@ -473,7 +473,7 @@ Rectangle {
                 anchors.right: parent.right
                 anchors.rightMargin: sidebar.edgeInset + 10
                 anchors.leftMargin: 10
-                visible: playlistList.count === 0 && !sidebar.collapsed
+                visible: playlistList.count === 0 && !AppActions.trackDragActive && !sidebar.collapsed
                 text: qsTr("No playlists yet. Press + or drop tracks here.")
                 wrapMode: Text.WordWrap
                 color: Theme.textFaint
@@ -532,15 +532,6 @@ Rectangle {
                         }
                     }
                 }
-            }
-            Label {
-                anchors.fill: parent
-                anchors.margins: 8
-                visible: playlistList.count === 0 && !AppActions.trackDragActive && !sidebar.collapsed
-                text: qsTr("Drag tracks here, or right-click a track → Add to playlist")
-                wrapMode: Text.Wrap
-                color: Theme.textFaint
-                font.pixelSize: Theme.fontSmall
             }
         }
     }

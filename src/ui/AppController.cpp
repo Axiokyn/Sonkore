@@ -183,6 +183,7 @@ AppController::AppController(QObject* parent)
     m_fontFamily = loadFont(m_font);
     if (m_fontFamily.isEmpty())
         m_font.clear();
+    applyFont();
     connect(qApp, &QCoreApplication::aboutToQuit, this, &AppController::confirmStartup);
 }
 
@@ -276,6 +277,8 @@ void AppController::applyStartupSettings(bool safeMode)
             QQuickWindow::setGraphicsApi(QSGRendererInterface::Software);
         if (software)
             SoftwareRepaint::prepare(); // partial repaints also at fractional scales
+        else // glyphs rasterized and hinted to the pixel grid, as the software renderer does
+            QQuickWindow::setTextRenderType(QQuickWindow::NativeTextRendering);
         if (!software && failedStarts == 0 && !safeMode)
             loadOnlyPresentGpuDrivers(renderer == QLatin1String("vulkan"));
         if (!software && !safeMode)
@@ -640,6 +643,21 @@ QString AppController::loadFont(const QString& id) const
     return family;
 }
 
+// The application font (what Text items and the windows start from): the
+// chosen family, hinted to the pixel grid. Small text then has whole-pixel
+// stems instead of the soft two-pixel ones of GNOME's light hinting; on
+// Windows DirectWrite renders it like GDI. Sonkore Sans carries its own
+// hinting instructions (ttfautohint); other fonts get FreeType's.
+void AppController::applyFont()
+{
+    static const QFont system = QGuiApplication::font(); // before any change of ours
+    QFont font = system;
+    if (!m_fontFamily.isEmpty())
+        font.setFamilies({m_fontFamily});
+    font.setHintingPreference(QFont::PreferFullHinting);
+    QGuiApplication::setFont(font);
+}
+
 void AppController::setFont(const QString& id)
 {
     if (id == m_font)
@@ -648,6 +666,7 @@ void AppController::setFont(const QString& id)
     m_font = family.isEmpty() ? QString() : id;
     m_fontFamily = family;
     QSettings().setValue("appearance/font", m_font);
+    applyFont();
     emit fontChanged();
 }
 

@@ -162,6 +162,7 @@ private:
     QString m_font;
     QString m_fontFamily;
     QString loadFont(const QString& id) const; // family name, "" if unknown
+    void applyFont();
     QTranslator m_appTranslator;
     QTranslator m_qtTranslator;
     class QQmlEngine* m_qmlEngine = nullptr;

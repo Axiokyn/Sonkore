@@ -3106,10 +3106,6 @@ Fai doppio clic su un brano, un album o una playlist — oppure trascina qui i b
         <source>Drop to create a playlist</source>
         <translation>Rilascia per creare una playlist</translation>
     </message>
-    <message>
-        <source>Drag tracks here, or right-click a track → Add to playlist</source>
-        <translation>Trascina qui i brani, o clic destro su un brano → Aggiungi alla playlist</translation>
-    </message>
 </context>
 <context>
     <name>SignalPathList</name>
