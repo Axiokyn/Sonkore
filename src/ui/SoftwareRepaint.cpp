@@ -1,5 +1,6 @@
 #include "SoftwareRepaint.hpp"
 
+#include <QGuiApplication>
 #include <QQuickWindow>
 #include <QSGRendererInterface>
 #include <QVersionNumber>
@@ -94,6 +95,36 @@ bool SoftwareRepaint::wanted(QQuickWindow* window)
     const QSGRendererInterface* renderer = window ? window->rendererInterface() : nullptr;
     return renderer && renderer->graphicsApi() == QSGRendererInterface::Software
         && qEnvironmentVariableIntValue("QSG_SOFTWARE_RENDERER_FORCE_PARTIAL_UPDATES") == 1;
+}
+
+namespace {
+class WindowWatcher : public QObject {
+public:
+    using QObject::QObject;
+
+protected:
+    bool eventFilter(QObject* watched, QEvent* event) override
+    {
+        if (event->type() == QEvent::Show)
+            if (auto* window = qobject_cast<QQuickWindow*>(watched))
+                SoftwareRepaint::attach(window);
+        return false;
+    }
+};
+} // namespace
+
+void SoftwareRepaint::watchWindows()
+{
+    for (QWindow* window : QGuiApplication::topLevelWindows())
+        if (auto* quick = qobject_cast<QQuickWindow*>(window))
+            attach(quick);
+    qApp->installEventFilter(new WindowWatcher(qApp));
+}
+
+void SoftwareRepaint::attach(QQuickWindow* window)
+{
+    if (window && wanted(window) && !window->findChild<SoftwareRepaint*>(Qt::FindDirectChildrenOnly))
+        new SoftwareRepaint(window);
 }
 
 SoftwareRepaint::SoftwareRepaint(QQuickWindow* window)

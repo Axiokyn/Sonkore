@@ -43,6 +43,10 @@ public:
     static void prepare();
     // The software renderer draws this window.
     static bool wanted(QQuickWindow* window);
+    // Every Qt Quick window, the ones shown later included (Settings, the
+    // SoundTouch editor): partial repaints are asked for all of them.
+    static void watchWindows();
+    static void attach(QQuickWindow* window);
 
 private:
     void beforeFrame(); // render thread (the GUI thread with the basic loop)

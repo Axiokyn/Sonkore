@@ -278,12 +278,12 @@ int main(int argc, char* argv[])
     if (!qml.rootObjects().isEmpty()) {
         if (auto* window = qobject_cast<QQuickWindow*>(qml.rootObjects().constFirst())) {
             // Software renderer: animations in step with the compositor's
-            // frames on Wayland, and partial repaints at fractional scales
-            // (smoother scrolling, a fraction of the CPU; see the classes).
+            // frames on Wayland, and partial repaints at fractional scales in
+            // every window (smoother scrolling, a fraction of the CPU; see
+            // the classes).
             if (FrameAnimationDriver::wanted(window))
                 (new FrameAnimationDriver(window))->install();
-            if (SoftwareRepaint::wanted(window))
-                new SoftwareRepaint(window);
+            SoftwareRepaint::watchWindows();
             taskbar.attach(window);
             // Without a handler Qt aborts when the graphics API cannot start;
             // fall back to a safer renderer and restart instead.
