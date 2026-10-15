@@ -13,7 +13,7 @@ Objetivo: un reproductor Hi-Fi a la altura de Roon y JRiver en todo lo que piden
 
 - [x] **Gapless**: la pista siguiente se decodifica y empalma sin silencio, exacta al sample; se recorta el relleno del codificador (MP3 LAME/Xing, AAC/MP4, Opus pre-skip). El final de la última pista ya no se corta.
 - [x] **ReplayGain / EBU R128** (libebur128, MIT): etiquetas ReplayGain y R128, análisis por pista y por álbum sin modificar los archivos, modo pista/álbum/apagado, preamp y prevención de clipping por true peak.
-- [x] **Volumen por hardware** en Linux: control del mixer del DAC (ALSA, en dB) para conservar el bit-perfect al bajar el volumen.
+- [x] **Volumen por hardware** en Linux: control del mixer del DAC (ALSA, en dB) para conservar el bit-perfect al bajar el volumen; con PipeWire, el volumen del sink (el mismo control, a través del servidor de sonido).
 - [x] **Volumen por hardware** en Windows: IAudioEndpointVolume con WASAPI exclusivo, en los dispositivos que lo implementan en hardware.
 - [ ] **Volumen por hardware** en macOS (volumen del dispositivo en CoreAudio).
 - [x] **DSD nativo y DoP** en Linux: DSF y DSDIFF sin pasar a PCM (ALSA DSD_U32_BE/LE, DoP de 24 bits), hasta la frecuencia máxima del DAC.

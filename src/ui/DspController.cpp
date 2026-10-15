@@ -16,6 +16,9 @@
 #include "WinEndpointVolume.hpp"
 #define SONKORE_HAVE_HW_VOLUME
 #endif
+#if defined(SONKORE_HAVE_PIPEWIRE_VOLUME)
+#include "PipeWireVolume.hpp"
+#endif
 #if defined(SONKORE_HAVE_DBUS)
 #include "RealtimeKit.hpp"
 #endif
@@ -185,6 +188,10 @@ DspController::DspController(sonkore::DSPManager& engine, QObject* parent)
 #if defined(SONKORE_HAVE_HW_VOLUME)
     m_mixer = new HardwareMixer(this);
     connect(m_mixer, &HardwareMixer::volumeChanged, this, &DspController::volumeChanged);
+#endif
+#if defined(SONKORE_HAVE_PIPEWIRE_VOLUME)
+    m_pwVolume = new PipeWireVolume(this);
+    connect(m_pwVolume, &PipeWireVolume::volumeChanged, this, &DspController::volumeChanged);
 #endif
     updateMixer();
     m_pollTimer.start();
@@ -402,7 +409,20 @@ double DspController::volume() const
     if (m_hwVolumeActive)
         return m_mixer->volume();
 #endif
+#if defined(SONKORE_HAVE_PIPEWIRE_VOLUME)
+    if (m_pwVolumeActive)
+        return m_pwVolume->volume();
+#endif
     return m_engine.volume();
+}
+
+bool DspController::systemVolumeInHardware() const
+{
+#if defined(SONKORE_HAVE_PIPEWIRE_VOLUME)
+    return m_pwVolumeActive && m_pwVolume->hardware();
+#else
+    return false;
+#endif
 }
 
 void DspController::setVolume(double v)
@@ -420,6 +440,13 @@ void DspController::setVolume(double v)
         return;
     }
 #endif
+#if defined(SONKORE_HAVE_PIPEWIRE_VOLUME)
+    if (m_pwVolumeActive) {
+        m_pwVolume->setVolume(v); // PipeWire remembers it for the sink
+        emit volumeChanged();
+        return;
+    }
+#endif
     m_engine.setVolume(v);
     emit volumeChanged();
     scheduleSave();
@@ -429,7 +456,7 @@ void DspController::setVolume(double v)
 
 bool DspController::hardwareVolumeSupported() const
 {
-#if defined(SONKORE_HAVE_HW_VOLUME)
+#if defined(SONKORE_HAVE_HW_VOLUME) || defined(SONKORE_HAVE_PIPEWIRE_VOLUME)
     return true;
 #else
     return false;
@@ -469,7 +496,20 @@ void DspController::updateMixer()
     else
         m_mixer->close();
 #endif
-    const bool fixed = (m_volumeMode == VolumeAuto && directOutput()) || (m_volumeMode == VolumeHardware && !active);
+    // A PipeWire output (the desktop's default or a sink by name): its volume,
+    // which is the DAC's own control on a device's sink. DAC and Automatic
+    // both take it; Digital leaves the desktop's volume alone.
+    bool pwActive = false;
+#if defined(SONKORE_HAVE_PIPEWIRE_VOLUME)
+    const bool pipewireOutput = m_deviceKey.isEmpty() || m_deviceKey.startsWith(QLatin1String("pipewire|"));
+    if (m_volumeMode != VolumeDigital && pipewireOutput) // no daemon, no such sink: digital volume instead
+        pwActive = m_pwVolume->open(m_deviceKey.isEmpty() ? QString() : m_deviceKey.mid(9));
+    if (!pwActive)
+        m_pwVolume->close();
+#endif
+    m_pwVolumeActive = pwActive;
+    const bool fixed = !pwActive && ((m_volumeMode == VolumeAuto && directOutput()) || (m_volumeMode == VolumeHardware && !active));
+    active = active || pwActive;
     const bool unity = active || fixed;
     if (unity != m_engineAtUnity) {
         if (unity) {
@@ -480,7 +520,7 @@ void DspController::updateMixer()
         }
         m_engineAtUnity = unity;
     }
-    m_hwVolumeActive = active;
+    m_hwVolumeActive = active && !pwActive;
     m_volumeFixed = fixed;
     emit volumeModeChanged();
     emit volumeChanged();
@@ -511,6 +551,14 @@ QString DspController::hardwareVolumeInfo() const
             : tr("Only in exclusive mode: with a shared output the volume stays fixed at 100 %. Choose Digital to set it from Sonkore.");
 #else
             : tr("Only for direct (hw:) outputs: with this one the volume stays fixed at 100 %. Choose Digital to set it from Sonkore.");
+#endif
+#if defined(SONKORE_HAVE_PIPEWIRE_VOLUME)
+    if (m_pwVolumeActive) {
+        const QString control = m_pwVolume->hardware()
+            ? tr("Using the volume of \"%1\", the DAC's own control through PipeWire: the desktop's volume keys and Sonkore's slider move the same control, and the audio stays bit-perfect at any volume.").arg(m_pwVolume->sinkName())
+            : tr("Using the volume of \"%1\" through PipeWire. It is a virtual output, so PipeWire scales the samples in software below 100 %.").arg(m_pwVolume->sinkName());
+        return automatic ? tr("Automatic: %1").arg(control) : control;
+    }
 #endif
 #if defined(SONKORE_HAVE_HW_VOLUME)
     if (m_hwVolumeActive) {
@@ -1998,6 +2046,14 @@ QVariantList DspController::buildSignalPath() const
     }
     if (m_volumeFixed)
         add(tr("Volume"), tr("Fixed at 100 %: set on the DAC or the amplifier"), "lossless");
+#if defined(SONKORE_HAVE_PIPEWIRE_VOLUME)
+    if (m_pwVolumeActive) {
+        const double v = m_pwVolume->volume();
+        const bool hw = m_pwVolume->hardware();
+        add(tr("Volume"), v > 0.0 ? (hw ? tr("System volume on the DAC's control · %1 dB") : tr("System volume, in PipeWire's software · %1 dB")).arg(signedDb(20.0 * std::log10(v)))
+                                  : tr("System volume · muted"), hw || v == 1.0 ? "lossless" : "high");
+    }
+#endif
 #if defined(SONKORE_HAVE_HW_VOLUME)
     if (m_hwVolumeActive)
         add(tr("Volume"), m_mixer->volume() > 0.0

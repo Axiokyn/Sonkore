@@ -188,6 +188,18 @@
         <translation>Solo per uscite dirette (hw:): con questa il volume resta fisso al 100 %. Scegli Digitale per regolarlo da Sonkore.</translation>
     </message>
     <message>
+        <source>Using the volume of "%1", the DAC's own control through PipeWire: the desktop's volume keys and Sonkore's slider move the same control, and the audio stays bit-perfect at any volume.</source>
+        <translation>Usa il volume di "%1", il controllo del DAC stesso tramite PipeWire: i tasti del volume del desktop e il cursore di Sonkore muovono lo stesso controllo, e l'audio resta bit-perfect a qualsiasi volume.</translation>
+    </message>
+    <message>
+        <source>Using the volume of "%1" through PipeWire. It is a virtual output, so PipeWire scales the samples in software below 100 %.</source>
+        <translation>Usa il volume di "%1" tramite PipeWire. È un'uscita virtuale, quindi PipeWire scala i campioni via software sotto il 100 %.</translation>
+    </message>
+    <message>
+        <source>Automatic: %1</source>
+        <translation>Automatico: %1</translation>
+    </message>
+    <message>
         <source>Using the DAC's "%1" control.</source>
         <translation>Usa il controllo "%1" del DAC.</translation>
     </message>
@@ -502,6 +514,18 @@
     <message>
         <source>Fixed at 100 %: set on the DAC or the amplifier</source>
         <translation>Fisso al 100 %: si regola sul DAC o sull'amplificatore</translation>
+    </message>
+    <message>
+        <source>System volume on the DAC's control · %1 dB</source>
+        <translation>Volume di sistema sul controllo del DAC · %1 dB</translation>
+    </message>
+    <message>
+        <source>System volume, in PipeWire's software · %1 dB</source>
+        <translation>Volume di sistema, via software in PipeWire · %1 dB</translation>
+    </message>
+    <message>
+        <source>System volume · muted</source>
+        <translation>Volume di sistema · muto</translation>
     </message>
     <message>
         <source>DAC control "%1" · %2 dB</source>
@@ -1440,8 +1464,16 @@
         <translation>Muto · clic destro: controllo del volume</translation>
     </message>
     <message>
+        <source>System</source>
+        <translation>Sistema</translation>
+    </message>
+    <message>
         <source>DAC volume · %1 · bit-perfect</source>
         <translation>Volume del DAC · %1 · bit-perfect</translation>
+    </message>
+    <message>
+        <source>System volume · %1</source>
+        <translation>Volume di sistema · %1</translation>
     </message>
     <message>
         <source>Volume · %1</source>
@@ -3443,6 +3475,10 @@ FLAC, WAV, MP3, ALAC, AAC, Opus, DSD, fogli CUE e altro. Puoi anche trascinare i
         <translation>Automatico</translation>
     </message>
     <message>
+        <source>The system volume with a PipeWire output (the DAC's own control where it has one); fixed at 100 % on a direct output; Sonkore's own volume otherwise.</source>
+        <translation>Il volume di sistema con un'uscita PipeWire (il controllo del DAC stesso quando ce l'ha); fisso al 100 % su un'uscita diretta; il volume di Sonkore negli altri casi.</translation>
+    </message>
+    <message>
         <source>Fixed at 100 % on a direct output (set it on the DAC or the amplifier); Sonkore's own volume otherwise.</source>
         <translation>Fisso al 100 % su un'uscita diretta (si regola sul DAC o sull'amplificatore); altrimenti il volume di Sonkore.</translation>
     </message>
@@ -3457,6 +3493,10 @@ FLAC, WAV, MP3, ALAC, AAC, Opus, DSD, fogli CUE e altro. Puoi anche trascinare i
     <message>
         <source>DAC</source>
         <translation>DAC</translation>
+    </message>
+    <message>
+        <source>Moves the DAC's own volume control, through PipeWire or directly: the audio stays bit-perfect.</source>
+        <translation>Muove il controllo del volume del DAC stesso, tramite PipeWire o direttamente: l'audio resta bit-perfect.</translation>
     </message>
     <message>
         <source>Moves the DAC's own volume control: the audio stays bit-perfect.</source>

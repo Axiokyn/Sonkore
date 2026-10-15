@@ -69,6 +69,31 @@ public:
     uint32_t bufferFrames() const;
     std::string sinkDescription() const;
 
+    // --- The sink's volume, with or without a stream ------------------------
+    // Watches the sink `target` ("" = the desktop's default, followed when it
+    // changes) and reads its volume. A device's sink (ALSA) carries the volume
+    // on the DAC's own control where it has one (PipeWire splits what is left
+    // into softVolumes), so a player that moves it keeps its samples untouched.
+    // Connects to the daemon if needed; false with a reason when it does not
+    // answer or the sink is not there.
+    bool watch(const std::string& target, std::string* error);
+    void unwatch(); // stops following it (the connection ends too without a stream)
+    bool watching() const;
+    // Linear amplitude (1 = 100 %) of the watched sink, false until the first
+    // Props arrived. `muted` is the sink's mute switch.
+    bool sinkVolume(float* linear, bool* muted) const;
+    // Sets the sink's volume (its channels alike) and mute; false when not watching.
+    bool setSinkVolume(float linear, bool mute);
+    // The watched sink belongs to a device (its volume may sit in hardware).
+    bool sinkIsHardware() const;
+    // Whether the device's own control carries all of the volume now (no
+    // software scaling left: softVolumes at 1). False for a virtual sink.
+    bool sinkVolumeInHardware() const;
+    std::string watchedSinkDescription() const;
+    // Called from PipeWire's thread whenever the watched sink's volume or
+    // mute changed (also when the default sink changed under a "" target).
+    void setSinkChangedCallback(std::function<void()> callback);
+
 private:
     struct Impl;
     std::unique_ptr<Impl> d;

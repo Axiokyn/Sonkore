@@ -215,6 +215,16 @@ struct Connection {
     uint32_t watchedSink = SPA_ID_INVALID;
     bool watchedHardware = false;
     std::atomic<bool> sinkNeutral{true};
+    // The watched sink's volume as last reported (for the volume control).
+    std::atomic<float> sinkVolume{1.0f};
+    std::atomic<bool> sinkMuted{false};
+    std::atomic<bool> sinkVolumeKnown{false};
+    std::atomic<bool> sinkSoftUnity{true}; // softVolumes all at 1: the hardware carries the volume
+    std::atomic<uint32_t> sinkChannels{2};
+    std::string watchedName;       // what watch() asked for ("" = the default)
+    std::string watchedDescription;
+    bool followDefault = false;    // re-watch when the default sink changes
+    std::function<void()> sinkChanged;
 
     static void onCoreDone(void* data, uint32_t id, int seq)
     {
@@ -268,8 +278,14 @@ struct Connection {
     static int onDefault(void* data, uint32_t subject, const char* key, const char* /*type*/, const char* value)
     {
         auto* c = static_cast<Connection*>(data);
-        if (subject == PW_ID_CORE && key && std::strcmp(key, "default.audio.sink") == 0)
+        if (subject == PW_ID_CORE && key && std::strcmp(key, "default.audio.sink") == 0) {
             c->defaultSink = jsonName(value);
+            if (c->followDefault && c->synced) { // the desktop chose another output: follow it
+                c->watchSink(c->defaultSink);
+                if (c->sinkChanged)
+                    c->sinkChanged();
+            }
+        }
         return 0;
     }
     // The sink's Props: its software volume. A device's node (ALSA) splits
@@ -289,10 +305,16 @@ struct Connection {
         SPA_POD_OBJECT_FOREACH(obj, prop)
         {
             switch (prop->key) {
-            case SPA_PROP_channelVolumes:
+            case SPA_PROP_channelVolumes: {
                 haveVolume = true;
-                volumeOk = allUnity(v, spa_pod_copy_array(&prop->value, SPA_TYPE_Float, v, SPA_AUDIO_MAX_CHANNELS));
+                const uint32_t n = spa_pod_copy_array(&prop->value, SPA_TYPE_Float, v, SPA_AUDIO_MAX_CHANNELS);
+                volumeOk = allUnity(v, n);
+                if (n > 0) {
+                    c->sinkVolume.store(*std::max_element(v, v + n), std::memory_order_relaxed);
+                    c->sinkChannels.store(n, std::memory_order_relaxed);
+                }
                 break;
+            }
             case SPA_PROP_softVolumes:
                 haveSoft = true;
                 softOk = allUnity(v, spa_pod_copy_array(&prop->value, SPA_TYPE_Float, v, SPA_AUDIO_MAX_CHANNELS));
@@ -313,6 +335,13 @@ struct Connection {
         const bool split = c->watchedHardware && haveSoft;
         const bool muted = c->watchedHardware && haveSoftMute ? softMute : mute;
         c->sinkNeutral.store((split ? softOk : volumeOk) && !muted, std::memory_order_relaxed);
+        c->sinkSoftUnity.store(split ? softOk : volumeOk, std::memory_order_relaxed);
+        if (haveVolume) {
+            c->sinkMuted.store(mute, std::memory_order_relaxed);
+            c->sinkVolumeKnown.store(true, std::memory_order_release);
+        }
+        if (c->sinkChanged)
+            c->sinkChanged();
     }
 
     static const pw_core_events* coreEvents()
@@ -451,6 +480,11 @@ struct Connection {
             return;
         unwatchSink();
         sinkNeutral.store(true, std::memory_order_relaxed);
+        sinkVolumeKnown.store(false, std::memory_order_relaxed);
+        watchedDescription.clear();
+        for (const SinkNode& s : sinks)
+            if (s.id == id)
+                watchedDescription = s.description;
         if (id == SPA_ID_INVALID)
             return;
         sinkNode = static_cast<pw_node*>(pw_registry_bind(registry, id, PW_TYPE_INTERFACE_Node, PW_VERSION_NODE, 0));
@@ -853,6 +887,105 @@ std::string PipeWireOutput::sinkDescription() const
     return d->sinkDescription;
 }
 
+bool PipeWireOutput::watch(const std::string& target, std::string* error)
+{
+    Connection& c = d->c;
+    if (!c.connected() && !c.connect(error))
+        return false;
+    c.lock();
+    c.watchedName = target;
+    c.followDefault = target.empty();
+    const std::string name = target.empty() ? c.defaultSink : target;
+    c.watchSink(name);
+    const bool found = c.watchedSink != SPA_ID_INVALID;
+    if (found)
+        c.roundtrip(); // the first Props (the volume) arrive before this returns
+    c.unlock();
+    if (!found && error)
+        *error = name.empty() ? "PipeWire has no default output" : "PipeWire has no output called " + name;
+    return found;
+}
+
+void PipeWireOutput::unwatch()
+{
+    Connection& c = d->c;
+    if (!c.connected())
+        return;
+    c.lock();
+    c.followDefault = false;
+    c.watchedName.clear();
+    if (!d->stream)
+        c.unwatchSink();
+    c.unlock();
+    if (!d->stream)
+        c.disconnect();
+}
+
+bool PipeWireOutput::watching() const
+{
+    return d->c.connected() && d->c.watchedSink != SPA_ID_INVALID;
+}
+
+bool PipeWireOutput::sinkVolume(float* linear, bool* muted) const
+{
+    if (!d->c.sinkVolumeKnown.load(std::memory_order_acquire))
+        return false;
+    if (linear)
+        *linear = d->c.sinkVolume.load(std::memory_order_relaxed);
+    if (muted)
+        *muted = d->c.sinkMuted.load(std::memory_order_relaxed);
+    return true;
+}
+
+bool PipeWireOutput::setSinkVolume(float linear, bool mute)
+{
+    Connection& c = d->c;
+    if (!c.connected())
+        return false;
+    c.lock();
+    const bool ok = c.sinkNode != nullptr;
+    if (ok) {
+        const uint32_t n = std::clamp<uint32_t>(c.sinkChannels.load(std::memory_order_relaxed), 1, SPA_AUDIO_MAX_CHANNELS);
+        float v[SPA_AUDIO_MAX_CHANNELS];
+        std::fill(v, v + n, std::clamp(linear, 0.0f, 1.0f));
+        uint8_t buffer[1024];
+        spa_pod_builder b{};
+        spa_pod_builder_init(&b, buffer, sizeof(buffer));
+        const spa_pod* props = static_cast<const spa_pod*>(spa_pod_builder_add_object(
+            &b, SPA_TYPE_OBJECT_Props, SPA_PARAM_Props,
+            SPA_PROP_channelVolumes, SPA_POD_Array(sizeof(float), SPA_TYPE_Float, n, v),
+            SPA_PROP_mute, SPA_POD_Bool(mute)));
+        pw_node_set_param(c.sinkNode, SPA_PARAM_Props, 0, props);
+    }
+    c.unlock();
+    return ok;
+}
+
+bool PipeWireOutput::sinkIsHardware() const
+{
+    return d->c.watchedHardware;
+}
+
+bool PipeWireOutput::sinkVolumeInHardware() const
+{
+    return d->c.watchedHardware && d->c.sinkSoftUnity.load(std::memory_order_relaxed);
+}
+
+std::string PipeWireOutput::watchedSinkDescription() const
+{
+    return d->c.watchedDescription;
+}
+
+void PipeWireOutput::setSinkChangedCallback(std::function<void()> callback)
+{
+    Connection& c = d->c;
+    if (c.connected())
+        c.lock();
+    c.sinkChanged = std::move(callback);
+    if (c.connected())
+        c.unlock();
+}
+
 #else // no PipeWire headers at build time
 
 struct PipeWireOutput::Impl {};
@@ -878,6 +1011,20 @@ uint32_t PipeWireOutput::graphRate() const { return 0; }
 bool PipeWireOutput::volumeNeutral() const { return true; }
 uint32_t PipeWireOutput::bufferFrames() const { return 0; }
 std::string PipeWireOutput::sinkDescription() const { return {}; }
+bool PipeWireOutput::watch(const std::string&, std::string* error)
+{
+    if (error)
+        *error = "Built without PipeWire";
+    return false;
+}
+void PipeWireOutput::unwatch() {}
+bool PipeWireOutput::watching() const { return false; }
+bool PipeWireOutput::sinkVolume(float*, bool*) const { return false; }
+bool PipeWireOutput::setSinkVolume(float, bool) { return false; }
+bool PipeWireOutput::sinkIsHardware() const { return false; }
+bool PipeWireOutput::sinkVolumeInHardware() const { return false; }
+std::string PipeWireOutput::watchedSinkDescription() const { return {}; }
+void PipeWireOutput::setSinkChangedCallback(std::function<void()>) {}
 
 #endif
 

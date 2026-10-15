@@ -188,6 +188,18 @@
         <translation>Solo para salidas directas (hw:): con esta el volumen queda fijo al 100 %. Elige Digital para ajustarlo desde Sonkore.</translation>
     </message>
     <message>
+        <source>Using the volume of "%1", the DAC's own control through PipeWire: the desktop's volume keys and Sonkore's slider move the same control, and the audio stays bit-perfect at any volume.</source>
+        <translation>Se usa el volumen de «%1», el control del propio DAC a través de PipeWire: las teclas de volumen del escritorio y el deslizador de Sonkore mueven el mismo control, y el audio sigue bit-perfect a cualquier volumen.</translation>
+    </message>
+    <message>
+        <source>Using the volume of "%1" through PipeWire. It is a virtual output, so PipeWire scales the samples in software below 100 %.</source>
+        <translation>Se usa el volumen de «%1» por PipeWire. Es una salida virtual, así que PipeWire escala las muestras por software debajo del 100 %.</translation>
+    </message>
+    <message>
+        <source>Automatic: %1</source>
+        <translation>Automático: %1</translation>
+    </message>
+    <message>
         <source>Using the DAC's "%1" control.</source>
         <translation>Usando el control "%1" del DAC.</translation>
     </message>
@@ -502,6 +514,18 @@
     <message>
         <source>Fixed at 100 %: set on the DAC or the amplifier</source>
         <translation>Fijo al 100 %: se ajusta en el DAC o el amplificador</translation>
+    </message>
+    <message>
+        <source>System volume on the DAC's control · %1 dB</source>
+        <translation>Volumen del sistema en el control del DAC · %1 dB</translation>
+    </message>
+    <message>
+        <source>System volume, in PipeWire's software · %1 dB</source>
+        <translation>Volumen del sistema, por software en PipeWire · %1 dB</translation>
+    </message>
+    <message>
+        <source>System volume · muted</source>
+        <translation>Volumen del sistema · silenciado</translation>
     </message>
     <message>
         <source>DAC control "%1" · %2 dB</source>
@@ -1440,8 +1464,16 @@
         <translation>Silenciar · clic derecho: control de volumen</translation>
     </message>
     <message>
+        <source>System</source>
+        <translation>Sistema</translation>
+    </message>
+    <message>
         <source>DAC volume · %1 · bit-perfect</source>
         <translation>Volumen del DAC · %1 · bit-perfect</translation>
+    </message>
+    <message>
+        <source>System volume · %1</source>
+        <translation>Volumen del sistema · %1</translation>
     </message>
     <message>
         <source>Volume · %1</source>
@@ -3443,6 +3475,10 @@ FLAC, WAV, MP3, ALAC, AAC, Opus, DSD, hojas CUE y más. También puedes soltar a
         <translation>Automático</translation>
     </message>
     <message>
+        <source>The system volume with a PipeWire output (the DAC's own control where it has one); fixed at 100 % on a direct output; Sonkore's own volume otherwise.</source>
+        <translation>El volumen del sistema con una salida PipeWire (el control del propio DAC cuando lo tiene); fijo al 100 % en una salida directa; el volumen de Sonkore en los demás casos.</translation>
+    </message>
+    <message>
         <source>Fixed at 100 % on a direct output (set it on the DAC or the amplifier); Sonkore's own volume otherwise.</source>
         <translation>Fijo al 100 % en una salida directa (se ajusta en el DAC o el amplificador); si no, el volumen propio de Sonkore.</translation>
     </message>
@@ -3457,6 +3493,10 @@ FLAC, WAV, MP3, ALAC, AAC, Opus, DSD, hojas CUE y más. También puedes soltar a
     <message>
         <source>DAC</source>
         <translation>DAC</translation>
+    </message>
+    <message>
+        <source>Moves the DAC's own volume control, through PipeWire or directly: the audio stays bit-perfect.</source>
+        <translation>Mueve el control de volumen del propio DAC, por PipeWire o directamente: el audio sigue bit-perfect.</translation>
     </message>
     <message>
         <source>Moves the DAC's own volume control: the audio stays bit-perfect.</source>

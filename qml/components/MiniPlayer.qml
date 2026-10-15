@@ -588,7 +588,7 @@ Rectangle {
             value: DspController.volumeToPosition(DspController.volume)
             onMoved: DspController.volume = DspController.positionToVolume(value)
             ToolTip.visible: hovered || pressed
-            ToolTip.text: DspController.hardwareVolume
+            ToolTip.text: DspController.hardwareVolume || DspController.systemVolumeInHardware
             ? qsTr("DAC volume · %1 · bit-perfect").arg(DspController.gainText(DspController.volume))
             : qsTr("Volume · %1").arg(DspController.gainText(DspController.volume))
         }

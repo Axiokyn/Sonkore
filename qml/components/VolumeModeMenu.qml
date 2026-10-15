@@ -43,7 +43,9 @@ LMenu {
     // VolumeMode values: 0 Digital, 1 DAC, 2 Automatic.
     LMenuItem {
         text: qsTr("Automatic")
-        description: qsTr("Fixed at 100 % on a direct output (set it on the DAC or the amplifier); Sonkore's own volume otherwise.")
+        description: App.platform === "linux"
+                     ? qsTr("The system volume with a PipeWire output (the DAC's own control where it has one); fixed at 100 % on a direct output; Sonkore's own volume otherwise.")
+                     : qsTr("Fixed at 100 % on a direct output (set it on the DAC or the amplifier); Sonkore's own volume otherwise.")
         checkable: true
         checked: DspController.volumeMode === 2
         onTriggered: {
@@ -66,6 +68,7 @@ LMenu {
         // Chosen but not possible with this output: say so, it is fixed then.
         description: DspController.volumeMode === 1 && !DspController.hardwareVolume
                      ? DspController.hardwareVolumeInfo
+                     : App.platform === "linux" ? qsTr("Moves the DAC's own volume control, through PipeWire or directly: the audio stays bit-perfect.")
                      : qsTr("Moves the DAC's own volume control: the audio stays bit-perfect.")
         checkable: true
         checked: DspController.volumeMode === 1

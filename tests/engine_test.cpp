@@ -1948,6 +1948,31 @@ void pipewire()
         run("wpctl set-volume @DEFAULT_AUDIO_SINK@ 1.0");
         CHECK_MSG(waitFor([&] { return dsp.outputStatus().systemVolumeNeutral && dsp.outputStatus().bitPerfectNow; }, 3s),
                   "the sink back at 100 %% went unnoticed");
+        // The sink's volume set from here (the volume control of a PipeWire
+        // output): PipeWire reports it on its cubic scale, the engine sees
+        // the software scaling, and 100 % is bit-perfect again.
+        {
+            g_test = "pipewire sink volume";
+            PipeWireOutput control;
+            std::string why;
+            CHECK_MSG(control.watch("test-dac", &why), "%s", why.c_str());
+            float v = 0.0f;
+            bool muted = true;
+            CHECK(control.sinkVolume(&v, &muted) && std::fabs(v - 1.0f) < 1e-4f && !muted);
+            CHECK(!control.sinkIsHardware()); // a null sink: its volume is software
+            CHECK(control.setSinkVolume(0.5f, false));
+            CHECK_MSG(waitFor([&] { return control.sinkVolume(&v, &muted) && std::fabs(v - 0.5f) < 1e-4f; }, 3s), "the sink reports %.3f", v);
+            CHECK_MSG(waitFor([&] { return !dsp.outputStatus().bitPerfectNow; }, 3s), "our own 50 %% went unnoticed");
+            const std::string shown = run("wpctl get-volume @DEFAULT_AUDIO_SINK@"); // "Volume: 0.79" (cubic of 0.5)
+            CHECK_MSG(shown.find("0.79") != std::string::npos, "wpctl says %s", shown.c_str());
+            CHECK(control.setSinkVolume(0.5f, true));
+            CHECK_MSG(waitFor([&] { return control.sinkVolume(&v, &muted) && muted; }, 3s), "mute went unnoticed");
+            CHECK(control.setSinkVolume(1.0f, false));
+            CHECK_MSG(waitFor([&] { return dsp.outputStatus().systemVolumeNeutral && dsp.outputStatus().bitPerfectNow; }, 3s),
+                      "back at 100 %% from here went unnoticed");
+            control.unwatch();
+            g_test = "pipewire";
+        }
         dsp.unload();
     }
     // Released: the graph is free to go back to the desktop's rate.

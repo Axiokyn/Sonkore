@@ -382,10 +382,11 @@ Rectangle {
                 brief: bar.narrow
                 Layout.preferredWidth: bar.narrow ? 60 : 110
             }
-            // The slider moves the DAC's own control (Volume control: DAC).
+            // The slider moves the DAC's own control (Volume control: DAC), or
+            // the PipeWire output's volume (the DAC's control through it).
             Label {
-                visible: DspController.hardwareVolume && !bar.narrow
-                text: "DAC"
+                visible: (DspController.hardwareVolume || DspController.systemVolume) && !bar.narrow
+                text: DspController.hardwareVolume || DspController.systemVolumeInHardware ? "DAC" : qsTr("System")
                 color: Theme.accent
                 font.pixelSize: Theme.fontSmall - 1
                 font.weight: Font.DemiBold
@@ -419,8 +420,9 @@ Rectangle {
                 value: DspController.volumeToPosition(DspController.volume)
                 onMoved: DspController.volume = DspController.positionToVolume(value)
                 ToolTip.visible: hovered || pressed
-                ToolTip.text: DspController.hardwareVolume
+                ToolTip.text: DspController.hardwareVolume || DspController.systemVolumeInHardware
                     ? qsTr("DAC volume · %1 · bit-perfect").arg(DspController.gainText(DspController.volume))
+                    : DspController.systemVolume ? qsTr("System volume · %1").arg(DspController.gainText(DspController.volume))
                     : qsTr("Volume · %1").arg(DspController.gainText(DspController.volume))
             }
         }

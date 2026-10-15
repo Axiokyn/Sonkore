@@ -29,6 +29,7 @@ using HardwareMixer = WinEndpointVolume;
 class AlsaMixer;
 using HardwareMixer = AlsaMixer;
 #endif
+class PipeWireVolume;
 
 // QML-facing bridge to the audio engine: transport, play queue, output
 // devices and the pitch / tempo processor (SoundTouch).
@@ -70,6 +71,10 @@ class DspController : public QObject {
     // own control (ALSA mixer of a direct hw: output), which keeps bit-perfect.
     Q_PROPERTY(int volumeMode READ volumeMode WRITE setVolumeMode NOTIFY volumeModeChanged)
     Q_PROPERTY(bool hardwareVolume READ hardwareVolume NOTIFY volumeModeChanged) // the DAC's control is in use now
+    // The volume is the PipeWire output's (the desktop's volume for it), the
+    // DAC's own control where the device has one: systemVolumeInHardware.
+    Q_PROPERTY(bool systemVolume READ systemVolume NOTIFY volumeModeChanged)
+    Q_PROPERTY(bool systemVolumeInHardware READ systemVolumeInHardware NOTIFY volumeChanged)
     Q_PROPERTY(bool volumeFixed READ volumeFixed NOTIFY volumeModeChanged) // at 100 %, set on the DAC / amplifier
     Q_PROPERTY(bool hardwareVolumeSupported READ hardwareVolumeSupported CONSTANT)
     Q_PROPERTY(QString hardwareVolumeInfo READ hardwareVolumeInfo NOTIFY volumeModeChanged)
@@ -195,6 +200,8 @@ public:
     int volumeMode() const { return m_volumeMode; }
     void setVolumeMode(int mode);
     bool hardwareVolume() const { return m_hwVolumeActive; }
+    bool systemVolume() const { return m_pwVolumeActive; }
+    bool systemVolumeInHardware() const;
     bool volumeFixed() const { return m_volumeFixed; }
     QVariantList signalPath() const { return m_signalPath; }
     bool hardwareVolumeSupported() const;
@@ -443,6 +450,8 @@ private:
     int m_resampleFilter = 0;
     int m_volumeMode = VolumeAuto;
     bool m_hwVolumeActive = false;
+    bool m_pwVolumeActive = false;    // Linux: the PipeWire sink's volume (PipeWireVolume)
+    PipeWireVolume* m_pwVolume = nullptr;
     double m_digitalVolume = 1.0; // kept while the engine is held at unity gain
     bool m_volumeFixed = false;   // Automatic on a direct output
     bool m_engineAtUnity = false;

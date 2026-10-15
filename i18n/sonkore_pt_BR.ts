@@ -188,6 +188,18 @@
         <translation>Só para saídas diretas (hw:): com esta o volume fica fixo em 100 %. Escolha Digital para ajustá-lo no Sonkore.</translation>
     </message>
     <message>
+        <source>Using the volume of "%1", the DAC's own control through PipeWire: the desktop's volume keys and Sonkore's slider move the same control, and the audio stays bit-perfect at any volume.</source>
+        <translation>Usando o volume de "%1", o controle do próprio DAC via PipeWire: as teclas de volume da área de trabalho e o controle do Sonkore movem o mesmo controle, e o áudio continua bit-perfect em qualquer volume.</translation>
+    </message>
+    <message>
+        <source>Using the volume of "%1" through PipeWire. It is a virtual output, so PipeWire scales the samples in software below 100 %.</source>
+        <translation>Usando o volume de "%1" via PipeWire. É uma saída virtual, então o PipeWire escala as amostras por software abaixo de 100 %.</translation>
+    </message>
+    <message>
+        <source>Automatic: %1</source>
+        <translation>Automático: %1</translation>
+    </message>
+    <message>
         <source>Using the DAC's "%1" control.</source>
         <translation>Usando o controle "%1" do DAC.</translation>
     </message>
@@ -502,6 +514,18 @@
     <message>
         <source>Fixed at 100 %: set on the DAC or the amplifier</source>
         <translation>Fixo em 100 %: ajustado no DAC ou no amplificador</translation>
+    </message>
+    <message>
+        <source>System volume on the DAC's control · %1 dB</source>
+        <translation>Volume do sistema no controle do DAC · %1 dB</translation>
+    </message>
+    <message>
+        <source>System volume, in PipeWire's software · %1 dB</source>
+        <translation>Volume do sistema, por software no PipeWire · %1 dB</translation>
+    </message>
+    <message>
+        <source>System volume · muted</source>
+        <translation>Volume do sistema · mudo</translation>
     </message>
     <message>
         <source>DAC control "%1" · %2 dB</source>
@@ -1440,8 +1464,16 @@
         <translation>Silenciar · clique direito: controle de volume</translation>
     </message>
     <message>
+        <source>System</source>
+        <translation>Sistema</translation>
+    </message>
+    <message>
         <source>DAC volume · %1 · bit-perfect</source>
         <translation>Volume do DAC · %1 · bit-perfect</translation>
+    </message>
+    <message>
+        <source>System volume · %1</source>
+        <translation>Volume do sistema · %1</translation>
     </message>
     <message>
         <source>Volume · %1</source>
@@ -3443,6 +3475,10 @@ FLAC, WAV, MP3, ALAC, AAC, Opus, DSD, folhas CUE e mais. Você também pode solt
         <translation>Automático</translation>
     </message>
     <message>
+        <source>The system volume with a PipeWire output (the DAC's own control where it has one); fixed at 100 % on a direct output; Sonkore's own volume otherwise.</source>
+        <translation>O volume do sistema com uma saída PipeWire (o controle do próprio DAC quando ele tem um); fixo em 100 % numa saída direta; o volume do Sonkore nos demais casos.</translation>
+    </message>
+    <message>
         <source>Fixed at 100 % on a direct output (set it on the DAC or the amplifier); Sonkore's own volume otherwise.</source>
         <translation>Fixo em 100 % numa saída direta (ajuste no DAC ou no amplificador); caso contrário, o volume próprio do Sonkore.</translation>
     </message>
@@ -3457,6 +3493,10 @@ FLAC, WAV, MP3, ALAC, AAC, Opus, DSD, folhas CUE e mais. Você também pode solt
     <message>
         <source>DAC</source>
         <translation>DAC</translation>
+    </message>
+    <message>
+        <source>Moves the DAC's own volume control, through PipeWire or directly: the audio stays bit-perfect.</source>
+        <translation>Move o controle de volume do próprio DAC, via PipeWire ou diretamente: o áudio continua bit-perfect.</translation>
     </message>
     <message>
         <source>Moves the DAC's own volume control: the audio stays bit-perfect.</source>

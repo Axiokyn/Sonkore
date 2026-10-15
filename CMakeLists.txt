@@ -374,6 +374,12 @@ if(UNIX AND NOT APPLE)
         target_link_libraries(Sonkore PRIVATE ALSA::ALSA)
     endif()
     message(STATUS "Sonkore: native DSD and hardware (ALSA mixer) volume ${ALSA_FOUND}")
+    # The PipeWire output's volume (the DAC's own control through PipeWire):
+    # needs the headers only, like the output itself.
+    if(PIPEWIRE_FOUND)
+        target_sources(Sonkore PRIVATE src/platform/PipeWireVolume.hpp src/platform/PipeWireVolume.cpp)
+        target_compile_definitions(Sonkore PRIVATE SONKORE_HAVE_PIPEWIRE_VOLUME)
+    endif()
 endif()
 
 set_target_properties(Sonkore PROPERTIES
