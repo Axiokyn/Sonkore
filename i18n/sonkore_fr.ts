@@ -268,6 +268,26 @@
         <translation>Signaux de test</translation>
     </message>
     <message>
+        <source>%1 kHz</source>
+        <translation>%1 kHz</translation>
+    </message>
+    <message>
+        <source>Bit-perfect · %1</source>
+        <translation>Bit-perfect · %1</translation>
+    </message>
+    <message>
+        <source>Upsampled · %1</source>
+        <translation>Suréchantillonné · %1</translation>
+    </message>
+    <message>
+        <source>Resampled · %1</source>
+        <translation>Rééchantillonné · %1</translation>
+    </message>
+    <message>
+        <source>Processed · %1</source>
+        <translation>Traité · %1</translation>
+    </message>
+    <message>
         <source>Output idle</source>
         <translation>Sortie inactive</translation>
     </message>
@@ -1452,8 +1472,8 @@
         <translation>Égaliseur désactivé — cliquez pour ouvrir</translation>
     </message>
     <message>
-        <source>Signal path</source>
-        <translation>Chemin du signal</translation>
+        <source>Signal path: every stage from the file to the DAC</source>
+        <translation>Signal path : chaque étape du fichier au DAC</translation>
     </message>
     <message>
         <source>Release DAC to the system</source>
@@ -2957,6 +2977,10 @@ Double-cliquez sur une piste, un album ou une playlist — ou glissez des pistes
     <message>
         <source>Delete playlist</source>
         <translation>Supprimer la playlist</translation>
+    </message>
+    <message>
+        <source>No playlists yet. Press + or drop tracks here.</source>
+        <translation>Pas encore de listes. Appuyez sur + ou déposez des pistes ici.</translation>
     </message>
     <message>
         <source>Added %1 to “%2”</source>

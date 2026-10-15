@@ -250,11 +250,11 @@ Rectangle {
         // --- Signal path / output / volume ---------------------------------
         // Centred in the bar's height.
         RowLayout {
-            Layout.preferredWidth: bar.narrow ? 236 : 390
+            Layout.preferredWidth: bar.narrow ? 236 : 520
             // Never below its buttons: the transport gives way instead, rather
             // than the buttons spilling out of the window's edge.
             Layout.minimumWidth: implicitWidth
-            Layout.maximumWidth: 430
+            Layout.maximumWidth: 560
             Layout.fillWidth: true
             Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
             spacing: bar.narrow ? 0 : 4
@@ -274,13 +274,42 @@ Rectangle {
                 tip: Equalizer.enabled ? qsTr("Equalizer on — click to open") : qsTr("Equalizer off — click to open")
                 onClicked: AppActions.navigate("eq", "")
             }
-            IconButton {
+            // The output's state in words (green while bit-perfect); opens
+            // the signal path. Icon only when the bar is narrow.
+            RoundRect {
                 id: pathButton
                 visible: DspController.loaded
-                iconName: "chip"
-                active: DspController.bitPerfect
-                tip: qsTr("Signal path")
-                onClicked: signalPath.opened ? signalPath.close() : signalPath.open()
+                readonly property color tone: DspController.bitPerfect ? Theme.good : Theme.textDim
+                implicitHeight: 24
+                implicitWidth: pathRow.implicitWidth + (bar.narrow ? 12 : 18)
+                radius: Theme.squareShapes ? 3 : height / 2
+                color: pathArea.containsMouse || signalPath.opened ? Qt.rgba(tone.r, tone.g, tone.b, 0.2) : Qt.rgba(tone.r, tone.g, tone.b, 0.1)
+                borderWidth: 1
+                borderColor: Qt.rgba(tone.r, tone.g, tone.b, 0.4)
+                RowLayout {
+                    id: pathRow
+                    anchors.centerIn: parent
+                    spacing: 5
+                    Icon { glyph: "chip"; size: 13; color: pathButton.tone }
+                    Label {
+                        visible: !bar.narrow
+                        text: DspController.outputSummary
+                        color: pathButton.tone
+                        font.pixelSize: Theme.fontSmall
+                        font.weight: Font.DemiBold
+                        font.features: { "tnum": 1 }
+                    }
+                }
+                MouseArea {
+                    id: pathArea
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: signalPath.opened ? signalPath.close() : signalPath.open()
+                }
+                ToolTip.visible: pathArea.containsMouse && !signalPath.opened
+                ToolTip.delay: 500
+                ToolTip.text: qsTr("Signal path: every stage from the file to the DAC")
             }
             IconButton {
                 id: outputButton
@@ -339,6 +368,15 @@ Rectangle {
                 }
             }
 
+            // Sound on the left, the window on the right.
+            Rectangle {
+                visible: !bar.narrow
+                Layout.leftMargin: 6
+                Layout.rightMargin: 6
+                width: 1
+                height: 18
+                color: Theme.border
+            }
             IconButton {
                 visible: !bar.veryNarrow // Ctrl+M still works
                 iconName: "mini-player"

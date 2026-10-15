@@ -268,6 +268,26 @@
         <translation>Segnali di prova</translation>
     </message>
     <message>
+        <source>%1 kHz</source>
+        <translation>%1 kHz</translation>
+    </message>
+    <message>
+        <source>Bit-perfect · %1</source>
+        <translation>Bit-perfect · %1</translation>
+    </message>
+    <message>
+        <source>Upsampled · %1</source>
+        <translation>Sovracampionato · %1</translation>
+    </message>
+    <message>
+        <source>Resampled · %1</source>
+        <translation>Ricampionato · %1</translation>
+    </message>
+    <message>
+        <source>Processed · %1</source>
+        <translation>Elaborato · %1</translation>
+    </message>
+    <message>
         <source>Output idle</source>
         <translation>Uscita inattiva</translation>
     </message>
@@ -1452,8 +1472,8 @@
         <translation>Equalizzatore spento — clic per aprire</translation>
     </message>
     <message>
-        <source>Signal path</source>
-        <translation>Percorso del segnale</translation>
+        <source>Signal path: every stage from the file to the DAC</source>
+        <translation>Signal path: ogni stadio dal file al DAC</translation>
     </message>
     <message>
         <source>Release DAC to the system</source>
@@ -2957,6 +2977,10 @@ Fai doppio clic su un brano, un album o una playlist — oppure trascina qui i b
     <message>
         <source>Delete playlist</source>
         <translation>Elimina playlist</translation>
+    </message>
+    <message>
+        <source>No playlists yet. Press + or drop tracks here.</source>
+        <translation>Ancora nessuna playlist. Premi + o trascina qui dei brani.</translation>
     </message>
     <message>
         <source>Added %1 to “%2”</source>

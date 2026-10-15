@@ -1373,6 +1373,22 @@ void DspController::reopenCurrent()
     openIndex(m_currentIndex, wasPlaying, m_engine.positionSeconds());
 }
 
+QString DspController::outputSummary() const
+{
+    const auto s = m_engine.outputStatus();
+    if (s.backend.empty() || !loaded())
+        return {};
+    const QString rate = !s.dsd.empty() ? QString::fromStdString(s.dsd)
+                                        : tr("%1 kHz").arg(QLocale().toString(s.deviceSampleRate / 1000.0, 'g', 6));
+    if (bitPerfect())
+        return s.dsd.empty() ? tr("Bit-perfect · %1").arg(rate) : rate;
+    if (s.upsampled || s.pcmToDsdRate)
+        return tr("Upsampled · %1").arg(rate);
+    if (s.resampled)
+        return tr("Resampled · %1").arg(rate);
+    return tr("Processed · %1").arg(rate);
+}
+
 QString DspController::outputDescription() const
 {
     const auto s = m_engine.outputStatus();

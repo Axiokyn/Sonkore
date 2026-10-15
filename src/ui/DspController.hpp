@@ -119,6 +119,9 @@ class DspController : public QObject {
     Q_PROPERTY(QString currentDeviceKey READ currentDeviceKey NOTIFY outputStatusChanged)
     Q_PROPERTY(QString outputDescription READ outputDescription NOTIFY outputStatusChanged)
     Q_PROPERTY(bool bitPerfect READ bitPerfect NOTIFY outputStatusChanged)
+    // A few words for the player bar: "Bit-perfect · 96 kHz", "Resampled ·
+    // 48 kHz", "Processed · 44.1 kHz", "DSD64 native"; "" with no output.
+    Q_PROPERTY(QString outputSummary READ outputSummary NOTIFY outputStatusChanged)
     // Every stage between the file and the DAC, as Roon shows it: a list of
     // {stage, detail, quality}, quality being "lossless", "high", "enhanced"
     // (DSP chosen on purpose) or "low".
@@ -269,6 +272,7 @@ public:
     QVariantList outputDevices() const { return m_devices; }
     QString currentDeviceKey() const { return m_deviceKey; }
     QString outputDescription() const;
+    QString outputSummary() const;
     bool bitPerfect() const;
 
     bool playing() const;

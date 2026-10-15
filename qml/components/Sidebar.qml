@@ -455,6 +455,20 @@ Rectangle {
             spacing: 2
             model: Playlists.names
             boundsBehavior: Flickable.StopAtBounds
+            // Nothing yet: say what goes here.
+            Label {
+                anchors.top: parent.top
+                anchors.topMargin: 10
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.rightMargin: sidebar.edgeInset + 10
+                anchors.leftMargin: 10
+                visible: playlistList.count === 0 && !sidebar.collapsed
+                text: qsTr("No playlists yet. Press + or drop tracks here.")
+                wrapMode: Text.WordWrap
+                color: Theme.textFaint
+                font.pixelSize: Theme.fontSmall
+            }
             delegate: NavItem {
                 required property string modelData
                 width: playlistList.width - sidebar.edgeInset
