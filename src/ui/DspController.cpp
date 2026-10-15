@@ -352,6 +352,47 @@ void DspController::resetSoundTouch()
 
 // --- Output -----------------------------------------------------------------
 
+namespace {
+constexpr double kVolumeRangeDb = 60.0;
+}
+
+double DspController::volumeToPosition(double gain) const
+{
+    if (gain <= 0.0)
+        return 0.0;
+    return std::clamp(1.0 + 20.0 * std::log10(gain) / kVolumeRangeDb, 0.0, 1.0);
+}
+
+double DspController::positionToVolume(double position) const
+{
+    if (position <= 0.0)
+        return 0.0;
+    if (position >= 0.999)
+        return 1.0; // exactly unity: the bit-perfect path
+    // Whole tenths of a dB.
+    const double db = std::round((position - 1.0) * kVolumeRangeDb * 10.0) / 10.0;
+    return std::pow(10.0, db / 20.0);
+}
+
+void DspController::stepVolume(double db)
+{
+    const double now = volume();
+    double next = now > 0.0 ? 20.0 * std::log10(now) + db : (db > 0.0 ? -kVolumeRangeDb + db : -1e9);
+    next = std::round(next * 10.0) / 10.0;
+    if (next >= -0.05)
+        setVolume(1.0);
+    else if (next < -kVolumeRangeDb)
+        setVolume(0.0);
+    else
+        setVolume(std::pow(10.0, next / 20.0));
+}
+
+QString DspController::gainText(double v) const
+{
+    return v > 0.0 ? QString::number(20.0 * std::log10(v), 'f', 1).replace(QLatin1Char('-'), QChar(0x2212)) + QStringLiteral(" dB")
+                   : QStringLiteral("\u2212\u221e dB");
+}
+
 double DspController::volume() const
 {
     if (m_volumeFixed)

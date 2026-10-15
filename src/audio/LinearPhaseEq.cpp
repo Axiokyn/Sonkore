@@ -37,6 +37,21 @@ std::size_t LinearPhaseEq::tapsFor(double sampleRate)
     return std::max<std::size_t>(units, 1) * kUnit;
 }
 
+std::size_t LinearPhaseEq::tapsFor(double sampleRate, const std::vector<SuperEQ::Band>& bands)
+{
+    // A resonance at f0 with quality Q decays as exp(-pi f0 t / Q): 80 dB
+    // down after ln(10^4) Q / (pi f0) s. That must fit in the flat part of
+    // each half of the window.
+    double seconds = kSeconds;
+    for (const SuperEQ::Band& b : bands)
+        if (bandHasEffect(b) && b.freqHz > 0.0)
+            seconds = std::max(seconds, 2.0 * std::log(1e4) * b.q / (std::numbers::pi * b.freqHz) / (1.0 - kTaper));
+    seconds = std::min(seconds, kMaxSeconds);
+    constexpr std::size_t kUnit = 2 * Convolver::kBlock;
+    const auto units = static_cast<std::size_t>(std::ceil(sampleRate * seconds / kUnit));
+    return std::max<std::size_t>(units, 1) * kUnit;
+}
+
 std::vector<double> LinearPhaseEq::design(const std::vector<SuperEQ::Band>& bands, double preampDb, double sampleRate,
                                           std::size_t taps)
 {
@@ -90,13 +105,33 @@ void LinearPhaseEq::prepare(uint32_t sampleRate, uint32_t channels)
     m_channels = channels;
     m_taps = tapsFor(sampleRate);
     m_latency = m_taps / 2 + Convolver::kBlock;
+    if (m_historySize < m_taps / 2) {
+        m_history = {};
+        m_historySize = m_taps / 2;
+    }
     reset();
+}
+
+// A longer filter wants more of the past: the ring grows, what it holds kept
+// (oldest first, at the start of the new ring).
+void LinearPhaseEq::growHistory(std::size_t frames)
+{
+    const std::size_t ch = m_channels;
+    std::vector<double> grown(frames * ch, 0.0);
+    for (std::size_t i = 0; i < m_historyFill && !m_history.empty(); ++i) {
+        const std::size_t from = (m_historyPos + m_historySize - m_historyFill + i) % m_historySize;
+        std::copy_n(m_history.data() + from * ch, ch, grown.data() + i * ch);
+    }
+    m_history = std::move(grown);
+    m_historySize = frames;
+    m_historyPos = m_historyFill % frames;
 }
 
 void LinearPhaseEq::release()
 {
     reset();
     m_history = {};
+    m_historySize = 0;
     m_held = {};
     m_work = {};
     m_out = {};
@@ -116,7 +151,7 @@ void LinearPhaseEq::reset()
 
 void LinearPhaseEq::remember(const double* samples, std::size_t frames)
 {
-    const std::size_t ch = m_channels, size = m_taps / 2;
+    const std::size_t ch = m_channels, size = m_historySize;
     if (ch == 0 || size == 0)
         return;
     if (m_history.empty())
@@ -173,6 +208,10 @@ void LinearPhaseEq::engage(const SuperEQ& eq)
 {
     const SuperEQ::Curve curve = eq.curve();
     m_generation = eq.generation();
+    m_taps = tapsFor(m_rate, curve.bands);
+    m_latency = m_taps / 2 + Convolver::kBlock;
+    if (m_historySize < m_taps / 2)
+        growHistory(m_taps / 2);
     ImpulseResponse ir;
     ir.sampleRate = m_rate;
     ir.channels = 1;
@@ -180,13 +219,14 @@ void LinearPhaseEq::engage(const SuperEQ& eq)
     m_conv = Convolver::create(ir, m_rate, m_channels, nullptr);
     if (!m_conv)
         return;
-    const std::size_t ch = m_channels, size = m_taps / 2;
+    const std::size_t ch = m_channels, size = m_taps / 2, ring = m_historySize;
     // The last taps/2 input frames, oldest first (silence before a seek).
     std::vector<double> prime(size * ch, 0.0);
+    const std::size_t have = std::min(m_historyFill, size);
     if (!m_history.empty())
-        for (std::size_t i = 0; i < m_historyFill; ++i) {
-            const std::size_t from = (m_historyPos + size - m_historyFill + i) % size;
-            std::copy_n(m_history.data() + from * ch, ch, prime.data() + (size - m_historyFill + i) * ch);
+        for (std::size_t i = 0; i < have; ++i) {
+            const std::size_t from = (m_historyPos + ring - have + i) % ring;
+            std::copy_n(m_history.data() + from * ch, ch, prime.data() + (size - have + i) * ch);
         }
     m_conv->process(prime.data(), size); // outputs of what was already heard: dropped
     m_discard = m_latency;

@@ -1234,6 +1234,10 @@
         <translation>Tonhöhe / Tempo</translation>
     </message>
     <message>
+        <source>Volume · %1</source>
+        <translation>Lautstärke · %1</translation>
+    </message>
+    <message>
         <source>Settings</source>
         <translation>Einstellungen</translation>
     </message>
@@ -1418,6 +1422,10 @@
     <message>
         <source>DAC volume · %1 · bit-perfect</source>
         <translation>DAC-Lautstärke · %1 · bit-perfect</translation>
+    </message>
+    <message>
+        <source>Volume · %1</source>
+        <translation>Lautstärke · %1</translation>
     </message>
 </context>
 <context>

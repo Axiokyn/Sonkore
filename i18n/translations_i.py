@@ -30,4 +30,10 @@ T = {
     "Aller au morceau en cours",
     "Zum laufenden Titel springen",
     "Vai al brano in riproduzione"),
+"Volume · %1": (
+    "Volumen · %1",
+    "Volume · %1",
+    "Volume · %1",
+    "Lautstärke · %1",
+    "Volume · %1"),
 }

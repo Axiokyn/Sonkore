@@ -452,7 +452,7 @@ bool EqController::parseParametric(const QString& text, double& preamp, QVector<
     static const QRegularExpression preampRe(QStringLiteral("^\\s*Preamp\\s*:\\s*([-+]?[\\d.]+)\\s*dB"),
                                              QRegularExpression::CaseInsensitiveOption);
     static const QRegularExpression filterRe(
-        QStringLiteral("^\\s*Filter\\s*\\d*\\s*:\\s*(ON|OFF)\\s+([A-Z]+)\\s+Fc\\s+([\\d.]+)\\s*Hz"
+        QStringLiteral("^\\s*Filter\\s*\\d*\\s*:\\s*(ON|OFF)\\s+([A-Z]+)(?:\\s+([\\d.]+)\\s*dB)?\\s+Fc\\s+([\\d.]+)\\s*Hz"
                        "(?:\\s+Gain\\s+([-+]?[\\d.]+)\\s*dB)?(?:\\s+Q\\s+([\\d.]+))?"),
         QRegularExpression::CaseInsensitiveOption);
 
@@ -474,9 +474,21 @@ bool EqController::parseParametric(const QString& text, double& preamp, QVector<
         if (b.type == "HS" || b.type == "HSQ") b.type = "HSC";
         if (b.type == "LP") b.type = "LPQ";
         if (b.type == "HP") b.type = "HPQ";
-        b.freq = m.captured(3).toDouble();
-        b.gain = m.captured(4).isEmpty() ? 0.0 : m.captured(4).toDouble();
-        b.q = m.captured(5).isEmpty() ? 0.7071 : m.captured(5).toDouble();
+        b.freq = m.captured(4).toDouble();
+        b.gain = m.captured(5).isEmpty() ? 0.0 : m.captured(5).toDouble();
+        b.q = m.captured(6).isEmpty() ? 0.7071 : m.captured(6).toDouble();
+        // Shelves given by slope (Equalizer APO: "LSC 10.8 dB", "LS 12dB",
+        // or a plain "LS"/"HS", whose slope is S = 0.9) instead of Q: the
+        // RBJ shelf slope S, x dB per octave being S = x / 12, as Q.
+        if ((b.type == "LSC" || b.type == "HSC") && m.captured(6).isEmpty()) {
+            const QString t = m.captured(2).toUpper();
+            const double slope = !m.captured(3).isEmpty() ? std::clamp(m.captured(3).toDouble() / 12.0, 0.05, 1.0)
+                                 : (t == "LS" || t == "HS") ? 0.9 : 0.0;
+            if (slope > 0.0) {
+                const double A = std::pow(10.0, std::fabs(b.gain) / 40.0);
+                b.q = 1.0 / std::sqrt((A + 1.0 / A) * (1.0 / slope - 1.0) + 2.0);
+            }
+        }
         if (bands.size() < sonkore::SuperEQ::kMaxBands)
             bands << b;
     }

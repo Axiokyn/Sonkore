@@ -94,6 +94,9 @@ private:
     int m_channels = 2;
     int m_activeBands = 0;
     double m_preampLinear = 1.0;
+    double m_mix = 0.0;           // worker: share of the filtered signal (crossfades on/off)
+    std::vector<double> m_dry;    // worker: the block before filtering, while crossfading
+    std::atomic<bool> m_wet{false}; // the output still carries filtered signal
     std::array<BiquadCoeffs, kMaxBands> m_coeffs{};
     std::array<std::array<BiquadState, kMaxBands>, kMaxChannels> m_state{};
 };

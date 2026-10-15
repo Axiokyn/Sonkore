@@ -18,9 +18,11 @@ namespace sonkore {
 // Design: the curve sampled on a grid of fs/N, made zero-phase, centred and
 // shaped by a Tukey window (flat over 3/4 of its length, so the slow decay of
 // a narrow bass band is kept): within 0.01 dB of the biquad curve from 20 Hz
-// up for ordinary settings. N is about 0.5 s of taps at any rate, so the
-// filter delays the music by about a quarter of a second; run with the
-// engine's FFT convolver (partitioned overlap-save).
+// up. N is about 0.5 s of taps, more when a narrow low band rings longer (a
+// Q 10 notch at 40 Hz needs ~2 s to be realised to its full depth), up to
+// 4 s; the filter delays the music by half of it. It is sized when it
+// engages (a curve that later needs more is truncated until the next track
+// or seek). Run with the engine's FFT convolver (partitioned overlap-save).
 //
 // The delay is hidden rather than heard:
 // * engaging (the curve leaves flat, the mode is chosen, a seek): the filter
@@ -34,11 +36,15 @@ namespace sonkore {
 // Worker thread only.
 class LinearPhaseEq {
 public:
-    static constexpr double kSeconds = 0.5;   // filter length
-    static constexpr double kTaper = 0.25;    // Tukey window: tapered fraction of each half
+    static constexpr double kSeconds = 0.5;    // shortest filter
+    static constexpr double kMaxSeconds = 4.0; // longest
+    static constexpr double kTaper = 0.25;     // Tukey window: tapered fraction of each half
 
     // Taps for a sample rate: whole convolver partitions, about kSeconds.
     static std::size_t tapsFor(double sampleRate);
+    // ...or as long as the narrowest band rings (80 dB down within the flat
+    // part of the window), up to kMaxSeconds.
+    static std::size_t tapsFor(double sampleRate, const std::vector<SuperEQ::Band>& bands);
     // The FIR for `bands` and `preampDb` at `sampleRate`, centred at taps / 2.
     static std::vector<double> design(const std::vector<SuperEQ::Band>& bands, double preampDb, double sampleRate,
                                       std::size_t taps);
@@ -86,8 +92,9 @@ private:
     uint64_t m_generation = ~uint64_t(0); // SuperEQ generation the filter is for
     std::size_t m_discard = 0;            // outputs still to drop (engaging)
     std::size_t m_drainLeft = 0;          // input still to feed (draining)
-    std::vector<double> m_history;       // ring of the last taps/2 input frames
-    std::size_t m_historyPos = 0, m_historyFill = 0;
+    std::vector<double> m_history;       // ring of the last input frames (m_historySize)
+    std::size_t m_historySize = 0, m_historyPos = 0, m_historyFill = 0;
+    void growHistory(std::size_t frames);
     std::vector<double> m_held;           // draining: the input fed, to hand back
     std::vector<double> m_work, m_out, m_pass;
 };

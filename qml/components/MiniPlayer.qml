@@ -190,9 +190,7 @@ Rectangle {
         }
         WheelHandler {
             onWheel: (event) => {
-                const step = event.angleDelta.y > 0 ? 0.04 : -0.04
-                const pos = Math.max(0, Math.min(1, Math.sqrt(DspController.volume) + step))
-                DspController.volume = pos >= 0.999 ? 1.0 : pos * pos
+                DspController.stepVolume(event.angleDelta.y > 0 ? 1 : -1)
             }
         }
     }
@@ -586,13 +584,13 @@ Rectangle {
             Layout.preferredWidth: mini.wide ? 96 : 72
             from: 0
             to: 1
-            // Perceptual taper: slider position = sqrt(gain).
-            value: Math.sqrt(DspController.volume)
-            onMoved: DspController.volume = value >= 0.999 ? 1.0 : value * value
+            // Linear in dB over the last 60 dB, the far left muted.
+            value: DspController.volumeToPosition(DspController.volume)
+            onMoved: DspController.volume = DspController.positionToVolume(value)
             ToolTip.visible: hovered || pressed
             ToolTip.text: DspController.hardwareVolume
-            ? qsTr("DAC volume · %1 · bit-perfect").arg(DspController.volume > 0 ? (20 * Math.log10(DspController.volume)).toFixed(1) + " dB" : "−∞ dB")
-            : Math.round(value * 100) + " %"
+            ? qsTr("DAC volume · %1 · bit-perfect").arg(DspController.gainText(DspController.volume))
+            : qsTr("Volume · %1").arg(DspController.gainText(DspController.volume))
         }
         StripButton {
             Layout.leftMargin: 4

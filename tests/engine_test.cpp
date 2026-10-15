@@ -411,7 +411,8 @@ void volumeAndEq()
         std::this_thread::sleep_for(600ms);
         CHECK(!e.dsp.outputStatus().bitPerfectNow);
         e.dsp.equalizer().setBands(SuperEQ::graphic10Band());
-        CHECK(e.dsp.equalizer().isNeutral());
+        // Neutral once its ~10 ms crossfade back to the dry signal has run.
+        CHECK(waitFor([&] { return e.dsp.equalizer().isNeutral(); }, 2s));
         CHECK(waitFor([&] { return e.dsp.reachedEnd(); }, 20s));
         const auto out = trimmed(e.capture.take(), 2);
         CHECK_MSG(sameTail(out, ref, 96000 * 2, 2), "not bit-perfect again after the EQ went back to flat");
@@ -640,6 +641,56 @@ void eqDesign()
         for (int i = 0; i < 10; ++i)
             worst = std::max(worst, std::fabs(r[i] - sliders[i]));
         CHECK_MSG(worst < 0.05, "the curve misses a slider by %.2f dB", worst);
+    }
+    g_test = "eq on/off crossfade";
+    {
+        // A 1 kHz tone through a +12 dB band at 1 kHz, switched on mid-block:
+        // the level glides from 1 to 4 instead of jumping.
+        SuperEQ eq;
+        auto bands = SuperEQ::graphic10Band();
+        bands[5].gainDb = 12.0;
+        eq.setBands(bands);
+        eq.setEnabled(false);
+        eq.prepare(48000, 1);
+        std::vector<double> x(48000);
+        for (std::size_t i = 0; i < x.size(); ++i)
+            x[i] = 0.2 * std::sin(2.0 * std::numbers::pi * 1000.0 * double(i) / 48000.0);
+        std::vector<double> y = x;
+        eq.process(y.data(), 4800);
+        eq.setEnabled(true);
+        for (std::size_t at = 4800; at < y.size(); at += 1024)
+            eq.process(y.data() + at, std::min<std::size_t>(1024, y.size() - at));
+        // Peak level per 1 kHz period (48 samples): no period may jump by
+        // more than a few percent over the one before.
+        double worst = 0, last = 0.2;
+        for (std::size_t p = 0; p + 48 <= y.size(); p += 48) {
+            double peak = 0;
+            for (std::size_t i = p; i < p + 48; ++i)
+                peak = std::max(peak, std::fabs(y[i]));
+            worst = std::max(worst, peak / last);
+            last = peak;
+        }
+        CHECK_MSG(worst < 1.5, "level jumped x%.2f in one period (a hard switch: x4)", worst);
+        CHECK_MSG(last > 0.7, "the band never came fully in (%.2f)", last);
+    }
+    g_test = "linear phase, narrow bass notch";
+    {
+        // A room-mode notch: Q 10 at 40 Hz, -12 dB. The FIR is sized to ring
+        // as long as the band does, so it reaches the full depth.
+        SuperEQ::Band b;
+        b.type = FilterType::Peaking;
+        b.freqHz = 40;
+        b.q = 10;
+        b.gainDb = -12;
+        const std::vector<SuperEQ::Band> bands{b};
+        const std::size_t taps = LinearPhaseEq::tapsFor(44100, bands);
+        const auto fir = LinearPhaseEq::design(bands, 0.0, 44100, taps);
+        std::complex<double> h = 0;
+        for (std::size_t i = 0; i < fir.size(); ++i)
+            h += fir[i] * std::polar(1.0, -2.0 * std::numbers::pi * 40.0 * double(i) / 44100.0);
+        const double depth = 20.0 * std::log10(std::abs(h));
+        CHECK_MSG(std::fabs(depth + 12.0) < 0.1, "notch realised at %.2f dB with %zu taps", depth, taps);
+        CHECK(taps > LinearPhaseEq::tapsFor(44100));
     }
 }
 

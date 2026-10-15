@@ -486,8 +486,8 @@ ApplicationWindow {
     }
     Shortcut { sequence: "Ctrl+E"; onActivated: window.navigate("eq", "") }
     Shortcut { sequence: "Ctrl+,"; onActivated: window.navigate("settings", "") }
-    Shortcut { sequence: "Ctrl+Up"; onActivated: DspController.volume = Math.min(1, Math.pow(Math.sqrt(DspController.volume) + 0.05, 2)) }
-    Shortcut { sequence: "Ctrl+Down"; onActivated: DspController.volume = Math.max(0, Math.pow(Math.max(0, Math.sqrt(DspController.volume) - 0.05), 2)) }
+    Shortcut { sequence: "Ctrl+Up"; onActivated: DspController.stepVolume(1) }
+    Shortcut { sequence: "Ctrl+Down"; onActivated: DspController.stepVolume(-1) }
     Shortcut { sequence: "Ctrl+Q"; onActivated: Qt.quit() }
     Shortcut { sequence: "Ctrl+M"; onActivated: window.setCompact(!window.compact) }
 

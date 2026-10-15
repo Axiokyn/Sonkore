@@ -176,6 +176,8 @@ bool SuperEQ::bandHasEffect(const Band& b)
 
 bool SuperEQ::isNeutral() const
 {
+    if (m_wet.load(std::memory_order_relaxed))
+        return false; // filtering, or still fading out
     if (!isEnabled())
         return true;
     std::lock_guard lock(m_mutex);
@@ -246,8 +248,18 @@ void SuperEQ::process(double* interleaved, std::size_t frames)
 {
     if (m_dirty.load(std::memory_order_acquire))
         applyPending();
-    if (!isEnabled())
+    // Switched on or off (or back to flat): a ~10 ms crossfade between the
+    // dry and the filtered signal instead of a step (a +6 dB band toggled on
+    // a loud passage is an instant 2:1 jump).
+    const double target = isEnabled() && (m_activeBands > 0 || m_preampLinear != 1.0) ? 1.0 : 0.0;
+    if (target == 0.0 && m_mix == 0.0) {
+        m_wet.store(false, std::memory_order_relaxed);
         return;
+    }
+    if (m_mix != target && m_dry.size() < frames * static_cast<std::size_t>(m_channels))
+        m_dry.resize(frames * static_cast<std::size_t>(m_channels));
+    if (m_mix != target)
+        std::copy_n(interleaved, frames * static_cast<std::size_t>(m_channels), m_dry.data());
 
     const int channels = m_channels;
     const int bands = m_activeBands;
@@ -263,6 +275,18 @@ void SuperEQ::process(double* interleaved, std::size_t frames)
             *p = x;
         }
     }
+
+    if (m_mix != target) {
+        const double step = 1.0 / std::max(1.0, m_sampleRate * 0.01);
+        for (std::size_t i = 0; i < frames; ++i) {
+            m_mix = target > m_mix ? std::min(target, m_mix + step) : std::max(target, m_mix - step);
+            for (int ch = 0; ch < channels; ++ch) {
+                const std::size_t at = i * static_cast<std::size_t>(channels) + static_cast<std::size_t>(ch);
+                interleaved[at] = m_dry[at] + (interleaved[at] - m_dry[at]) * m_mix;
+            }
+        }
+    }
+    m_wet.store(m_mix > 0.0, std::memory_order_relaxed);
 }
 
 } // namespace sonkore

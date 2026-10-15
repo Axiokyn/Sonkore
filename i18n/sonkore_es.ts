@@ -1234,6 +1234,10 @@
         <translation>Tono / tempo</translation>
     </message>
     <message>
+        <source>Volume · %1</source>
+        <translation>Volumen · %1</translation>
+    </message>
+    <message>
         <source>Settings</source>
         <translation>Ajustes</translation>
     </message>
@@ -1418,6 +1422,10 @@
     <message>
         <source>DAC volume · %1 · bit-perfect</source>
         <translation>Volumen del DAC · %1 · bit-perfect</translation>
+    </message>
+    <message>
+        <source>Volume · %1</source>
+        <translation>Volumen · %1</translation>
     </message>
 </context>
 <context>

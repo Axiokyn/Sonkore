@@ -216,6 +216,14 @@ public:
     // Loads an impulse response (WAV / FLAC...) and switches convolution on.
     Q_INVOKABLE bool loadConvolution(const QUrl& file);
     Q_INVOKABLE void clearConvolution();
+    // The volume control's scale: linear in dB over the last 60 dB (each
+    // pixel and step the same size wherever it is set), the far left muted.
+    Q_INVOKABLE double volumeToPosition(double gain) const;
+    Q_INVOKABLE double positionToVolume(double position) const;
+    // Up or down by `db` (wheel, Ctrl+Up/Down); from mute, up starts at -60 dB.
+    Q_INVOKABLE void stepVolume(double db);
+    // A gain as "-12.0 dB", "-inf dB" (tooltips).
+    Q_INVOKABLE QString gainText(double gain) const;
     void setUpsampling(int mode);
     int resampleFilter() const { return m_resampleFilter; }
     void setResampleFilter(int filter);
