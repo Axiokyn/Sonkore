@@ -3,6 +3,7 @@
 #include "AppPaths.hpp"
 #include "LibraryModel.hpp"
 #include "Metadata.hpp"
+#include "NetRetry.hpp"
 
 #include <QCoreApplication>
 #include <QCryptographicHash>
@@ -16,6 +17,7 @@
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QNetworkRequest>
+#include <QTimer>
 #include <QRegularExpression>
 #include <QSettings>
 #include <QUrlQuery>
@@ -81,6 +83,7 @@ void Lyrics::setPath(const QString& path)
         return;
     m_path = path;
     ++m_generation;
+    m_waiting = false;
     if (m_reply) {
         m_reply->abort(); // its finished() sees the old generation and does nothing
         m_reply = nullptr;
@@ -263,37 +266,29 @@ void Lyrics::fetch(const QVariantMap& track)
         q.addQueryItem("duration", QString::number(duration));
     url.setQuery(q);
 
-    const int generation = m_generation;
     const QString base = cacheFileFor(track);
     m_status = tr("Looking for the lyrics…");
-    QNetworkReply* reply = network().get(requestFor(url));
-    m_reply = reply;
-    emit lyricsChanged();
-    connect(reply, &QNetworkReply::finished, this, [this, reply, generation, base, title, artist] {
-        reply->deleteLater();
-        if (generation != m_generation)
-            return; // another track by now
-        m_reply = nullptr;
-        const int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
-        const auto store = [&](const QString& text) {
-            QDir().mkpath(QFileInfo(base).path());
-            QFile f(base + QStringLiteral(".lrc"));
-            if (f.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
-                f.write(text.toUtf8());
-                f.close();
-            }
-            QFile::remove(base + QStringLiteral(".none"));
-            m_status.clear();
-            setLyrics(text, QStringLiteral("online"));
-        };
-        const auto none = [&] {
-            QDir().mkpath(QFileInfo(base).path());
-            QFile f(base + QStringLiteral(".none"));
-            if (f.open(QIODevice::WriteOnly | QIODevice::Truncate))
-                f.close();
-            m_status = tr("No lyrics found for this track");
-            emit lyricsChanged();
-        };
+    const auto store = [this, base](const QString& text) {
+        QDir().mkpath(QFileInfo(base).path());
+        QFile f(base + QStringLiteral(".lrc"));
+        if (f.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+            f.write(text.toUtf8());
+            f.close();
+        }
+        QFile::remove(base + QStringLiteral(".none"));
+        m_status.clear();
+        setLyrics(text, QStringLiteral("online"));
+    };
+    const auto none = [this, base] { // looked up again after kRetryNoneDays
+        QDir().mkpath(QFileInfo(base).path());
+        QFile f(base + QStringLiteral(".none"));
+        if (f.open(QIODevice::WriteOnly | QIODevice::Truncate))
+            f.close();
+        m_status = tr("No lyrics found for this track");
+        emit lyricsChanged();
+    };
+    get(url, [this, store, none, title, artist](QNetworkReply* reply) {
+        const int status = sonkore::httpStatus(reply);
         if (reply->error() == QNetworkReply::NoError && status == 200) {
             const QJsonObject o = QJsonDocument::fromJson(reply->readAll()).object();
             const QString synced = o.value("syncedLyrics").toString();
@@ -306,54 +301,76 @@ void Lyrics::fetch(const QVariantMap& track)
                 none(); // instrumental
             return;
         }
-        if (status == 404 || reply->error() == QNetworkReply::ContentNotFoundError) {
-            // Not under that exact album and length: the closest match by title and artist.
-            {
-                QUrl url(QStringLiteral("https://lrclib.net/api/search"));
-                QUrlQuery q;
-                q.addQueryItem("track_name", title);
-                q.addQueryItem("artist_name", artist);
-                url.setQuery(q);
-                QNetworkReply* search = network().get(requestFor(url));
-                m_reply = search;
-                connect(search, &QNetworkReply::finished, this, [this, reply = search, generation, base] {
-                    reply->deleteLater();
-                    if (generation != m_generation)
-                        return;
-                    m_reply = nullptr;
-                    const QJsonArray hits = QJsonDocument::fromJson(reply->readAll()).array();
-                    QString best;
-                    for (const QJsonValue& v : hits) { // a timed one first
-                        const QString synced = v.toObject().value("syncedLyrics").toString();
-                        if (!synced.trimmed().isEmpty()) {
-                            best = synced;
-                            break;
-                        }
-                        if (best.isEmpty())
-                            best = v.toObject().value("plainLyrics").toString();
-                    }
-                    QDir().mkpath(QFileInfo(base).path());
-                    if (best.trimmed().isEmpty()) {
-                        QFile f(base + QStringLiteral(".none"));
-                        if (f.open(QIODevice::WriteOnly | QIODevice::Truncate))
-                            f.close();
-                        m_status = reply->error() == QNetworkReply::NoError ? tr("No lyrics found for this track")
-                                                                              : tr("LRCLIB did not answer: %1").arg(reply->errorString());
-                        emit lyricsChanged();
-                        return;
-                    }
-                    QFile f(base + QStringLiteral(".lrc"));
-                    if (f.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
-                        f.write(best.toUtf8());
-                        f.close();
-                    }
-                    m_status.clear();
-                    setLyrics(best, QStringLiteral("online"));
-                });
+        if (status != 404 && reply->error() != QNetworkReply::ContentNotFoundError) {
+            failed(reply);
+            return;
+        }
+        // Not under that exact album and length: the closest match by title and artist.
+        QUrl url(QStringLiteral("https://lrclib.net/api/search"));
+        QUrlQuery q;
+        q.addQueryItem("track_name", title);
+        q.addQueryItem("artist_name", artist);
+        url.setQuery(q);
+        get(url, [this, store, none](QNetworkReply* reply) {
+            if (reply->error() != QNetworkReply::NoError) {
+                failed(reply); // nothing remembered: asked again next time
                 return;
             }
-        }
-        m_status = tr("LRCLIB did not answer: %1").arg(reply->errorString());
-        emit lyricsChanged();
+            const QJsonArray hits = QJsonDocument::fromJson(reply->readAll()).array();
+            QString best;
+            for (const QJsonValue& v : hits) { // a timed one first
+                const QString synced = v.toObject().value("syncedLyrics").toString();
+                if (!synced.trimmed().isEmpty()) {
+                    best = synced;
+                    break;
+                }
+                if (best.isEmpty())
+                    best = v.toObject().value("plainLyrics").toString();
+            }
+            if (best.trimmed().isEmpty())
+                none();
+            else
+                store(best);
+        });
     });
+}
+
+void Lyrics::get(const QUrl& url, std::function<void(QNetworkReply*)> done, int attempt)
+{
+    const int generation = m_generation;
+    QNetworkReply* reply = network().get(requestFor(url));
+    m_reply = reply;
+    emit lyricsChanged();
+    connect(reply, &QNetworkReply::finished, this, [this, reply, generation, url, done = std::move(done), attempt] {
+        reply->deleteLater();
+        if (generation != m_generation)
+            return; // another track by now
+        m_reply = nullptr;
+        if (const int wait = sonkore::retryDelayMs(reply, attempt); wait >= 0) {
+            m_waiting = true;
+            m_status = tr("LRCLIB is busy; trying again…");
+            emit lyricsChanged();
+            QTimer::singleShot(wait, this, [this, generation, url, done, attempt] {
+                if (generation != m_generation)
+                    return;
+                m_waiting = false;
+                m_status = tr("Looking for the lyrics…");
+                get(url, done, attempt + 1);
+            });
+            return;
+        }
+        done(reply);
+    });
+}
+
+void Lyrics::failed(QNetworkReply* reply)
+{
+    const int status = sonkore::httpStatus(reply);
+    if (status == 429 || status == 503)
+        m_status = tr("LRCLIB is busy right now. The lyrics are looked up again the next time this track plays.");
+    else if (status > 0)
+        m_status = tr("LRCLIB answered with error %1.").arg(status);
+    else
+        m_status = tr("Could not reach LRCLIB. Check the internet connection.");
+    emit lyricsChanged();
 }

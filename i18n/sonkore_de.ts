@@ -1036,8 +1036,20 @@
         <translation>Liedtext wird gesucht…</translation>
     </message>
     <message>
-        <source>LRCLIB did not answer: %1</source>
-        <translation>LRCLIB hat nicht geantwortet: %1</translation>
+        <source>LRCLIB is busy; trying again…</source>
+        <translation>LRCLIB ist ausgelastet; neuer Versuch…</translation>
+    </message>
+    <message>
+        <source>LRCLIB is busy right now. The lyrics are looked up again the next time this track plays.</source>
+        <translation>LRCLIB ist gerade ausgelastet. Der Liedtext wird beim nächsten Abspielen dieses Titels erneut gesucht.</translation>
+    </message>
+    <message>
+        <source>LRCLIB answered with error %1.</source>
+        <translation>LRCLIB antwortete mit Fehler %1.</translation>
+    </message>
+    <message>
+        <source>Could not reach LRCLIB. Check the internet connection.</source>
+        <translation>LRCLIB ist nicht erreichbar. Prüfe die Internetverbindung.</translation>
     </message>
 </context>
 <context>
@@ -1633,6 +1645,10 @@ Doppelklicke auf einen Titel, ein Album oder eine Playlist — oder ziehe Titel 
     <message>
         <source>Cover Art Archive did not answer: %1</source>
         <translation>Cover Art Archive hat nicht geantwortet: %1</translation>
+    </message>
+    <message>
+        <source>no connection</source>
+        <translation>keine Verbindung</translation>
     </message>
 </context>
 <context>

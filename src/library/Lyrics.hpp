@@ -7,6 +7,7 @@
 #include <QString>
 #include <QVariantList>
 
+#include <functional>
 #include <memory>
 #include <vector>
 
@@ -45,7 +46,7 @@ public:
     QVariantList lines() const;
     bool available() const { return !m_lines.empty(); }
     bool synced() const { return m_synced; }
-    bool loading() const { return m_reply != nullptr; }
+    bool loading() const { return m_reply != nullptr || m_waiting; }
     QString source() const { return m_source; }
     QString status() const { return m_status; }
 
@@ -70,6 +71,10 @@ signals:
 private:
     void resolve();
     void fetch(const QVariantMap& track);
+    // GET with retries while LRCLIB says it is busy; `done` is not called
+    // once another track is shown.
+    void get(const QUrl& url, std::function<void(QNetworkReply*)> done, int attempt = 0);
+    void failed(QNetworkReply* reply);
     void setLyrics(const QString& text, const QString& source);
     QNetworkAccessManager& network();
     QString cacheFileFor(const QVariantMap& track) const;
@@ -81,5 +86,6 @@ private:
     QString m_source, m_status;
     std::unique_ptr<QNetworkAccessManager> m_network;
     QNetworkReply* m_reply = nullptr;
+    bool m_waiting = false; // for a retry after a "busy" answer
     int m_generation = 0; // a new path makes replies for the old one moot
 };

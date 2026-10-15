@@ -68,11 +68,13 @@ private:
         QStringList releases; // MusicBrainz release ids still to try
         QString releaseGroup;
         QNetworkReply* reply = nullptr;
+        int attempts = 0; // retries after a "busy" answer
     };
 
     void request(const QString& path); // main thread
     void startSearch();
     void lookup();                     // MusicBrainz search for m_searching
+    static QString reason(QNetworkReply* reply); // for lastError: "HTTP 503", "no connection"
     void startFetches();
     void fetchFront(Job* job, const QUrl& url); // Cover Art Archive
     void finishJob(const Job& job, const QByteArray& image);

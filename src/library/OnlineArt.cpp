@@ -3,6 +3,7 @@
 #include "AppPaths.hpp"
 #include "CoverImageProvider.hpp"
 #include "LibraryModel.hpp"
+#include "NetRetry.hpp"
 
 #include <QCoreApplication>
 #include <QCryptographicHash>
@@ -240,7 +241,7 @@ QNetworkAccessManager& OnlineArt::network()
 
 void OnlineArt::lookup()
 {
-    m_pace.start();
+    m_pace.start(kPaceMs);
     QUrl url(QStringLiteral("https://musicbrainz.org/ws/2/release/"));
     QUrlQuery q;
     q.addQueryItem("query", QStringLiteral("release:%1 AND artist:%2").arg(quoted(m_searching->album), quoted(m_searching->artist)));
@@ -253,13 +254,19 @@ void OnlineArt::lookup()
         reply->deleteLater();
         if (!m_searching || m_searching->reply != reply)
             return; // dropped meanwhile
+        if (const int wait = sonkore::retryDelayMs(reply, m_searching->attempts); wait >= 0) {
+            m_searching->reply = nullptr; // the pace timer asks again
+            ++m_searching->attempts;
+            m_pace.start(wait);
+            return;
+        }
         Job job = *m_searching;
         m_searching.reset();
         job.reply = nullptr;
         if (reply->error() != QNetworkReply::NoError) {
             // Nothing written: the album is asked for again another time.
             m_queuedKeys.remove(job.key);
-            m_lastError = tr("MusicBrainz did not answer: %1").arg(reply->errorString());
+            m_lastError = tr("MusicBrainz did not answer: %1").arg(reason(reply));
             emit progressChanged();
             startSearch();
             return;
@@ -310,6 +317,14 @@ void OnlineArt::fetchFront(Job* job, const QUrl& url)
         if (it == m_fetching.end() || job->reply != reply)
             return; // dropped meanwhile
         job->reply = nullptr;
+        if (const int wait = sonkore::retryDelayMs(reply, job->attempts); wait >= 0) {
+            ++job->attempts;
+            QTimer::singleShot(wait, this, [this, job, url = reply->request().url()] {
+                if (std::any_of(m_fetching.begin(), m_fetching.end(), [&](const auto& j) { return j.get() == job; }))
+                    fetchFront(job, url);
+            });
+            return;
+        }
         const int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
         if (reply->error() == QNetworkReply::NoError && status == 200) {
             const QByteArray image = reply->readAll();
@@ -332,11 +347,17 @@ void OnlineArt::fetchFront(Job* job, const QUrl& url)
             finishJob(done, {}); // no art for this album anywhere
         } else {
             m_queuedKeys.remove(done.key); // asked again another time
-            m_lastError = tr("Cover Art Archive did not answer: %1").arg(reply->errorString());
+            m_lastError = tr("Cover Art Archive did not answer: %1").arg(reason(reply));
             emit progressChanged();
         }
         startFetches();
     });
+}
+
+QString OnlineArt::reason(QNetworkReply* reply)
+{
+    const int status = sonkore::httpStatus(reply);
+    return status > 0 ? QStringLiteral("HTTP %1").arg(status) : tr("no connection");
 }
 
 void OnlineArt::finishJob(const Job& job, const QByteArray& image)

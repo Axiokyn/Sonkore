@@ -141,7 +141,6 @@ T.update({
 "From LRCLIB": ("De LRCLIB", "Do LRCLIB", "De LRCLIB", "Von LRCLIB", "Da LRCLIB"),
 "MusicBrainz did not answer: %1": ("MusicBrainz no respondió: %1", "O MusicBrainz não respondeu: %1", "MusicBrainz n'a pas répondu : %1", "MusicBrainz hat nicht geantwortet: %1", "MusicBrainz non ha risposto: %1"),
 "Cover Art Archive did not answer: %1": ("Cover Art Archive no respondió: %1", "O Cover Art Archive não respondeu: %1", "Cover Art Archive n'a pas répondu : %1", "Cover Art Archive hat nicht geantwortet: %1", "Cover Art Archive non ha risposto: %1"),
-"LRCLIB did not answer: %1": ("LRCLIB no respondió: %1", "O LRCLIB não respondeu: %1", "LRCLIB n'a pas répondu : %1", "LRCLIB hat nicht geantwortet: %1", "LRCLIB non ha risposto: %1"),
 })
 
 # The DAC's PipeWire output kept in the menu while Sonkore holds the card (1.3.4).
@@ -152,4 +151,23 @@ T.update({
     "Rendu à PipeWire une fois choisi",
     "Wird bei Auswahl an PipeWire zurückgegeben",
     "Restituito a PipeWire quando scelto"),
+})
+
+# LRCLIB, MusicBrainz and Cover Art Archive busy: retries and plain messages (1.3.8).
+T.update({
+"LRCLIB is busy; trying again…": ("LRCLIB está ocupado; se vuelve a intentar…", "O LRCLIB está ocupado; tentando de novo…", "LRCLIB est occupé ; nouvelle tentative…", "LRCLIB ist ausgelastet; neuer Versuch…", "LRCLIB è occupato; nuovo tentativo…"),
+"LRCLIB is busy right now. The lyrics are looked up again the next time this track plays.": (
+    "LRCLIB está ocupado en este momento. La letra se vuelve a buscar la próxima vez que suene esta pista.",
+    "O LRCLIB está ocupado no momento. A letra será procurada de novo na próxima vez que esta faixa tocar.",
+    "LRCLIB est occupé pour le moment. Les paroles seront recherchées à nouveau la prochaine fois que ce morceau sera joué.",
+    "LRCLIB ist gerade ausgelastet. Der Liedtext wird beim nächsten Abspielen dieses Titels erneut gesucht.",
+    "LRCLIB è occupato al momento. Il testo verrà cercato di nuovo la prossima volta che il brano viene riprodotto."),
+"LRCLIB answered with error %1.": ("LRCLIB respondió con el error %1.", "O LRCLIB respondeu com o erro %1.", "LRCLIB a répondu avec l'erreur %1.", "LRCLIB antwortete mit Fehler %1.", "LRCLIB ha risposto con l'errore %1."),
+"Could not reach LRCLIB. Check the internet connection.": (
+    "No se pudo conectar con LRCLIB. Revisa la conexión a internet.",
+    "Não foi possível conectar ao LRCLIB. Verifique a conexão com a internet.",
+    "Impossible de joindre LRCLIB. Vérifiez la connexion à Internet.",
+    "LRCLIB ist nicht erreichbar. Prüfe die Internetverbindung.",
+    "Impossibile raggiungere LRCLIB. Controlla la connessione a Internet."),
+"no connection": ("sin conexión", "sem conexão", "pas de connexion", "keine Verbindung", "nessuna connessione"),
 })
