@@ -309,10 +309,6 @@ qt_add_resources(Sonkore "fonts"
         fonts/sonkore-sans/500.ttf
         fonts/sonkore-sans/600.ttf
         fonts/sonkore-sans/700.ttf
-        fonts/inter/400.ttf
-        fonts/inter/500.ttf
-        fonts/inter/600.ttf
-        fonts/inter/700.ttf
         fonts/manrope/400.ttf
         fonts/manrope/500.ttf
         fonts/manrope/600.ttf
@@ -405,13 +401,7 @@ set_target_properties(Sonkore PROPERTIES
     # The QML module URI "Sonkore" creates build/Sonkore/ (qmldir), so the
     # binary must live elsewhere or the linker would collide with that folder.
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
-    WIN32_EXECUTABLE ON
-    MACOSX_BUNDLE ON
-    MACOSX_BUNDLE_GUI_IDENTIFIER com.axiokyn.sonkore
-    MACOSX_BUNDLE_BUNDLE_NAME Sonkore
-    MACOSX_BUNDLE_ICON_FILE sonkore.icns
-    MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}
-    MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR})
+    WIN32_EXECUTABLE ON)
 
 if(WIN32)
     # Exe icon + version info, the version taken from project().
@@ -422,12 +412,6 @@ if(WIN32)
     # The DAC's own volume control (IAudioEndpointVolume), for exclusive mode.
     target_sources(Sonkore PRIVATE src/platform/WinEndpointVolume.hpp src/platform/WinEndpointVolume.cpp)
     target_compile_definitions(Sonkore PRIVATE SONKORE_HAVE_WIN_ENDPOINT_VOLUME)
-endif()
-# The macOS icon: create packaging/macos/ and run packaging/icons/generate.py.
-if(APPLE AND EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/packaging/macos/sonkore.icns)
-    set(SONKORE_ICNS ${CMAKE_CURRENT_SOURCE_DIR}/packaging/macos/sonkore.icns)
-    set_source_files_properties(${SONKORE_ICNS} PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
-    target_sources(Sonkore PRIVATE ${SONKORE_ICNS})
 endif()
 if(MSVC)
     target_compile_options(Sonkore PRIVATE /utf-8)

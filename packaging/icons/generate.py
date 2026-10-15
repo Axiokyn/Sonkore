@@ -6,7 +6,7 @@ Requires ImageMagick (`magick`) with SVG support and Pillow.
   sonkore-small.svg  - thicker strokes, used for 16-48 px; each size is drawn
                        from it with its edges moved onto whole pixels
 Every PNG is rasterized at its final size (no downscaling, no palette).
-Outputs: png/<size>.png, ../windows/sonkore.ico, ../macos/sonkore.icns (if that folder exists)
+Outputs: png/<size>.png and ../windows/sonkore.ico
 """
 import pathlib
 import re
@@ -15,7 +15,7 @@ import subprocess
 from PIL import Image
 
 HERE = pathlib.Path(__file__).resolve().parent
-SIZES = [16, 22, 24, 32, 48, 64, 128, 256, 512, 1024]
+SIZES = [16, 22, 24, 32, 48, 64, 128, 256, 512]
 
 
 def small_svg(size: int) -> str:
@@ -69,11 +69,6 @@ def main() -> None:
                      sizes=[(s, s) for s in ico_sizes],
                      append_images=[images[s] for s in ico_sizes if s != 256])
 
-    macos = HERE.parent / "macos"  # only while the macOS port is in the tree
-    if macos.is_dir():
-        images[1024].save(macos / "sonkore.icns", format="ICNS",
-                          append_images=[images[s] for s in (16, 32, 64, 128, 256, 512)])
-    (HERE / "png" / "1024.png").unlink()  # only needed for the .icns
     print("icons regenerated")
 
 

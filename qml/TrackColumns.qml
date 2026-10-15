@@ -100,12 +100,16 @@ QtObject {
         return keys.length > 0 ? keys[keys.length - 1] : ""
     }
     function isFlex(key) { return key.length > 0 && key === flexKey }
-    // Never narrower than the column's title, so a drag acts from the first pixel.
+    // Never narrower than the column's title (or badge), so a drag acts from the first pixel.
     function minWidthOf(key) {
         const c = info(key)
         if (key === "favorite")
             return 40 // its head is a heart, not the word
-        return c ? Math.max(48, headerWidth(c.title)) : 48
+        if (!c)
+            return 48
+        // A format badge stays whole ("FLAC 24/192"), never "FLAC 2…".
+        const badge = c.badge ? Math.ceil(badgeMetrics.advanceWidth("FLAC 24/192")) + 12 + 2 * cellPadding : 0
+        return Math.max(48, headerWidth(c.title), badge)
     }
     // Header text as drawn (TrackTable's header): default widths grow to fit it,
     // so a longer translation is never cut off.
@@ -114,6 +118,11 @@ QtObject {
     property FontMetrics headerMetrics: FontMetrics {
         font.pixelSize: Theme.fontSmall
         font.weight: Font.Medium
+    }
+    property FontMetrics badgeMetrics: FontMetrics { // as Badge draws its text
+        font.pixelSize: 10
+        font.weight: Font.DemiBold
+        font.letterSpacing: 0.4
     }
     function headerWidth(text) {
         return Math.ceil(headerMetrics.advanceWidth(text)) + 2 * cellPadding + 15 // room for the sort arrow

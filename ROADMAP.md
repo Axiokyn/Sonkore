@@ -5,7 +5,7 @@ Objetivo: un reproductor Hi-Fi a la altura de Roon y JRiver en todo lo que piden
 ## Reglas
 
 1. Sonkore es GPL-3.0-or-later. Solo se agregan dependencias compatibles: MIT, BSD, Apache-2.0, LGPL o GPLv3.
-2. Sin SDKs privativos, salvo las APIs del sistema (WASAPI, CoreAudio, ALSA). ASIO es GPLv3 desde octubre de 2025.
+2. Sin SDKs privativos, salvo las APIs del sistema (ALSA, PipeWire, WASAPI). ASIO es GPLv3 desde octubre de 2025.
 3. Cada binario publicado incluye sus licencias y el acceso al código fuente (ver `THIRD-PARTY.md` y `packaging/appimage/`).
 4. El README declara que el desarrollo usa asistencia de IA.
 
@@ -15,12 +15,10 @@ Objetivo: un reproductor Hi-Fi a la altura de Roon y JRiver en todo lo que piden
 - [x] **ReplayGain / EBU R128** (libebur128, MIT): etiquetas ReplayGain y R128, análisis por pista y por álbum sin modificar los archivos, modo pista/álbum/apagado, preamp y prevención de clipping por true peak.
 - [x] **Volumen por hardware** en Linux: control del mixer del DAC (ALSA, en dB) para conservar el bit-perfect al bajar el volumen; con PipeWire, el volumen del sink (el mismo control, a través del servidor de sonido).
 - [x] **Volumen por hardware** en Windows: IAudioEndpointVolume con WASAPI exclusivo, en los dispositivos que lo implementan en hardware.
-- [ ] **Volumen por hardware** en macOS (volumen del dispositivo en CoreAudio).
 - [x] **DSD nativo y DoP** en Linux: DSF y DSDIFF sin pasar a PCM (ALSA DSD_U32_BE/LE, DoP de 24 bits), hasta la frecuencia máxima del DAC.
 - [x] **DSD nativo** en Windows: salida ASIO (modo DSD de ASIO 2.2), también PCM bit-perfect en el formato propio del driver.
 - [x] **DST** (DSD comprimido en DSDIFF, el formato de los SACD): decodificador propio (ISO/IEC 14496-3 subparte 10) que devuelve los bits exactos, así que va como DSD nativo o DoP.
 - [x] **DSD → PCM propio** en doble precisión (FIR de 160 dB + SoX VHQ): 88,2 / 176,4 kHz, sin el ruido ultrasónico que deja FFmpeg (~−120 contra ~−28 dBFS).
-- [ ] DSD nativo en macOS.
 - [x] **Signal path**: cada etapa (archivo → decodificador → DSP → dispositivo) con formato, bits, frecuencia y calidad.
 - [x] **Reproducción desde RAM**: el archivo completo en RAM (bloqueado si el sistema lo permite) antes de reproducir; la siguiente pista se carga en segundo plano.
 - [x] **Prioridad de tiempo real** del hilo de audio (rtkit).
@@ -69,7 +67,6 @@ Objetivo: un reproductor Hi-Fi a la altura de Roon y JRiver en todo lo que piden
 - [ ] Linux: AUR, COPR, openSUSE Build Service, Snap.
 - [x] Windows x64: ASIO + WASAPI exclusivo; zip portable en GitHub Releases (Qt, runtime de MSVC y FFmpeg incluidos).
 - [ ] Windows: instalador, Scoop, winget.
-- [ ] macOS: CoreAudio en modo exclusivo y modo entero; GitHub Releases y tap propio de Homebrew.
 
 ## Fuera de alcance
 
