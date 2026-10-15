@@ -82,7 +82,7 @@ Sonkore/
 ├── fonts/          # fuentes de la interfaz (SIL Open Font License, licencia en cada <fuente>/OFL.txt): Sonkore Sans
 │                   # (la predeterminada, derivada de Inter: latino, griego y cirílico, con hinting), Inter, Manrope,
 │                   # Plus Jakarta Sans, Figtree, Outfit, DM Sans, Nunito Sans, Rubik; pesos 400-700
-├── packaging/      # icons/ (SVG maestros + generate.py), linux/ (.desktop, metainfo, install-user.sh), appimage/ (build.sh),
+├── packaging/      # icons/ (SVG maestros + generate.py), fonts/ (build-sonkore-sans.py: Sonkore Sans desde Inter), linux/ (.desktop, metainfo, install-user.sh), appimage/ (build.sh),
 │                   # ffmpeg/ (configuración común), windows/ (.rc, .ico, build-ffmpeg.sh, package.ps1)
 └── qml/
     ├── Main.qml, Theme.qml (temas), TrackColumns.qml (columnas), Prefs.qml, AppActions.qml (bus de eventos y arrastre)
