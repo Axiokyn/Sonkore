@@ -358,6 +358,38 @@ void EqController::apply(bool markCustom)
     emit bandsChanged();
 }
 
+QVariantMap EqController::snapshot() const
+{
+    QVariantList bands;
+    for (const Band& b : m_bands)
+        bands << bandToMap(b);
+    return {{"enabled", m_enabled}, {"linearPhase", m_linearPhase}, {"mode", m_mode}, {"preamp", m_preamp},
+            {"profile", m_currentProfile}, {"bands", bands}};
+}
+
+void EqController::restore(const QVariantMap& state)
+{
+    if (state.isEmpty())
+        return;
+    const bool wasEnabled = m_enabled, wasLinear = m_linearPhase;
+    m_enabled = state.value("enabled", m_enabled).toBool();
+    m_linearPhase = state.value("linearPhase", m_linearPhase).toBool();
+    m_mode = state.value("mode", m_mode).toString();
+    m_preamp = state.value("preamp", m_preamp).toDouble();
+    const QVariantList bands = state.value("bands").toList();
+    if (!bands.isEmpty()) {
+        m_bands.clear();
+        for (const QVariant& v : bands)
+            m_bands << bandFromMap(v.toMap());
+    }
+    apply(false);
+    setCurrentProfile(state.value("profile").toString());
+    if (wasEnabled != m_enabled)
+        emit enabledChanged();
+    if (wasLinear != m_linearPhase)
+        emit linearPhaseChanged();
+}
+
 void EqController::setCurrentProfile(const QString& name)
 {
     if (name == m_currentProfile)

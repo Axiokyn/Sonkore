@@ -2228,6 +2228,18 @@ Haz doble clic en cualquier pista, álbum o lista — o arrastra pistas aquí.</
         <translation>La salida elegida no está conectada, así que se usa la predeterminada del sistema. Al volver a conectarla, se usa de nuevo la próxima vez que empiece la reproducción.</translation>
     </message>
     <message>
+        <source>Sound settings per output</source>
+        <translation>Ajustes de sonido por salida</translation>
+    </message>
+    <message>
+        <source>Headphones and speakers each keep their own equaliser and processing.</source>
+        <translation>Los auriculares y los parlantes conservan cada uno su ecualizador y su procesamiento.</translation>
+    </message>
+    <message>
+        <source>The equaliser, convolution, crossfeed, headroom, dither, upsampling and DSD settings are remembered for each output and come back when it is chosen again. An output used for the first time starts from the current settings.</source>
+        <translation>El ecualizador, la convolución, el crossfeed, el headroom, el dither, el sobremuestreo y los ajustes de DSD se recuerdan para cada salida y vuelven al elegirla de nuevo. Una salida usada por primera vez parte de los ajustes actuales.</translation>
+    </message>
+    <message>
         <source>Follow the track's rate</source>
         <translation>Seguir la frecuencia de la pista</translation>
     </message>

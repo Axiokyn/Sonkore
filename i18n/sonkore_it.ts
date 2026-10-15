@@ -2228,6 +2228,18 @@ Fai doppio clic su un brano, un album o una playlist — oppure trascina qui i b
         <translation>L'uscita scelta non è collegata, quindi si usa quella predefinita del sistema. Una volta ricollegata, viene usata di nuovo al prossimo avvio della riproduzione.</translation>
     </message>
     <message>
+        <source>Sound settings per output</source>
+        <translation>Impostazioni audio per uscita</translation>
+    </message>
+    <message>
+        <source>Headphones and speakers each keep their own equaliser and processing.</source>
+        <translation>Cuffie e altoparlanti conservano ciascuno il proprio equalizzatore ed elaborazione.</translation>
+    </message>
+    <message>
+        <source>The equaliser, convolution, crossfeed, headroom, dither, upsampling and DSD settings are remembered for each output and come back when it is chosen again. An output used for the first time starts from the current settings.</source>
+        <translation>Equalizzatore, convoluzione, crossfeed, headroom, dither, upsampling e impostazioni DSD vengono ricordati per ogni uscita e tornano quando viene scelta di nuovo. Un'uscita usata per la prima volta parte dalle impostazioni attuali.</translation>
+    </message>
+    <message>
         <source>Follow the track's rate</source>
         <translation>Seguire la frequenza del brano</translation>
     </message>

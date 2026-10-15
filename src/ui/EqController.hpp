@@ -85,6 +85,11 @@ public:
     Q_INVOKABLE bool importFile(const QUrl& file);
     Q_INVOKABLE bool exportFile(const QUrl& file) const;
 
+    // The whole equaliser state (on/off, phase, mode, preamp, profile, bands)
+    // as one map, and back: the sound profile of an output device.
+    QVariantMap snapshot() const;
+    void restore(const QVariantMap& state);
+
     Q_INVOKABLE void autoEqSearch(const QString& text);
     Q_INVOKABLE void autoEqRefreshIndex();
     Q_INVOKABLE void autoEqApply(int resultIndex);

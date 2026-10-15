@@ -1786,6 +1786,12 @@ Item {
                     LSwitch { checked: DspController.releaseWhenIdle; onToggled: DspController.releaseWhenIdle = checked }
                 }
                 SettingRow {
+                    title: qsTr("Sound settings per output")
+                    description: qsTr("Headphones and speakers each keep their own equaliser and processing.")
+                    details: qsTr("The equaliser, convolution, crossfeed, headroom, dither, upsampling and DSD settings are remembered for each output and come back when it is chosen again. An output used for the first time starts from the current settings.")
+                    LSwitch { checked: DspController.soundPerOutput; onToggled: DspController.soundPerOutput = checked }
+                }
+                SettingRow {
                     visible: DspController.hardwareVolumeSupported
                     title: qsTr("Volume control")
                     description: DspController.volumeMode !== 0

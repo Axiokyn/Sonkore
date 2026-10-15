@@ -2228,6 +2228,18 @@ Double-cliquez sur une piste, un album ou une playlist — ou glissez des pistes
         <translation>La sortie choisie n'est pas connectée : la sortie par défaut du système est utilisée. Une fois reconnectée, elle est de nouveau utilisée au prochain démarrage de la lecture.</translation>
     </message>
     <message>
+        <source>Sound settings per output</source>
+        <translation>Réglages sonores par sortie</translation>
+    </message>
+    <message>
+        <source>Headphones and speakers each keep their own equaliser and processing.</source>
+        <translation>Le casque et les enceintes gardent chacun leur égaliseur et leur traitement.</translation>
+    </message>
+    <message>
+        <source>The equaliser, convolution, crossfeed, headroom, dither, upsampling and DSD settings are remembered for each output and come back when it is chosen again. An output used for the first time starts from the current settings.</source>
+        <translation>L'égaliseur, la convolution, le crossfeed, la marge, le dither, le suréchantillonnage et les réglages DSD sont mémorisés pour chaque sortie et reviennent quand elle est choisie à nouveau. Une sortie utilisée pour la première fois part des réglages actuels.</translation>
+    </message>
+    <message>
         <source>Follow the track's rate</source>
         <translation>Suivre la fréquence de la piste</translation>
     </message>

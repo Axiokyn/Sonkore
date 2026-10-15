@@ -144,6 +144,10 @@ class DspController : public QObject {
     // Audio libraries in use, with versions (About).
     Q_PROPERTY(QString audioComponents READ audioComponents CONSTANT)
     Q_PROPERTY(bool releaseWhenIdle READ releaseWhenIdle WRITE setReleaseWhenIdle NOTIFY preferencesChanged)
+    // Each output keeps its own sound settings (equaliser, convolution,
+    // crossfeed, headroom, dither, upsampling and filter, DSD): headphones
+    // and speakers each come back with theirs when the output is switched.
+    Q_PROPERTY(bool soundPerOutput READ soundPerOutput WRITE setSoundPerOutput NOTIFY preferencesChanged)
     Q_PROPERTY(bool testSignalPlaying READ testSignalPlaying NOTIFY trackChanged)
     Q_PROPERTY(bool dtsTestAvailable READ dtsTestAvailable CONSTANT)
 
@@ -290,6 +294,8 @@ public:
     bool outputExclusiveCapable() const;
     QString audioComponents() const;
     bool releaseWhenIdle() const { return m_releaseWhenIdle; }
+    bool soundPerOutput() const { return m_soundPerOutput; }
+    void setSoundPerOutput(bool on);
     void setReleaseWhenIdle(bool on);
     bool visualizerActive() const { return m_visualizerActive; }
     // `viewer` (a visualiser) is in view, or no longer. One that is destroyed
@@ -449,6 +455,12 @@ private:
     bool applyConvolution(QString* error = nullptr);
     int m_resampleFilter = 0;
     int m_volumeMode = VolumeAuto;
+    bool m_soundPerOutput = true;
+    // The sound settings as one map (what soundPerOutput stores per device).
+    QVariantMap soundSnapshot() const;
+    void restoreSound(const QVariantMap& state);
+    void storeSoundFor(const QString& deviceKey) const;
+    bool loadSoundFor(const QString& deviceKey);
     bool m_hwVolumeActive = false;
     bool m_pwVolumeActive = false;    // Linux: the PipeWire sink's volume (PipeWireVolume)
     PipeWireVolume* m_pwVolume = nullptr;

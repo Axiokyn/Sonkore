@@ -2228,6 +2228,18 @@ Clique duas vezes em qualquer faixa, álbum ou playlist — ou arraste faixas pa
         <translation>A saída escolhida não está conectada, então a padrão do sistema é usada. Ao reconectá-la, ela volta a ser usada na próxima vez que a reprodução começar.</translation>
     </message>
     <message>
+        <source>Sound settings per output</source>
+        <translation>Ajustes de som por saída</translation>
+    </message>
+    <message>
+        <source>Headphones and speakers each keep their own equaliser and processing.</source>
+        <translation>Fones e caixas de som mantêm cada um seu equalizador e processamento.</translation>
+    </message>
+    <message>
+        <source>The equaliser, convolution, crossfeed, headroom, dither, upsampling and DSD settings are remembered for each output and come back when it is chosen again. An output used for the first time starts from the current settings.</source>
+        <translation>O equalizador, a convolução, o crossfeed, o headroom, o dither, o upsampling e os ajustes de DSD são lembrados para cada saída e voltam quando ela é escolhida de novo. Uma saída usada pela primeira vez parte dos ajustes atuais.</translation>
+    </message>
+    <message>
         <source>Follow the track's rate</source>
         <translation>Seguir a taxa da faixa</translation>
     </message>

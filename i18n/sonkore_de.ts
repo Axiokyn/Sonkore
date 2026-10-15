@@ -2228,6 +2228,18 @@ Doppelklicke auf einen Titel, ein Album oder eine Playlist — oder ziehe Titel 
         <translation>Die gewählte Ausgabe ist nicht verbunden, daher wird die Systemvorgabe verwendet. Nach dem erneuten Verbinden wird sie beim nächsten Start der Wiedergabe wieder verwendet.</translation>
     </message>
     <message>
+        <source>Sound settings per output</source>
+        <translation>Klangeinstellungen je Ausgabe</translation>
+    </message>
+    <message>
+        <source>Headphones and speakers each keep their own equaliser and processing.</source>
+        <translation>Kopfhörer und Lautsprecher behalten jeweils ihren eigenen Equalizer und ihre Verarbeitung.</translation>
+    </message>
+    <message>
+        <source>The equaliser, convolution, crossfeed, headroom, dither, upsampling and DSD settings are remembered for each output and come back when it is chosen again. An output used for the first time starts from the current settings.</source>
+        <translation>Equalizer, Faltung, Crossfeed, Headroom, Dither, Upsampling und DSD-Einstellungen werden je Ausgabe gemerkt und kehren zurück, wenn sie wieder gewählt wird. Eine erstmals genutzte Ausgabe beginnt mit den aktuellen Einstellungen.</translation>
+    </message>
+    <message>
         <source>Follow the track's rate</source>
         <translation>Abtastrate des Titels folgen</translation>
     </message>

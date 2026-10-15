@@ -6,6 +6,7 @@
 #include "DsdToPcm.hpp"
 
 #include "DSPManager.hpp"
+#include "EqController.hpp"
 #include "LibraryModel.hpp"
 #include "DsdDecoder.hpp"
 
@@ -189,6 +190,11 @@ DspController::DspController(sonkore::DSPManager& engine, QObject* parent)
     m_mixer = new HardwareMixer(this);
     connect(m_mixer, &HardwareMixer::volumeChanged, this, &DspController::volumeChanged);
 #endif
+    if (EqController* eq = EqController::instance()) { // its edits belong to this output's sound profile too
+        connect(eq, &EqController::bandsChanged, this, &DspController::scheduleSave);
+        connect(eq, &EqController::enabledChanged, this, &DspController::scheduleSave);
+        connect(eq, &EqController::linearPhaseChanged, this, &DspController::scheduleSave);
+    }
 #if defined(SONKORE_HAVE_PIPEWIRE_VOLUME)
     m_pwVolume = new PipeWireVolume(this);
     connect(m_pwVolume, &PipeWireVolume::volumeChanged, this, &DspController::volumeChanged);
@@ -1045,10 +1051,88 @@ void DspController::devicesChangedOnSystem()
         emit outputDevicesHotplugged(added, removed);
 }
 
+// --- Sound profile per output ---------------------------------------------------
+
+static QString soundProfileKey(const QString& deviceKey)
+{
+    // "" is the system default; '/' and '\\' would open QSettings groups.
+    QString k = deviceKey.isEmpty() ? QStringLiteral("default") : deviceKey;
+    return k.replace(QLatin1Char('/'), QLatin1Char('|')).replace(QLatin1Char('\\'), QLatin1Char('|'));
+}
+
+QVariantMap DspController::soundSnapshot() const
+{
+    QVariantMap m{{"ditherMode", m_ditherMode},       {"headroomDb", m_headroomDb},   {"headroomAuto", m_headroomAuto},
+                  {"crossfeed", m_crossfeed},         {"upsampling", m_upsampling},   {"convolutionFile", m_convolutionFile},
+                  {"convolution", m_convolutionEnabled}, {"resampleFilter", m_resampleFilter}, {"dsdOutput", m_dsdMode},
+                  {"pcmToDsd", m_pcmToDsd}};
+    if (EqController* eq = EqController::instance())
+        m.insert("equalizer", eq->snapshot());
+    return m;
+}
+
+void DspController::restoreSound(const QVariantMap& m)
+{
+    setDitherMode(m.value("ditherMode", m_ditherMode).toInt());
+    setHeadroomAuto(m.value("headroomAuto", m_headroomAuto).toBool());
+    setHeadroomDb(m.value("headroomDb", m_headroomDb).toDouble());
+    setCrossfeed(m.value("crossfeed", m_crossfeed).toInt());
+    setUpsampling(m.value("upsampling", m_upsampling).toInt());
+    setResampleFilter(m.value("resampleFilter", m_resampleFilter).toInt());
+    setDsdMode(m.value("dsdOutput", m_dsdMode).toInt());
+    setPcmToDsd(m.value("pcmToDsd", m_pcmToDsd).toInt());
+    const QString file = m.value("convolutionFile", m_convolutionFile).toString();
+    const bool conv = m.value("convolution", m_convolutionEnabled).toBool();
+    if (file != m_convolutionFile || conv != m_convolutionEnabled) {
+        m_convolutionFile = file;
+        m_convolutionEnabled = conv;
+        if (!applyConvolution())
+            m_convolutionEnabled = false;
+        emit convolutionChanged();
+    }
+    if (EqController* eq = EqController::instance())
+        eq->restore(m.value("equalizer").toMap());
+}
+
+void DspController::storeSoundFor(const QString& deviceKey) const
+{
+    if (sonkore::g_settingsFrozen.load())
+        return;
+    QSettings s;
+    s.beginGroup("soundProfiles");
+    s.setValue(soundProfileKey(deviceKey), QJsonDocument::fromVariant(soundSnapshot()).toJson(QJsonDocument::Compact));
+    s.endGroup();
+}
+
+bool DspController::loadSoundFor(const QString& deviceKey)
+{
+    QSettings s;
+    s.beginGroup("soundProfiles");
+    const QVariantMap m = QJsonDocument::fromJson(s.value(soundProfileKey(deviceKey)).toByteArray()).toVariant().toMap();
+    s.endGroup();
+    if (m.isEmpty())
+        return false; // an output not seen before keeps the current sound: it starts from it
+    restoreSound(m);
+    return true;
+}
+
+void DspController::setSoundPerOutput(bool on)
+{
+    if (on == m_soundPerOutput)
+        return;
+    m_soundPerOutput = on;
+    if (on)
+        storeSoundFor(m_deviceKey); // this output's sound, as it is now
+    scheduleSave();
+    emit preferencesChanged();
+}
+
 void DspController::selectOutputDevice(const QString& key)
 {
     if (key == m_deviceKey)
         return;
+    if (m_soundPerOutput)
+        storeSoundFor(m_deviceKey); // what the output being left had
     m_deviceKey = key;
     auto cfg = m_engine.outputConfig();
     cfg.deviceKey = key.toStdString();
@@ -1058,6 +1142,8 @@ void DspController::selectOutputDevice(const QString& key)
         m_reservation.release(); // taken again when something plays
     emit outputStatusChanged();
     updateMixer();
+    if (m_soundPerOutput)
+        loadSoundFor(key); // the new output's own sound, if it had one
     reopenCurrent();
 }
 
@@ -2120,6 +2206,7 @@ void DspController::loadSettings()
     m_repeat = s.value("repeat", RepeatOff).toInt();
     m_resume = s.value("resume", true).toBool();
     m_releaseWhenIdle = s.value("releaseDacWhenIdle", true).toBool();
+    m_soundPerOutput = s.value("soundPerOutput", true).toBool();
     const int buffer = s.value("bufferMs", 150).toInt();
     const int resync = std::clamp(s.value("resyncDelayMs", 250).toInt(), 0, 3000);
     const int fixedRate = std::clamp(s.value("fixedRate", 0).toInt(), 0, 768000);
@@ -2222,8 +2309,11 @@ void DspController::scheduleSave()
 
 void DspController::saveSettings() const
 {
-    if (!sonkore::g_settingsFrozen.load())
+    if (!sonkore::g_settingsFrozen.load()) {
         savePreferences();
+        if (m_soundPerOutput)
+            storeSoundFor(m_deviceKey); // kept current, so a restart does not bring back an older sound for this output
+    }
     saveSession();
 }
 
@@ -2256,6 +2346,7 @@ void DspController::savePreferences() const
     s.setValue("hdcd", m_hdcd);
     s.setValue("resume", m_resume);
     s.setValue("releaseDacWhenIdle", m_releaseWhenIdle);
+    s.setValue("soundPerOutput", m_soundPerOutput);
     s.setValue("bufferMs", static_cast<int>(m_engine.outputConfig().bufferMs));
     s.setValue("resyncDelayMs", static_cast<int>(m_engine.outputConfig().resyncDelayMs));
     s.setValue("fixedRate", static_cast<int>(m_engine.outputConfig().fixedRate));
