@@ -36,7 +36,7 @@ namespace {
 #define SONKORE_AVCODEC(X) X(avcodec_descriptor_get) X(avcodec_get_name) X(avcodec_alloc_context3) \
     X(avcodec_parameters_to_context) X(avcodec_open2) X(avcodec_free_context) X(avcodec_receive_frame) \
     X(avcodec_send_packet) X(avcodec_flush_buffers) X(av_packet_alloc) X(av_packet_free) X(av_packet_unref) \
-    X(avcodec_find_encoder_by_name) X(avcodec_send_frame) X(avcodec_receive_packet)
+    X(avcodec_find_encoder_by_name) X(avcodec_find_decoder_by_name) X(avcodec_send_frame) X(avcodec_receive_packet)
 #define SONKORE_AVFORMAT(X) X(avformat_open_input) X(avformat_find_stream_info) X(av_find_best_stream) \
     X(av_read_frame) X(av_seek_frame) X(avformat_close_input)
 
@@ -525,6 +525,23 @@ std::string version()
     // Built against this ABI; reading the loaded library's version would load
     // FFmpeg just to show it.
     return "(libavcodec " + std::to_string(LIBAVCODEC_VERSION_MAJOR) + ")";
+}
+
+std::vector<std::string> missingDecoders()
+{
+    // Every codec Sonkore relies on FFmpeg for. A packaged FFmpeg that
+    // lacks one (a configure dependency silently dropped it) fails the test
+    // that calls this before it reaches a user.
+    static const char* const wanted[] = {"alac", "aac", "opus", "vorbis", "wavpack", "ape", "tta", "tak", "mpc8",
+                                         "dsd_lsbf", "dsd_msbf", "dsd_lsbf_planar", "dsd_msbf_planar", "dst",
+                                         "wmav2", "wmalossless", "pcm_s24le", "pcm_s32le", "pcm_s16be", "flac", "mp3"};
+    std::vector<std::string> missing;
+    if (!api())
+        return {"(FFmpeg not loaded)"};
+    for (const char* name : wanted)
+        if (!ff().avcodec_find_decoder_by_name(name))
+            missing.emplace_back(name);
+    return missing;
 }
 
 bool dtsEncoderAvailable()

@@ -21,6 +21,9 @@ bool probe(const std::filesystem::path& path, ProbeResult& out, bool wantCover);
 // DTS (Coherent Acoustics, 1411.2 kbit/s, the CD rate) from interleaved s32
 // frames, for the bit-perfect test signal; false when FFmpeg or its encoder
 // is missing.
+// Decoders Sonkore needs that this FFmpeg does not have (empty: all there);
+// one entry when FFmpeg itself cannot be loaded.
+std::vector<std::string> missingDecoders();
 bool dtsEncoderAvailable();
 bool encodeDts(const int32_t* interleaved, std::size_t frames, uint32_t channels, uint32_t rate, std::vector<uint8_t>& out,
                std::string* error);

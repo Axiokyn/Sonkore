@@ -22,6 +22,7 @@ env:
 jobs:
   tests:
     runs-on: ubuntu-24.04
+    needs: appimage # its FFmpeg is tested below, as the user gets it
     steps:
       - uses: actions/checkout@v4
       - name: Tools
@@ -45,6 +46,17 @@ jobs:
         # Inside a private PipeWire (one virtual DAC): the "pipewire" test
         # plays through it and records what the DAC receives.
         run: SONKORE_REQUIRE_PIPEWIRE=1 tests/pipewire-session.sh build/engine_test corpus
+      - uses: actions/download-artifact@v4
+        with:
+          name: appimage
+          path: appimage
+      - name: Engine tests with the AppImage's FFmpeg
+        # The packaged, audio-only FFmpeg (not the system's full one) decodes
+        # every format: a configure option that drops a codec fails here.
+        run: |
+          app=$(ls appimage/*.AppImage); chmod +x "$app"
+          (cd appimage && "../$app" --appimage-extract > /dev/null)
+          LD_LIBRARY_PATH=$PWD/appimage/squashfs-root/usr/lib build/engine_test corpus ffmpegDecoders decoderLengths bitPerfect precision
 
   appimage:
     runs-on: ubuntu-24.04
@@ -209,8 +221,9 @@ jobs:
       - name: Engine tests (no corpus needed)
         shell: bash
         run: |
-          build/engine_test.exe corpus asioConvert asioHost | tee tests.log
-          grep -Eq "^asioConvert +ok" tests.log && grep -Eq "^asioHost +ok" tests.log
+          cp ffmpeg-win64/bin/*.dll build/ # the packaged FFmpeg, next to the test as next to Sonkore.exe
+          build/engine_test.exe corpus asioConvert asioHost ffmpegDecoders | tee tests.log
+          grep -Eq "^asioConvert +ok" tests.log && grep -Eq "^asioHost +ok" tests.log && grep -Eq "^ffmpegDecoders +ok" tests.log
       - name: Package
         shell: pwsh
         run: packaging/windows/package.ps1 -Build build -FFmpeg ffmpeg-win64 -Out dist

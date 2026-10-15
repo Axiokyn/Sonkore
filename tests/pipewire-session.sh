@@ -31,8 +31,11 @@ CONF
 pids=()
 cleanup() {
     for p in "${pids[@]}"; do kill "$p" 2>/dev/null || true; done
-    rm -rf "$dir"
+    # A desktop's gvfs may have mounted itself under the private runtime dir:
+    # what will not go is left behind rather than failing the run.
+    rm -rf "$dir" 2>/dev/null || true
 }
+status=0
 trap cleanup EXIT
 dbus-daemon --session --address="unix:path=$XDG_RUNTIME_DIR/bus" --nofork --nopidfile >/dev/null 2>&1 &
 pids+=($!)
@@ -47,4 +50,13 @@ for _ in $(seq 50); do
     pw-cli ls Node 2>/dev/null | grep -q '"test-dac"' && break
     sleep 0.2
 done
-"$@"
+# On a machine with sound cards WirePlumber would pick one of them as the
+# default sink; the test talks to the default, so it must be the virtual DAC.
+dac=$(pw-cli ls Node | awk '/^[[:space:]]*id /{id=$2} /node.name = "test-dac"/{print id}' | tr -d ',' | head -1)
+for _ in $(seq 25); do # the cards keep showing up for a while: insist until it holds
+    [ -n "$dac" ] && wpctl set-default "$dac" 2>/dev/null || true
+    wpctl inspect @DEFAULT_AUDIO_SINK@ 2>/dev/null | grep -q 'node.name = "test-dac"' && break
+    sleep 0.2
+done
+"$@" || status=$?
+exit $status

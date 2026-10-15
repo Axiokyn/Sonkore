@@ -10,6 +10,9 @@
 #include "Decoder.hpp"
 #include "DsdDecoder.hpp"
 #include "DsdToPcm.hpp"
+#if defined(SONKORE_HAVE_FFMPEG)
+#include "FfmpegDecoder.hpp"
+#endif
 #include "TestSignals.hpp"
 #include "LinearPhaseEq.hpp"
 #include "PipeWireOutput.hpp"
@@ -917,6 +920,22 @@ void dst()
 
 // The test signals: made on the spot, read back through the engine's
 // decoders, and carrying what they say they carry.
+// The FFmpeg that is found at run time has every decoder Sonkore relies on
+// (run against the packaged libraries in CI: a configure option that drops
+// one without a word, as --disable-swresample did with Opus, fails here).
+void ffmpegDecoders()
+{
+#if defined(SONKORE_HAVE_FFMPEG)
+    const auto missing = sonkore::ffmpeg::missingDecoders();
+    std::string list;
+    for (const auto& m : missing)
+        list += (list.empty() ? "" : ", ") + m;
+    CHECK_MSG(missing.empty(), "FFmpeg %s lacks: %s", sonkore::ffmpeg::version().c_str(), list.c_str());
+#else
+    std::printf("  (built without FFmpeg)\n");
+#endif
+}
+
 void testSignals()
 {
     namespace ts = testsignals;
@@ -1950,6 +1969,7 @@ int main(int argc, char** argv)
     const std::map<std::string, std::function<void()>> tests = {
         {"decoderLengths", decoderLengths},
         {"asioConvert", asioConvert},
+        {"ffmpegDecoders", ffmpegDecoders},
 #if defined(_WIN32)
         {"asioHost", asioHost},
 #endif
