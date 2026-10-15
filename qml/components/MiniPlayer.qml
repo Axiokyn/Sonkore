@@ -96,9 +96,18 @@ Rectangle {
                                           sampleRate: 66, bits: 54, channels: 60, bitrate: 82, fileSize: 64,
                                           added: 84, modified: 84, favorite: 26 })
     readonly property int columnGap: 8
+    // The row numbers' column: as wide as the list's longest number ("1234.").
+    readonly property real numberWidth: Math.max(22, Math.ceil(numberMetrics.advanceWidth) + 2)
+    TextMetrics {
+        id: numberMetrics
+        font.family: App.fontFamily.length > 0 ? App.fontFamily : Qt.application.font.family
+        font.pixelSize: Theme.fontSmall
+        font.features: { "tnum": 1 }
+        text: "8".repeat(String(Math.max(queueList.count, mini.showingQueue ? DspController.queue.length : 0)).length) + "."
+    }
     // Row width left for the columns: the frame's and the row's margins, the
     // number, the scroll bar.
-    readonly property real columnsSpace: listFrame.width - 8 - 12 - 30 - columnGap
+    readonly property real columnsSpace: listFrame.width - 8 - 12 - numberWidth - columnGap
                                          - (listCover > 0 ? listCover + columnGap : 0)
                                          - (queueBar.scrollable ? queueBar.width + 2 : 0)
     // The chosen columns that fit, in their order. The first (at least
@@ -1134,7 +1143,7 @@ Rectangle {
                 x: 6
                 anchors.verticalCenter: parent.verticalCenter
                 spacing: mini.columnGap
-                Label { width: 30; text: "#"; color: Theme.textDim; font.pixelSize: Theme.fontSmall; font.weight: Font.Medium }
+                Label { width: mini.numberWidth; horizontalAlignment: Text.AlignRight; text: "#"; color: Theme.textDim; font.pixelSize: Theme.fontSmall; font.weight: Font.Medium }
                 Item { visible: mini.listCover > 0; width: mini.listCover; height: 1 } // over the covers
                 Repeater {
                     model: mini.shownColumns
@@ -1301,7 +1310,8 @@ Rectangle {
                     spacing: mini.columnGap
                     Label {
                         anchors.verticalCenter: parent.verticalCenter
-                        width: 30
+                        width: mini.numberWidth
+                        horizontalAlignment: Text.AlignRight
                         // a queue row keeps its place in the queue while searching
                         text: ((mini.showingQueue ? line.model.listIndex : line.index) + 1) + "."
                         color: line.current ? Theme.accent : Theme.textFaint
