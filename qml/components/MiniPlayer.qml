@@ -345,7 +345,7 @@ Rectangle {
                     Label {
                         id: artistLabel
                         Layout.fillWidth: true
-                        text: mini.track.artist || (mini.hasTrack ? "" : qsTr("Pick something from your library"))
+                        text: mini.hasTrack ? (mini.track.artist || qsTr("Unknown artist")) : qsTr("Pick something from your library")
                         visible: text.length > 0
                         elide: Text.ElideRight
                         color: Theme.textDim

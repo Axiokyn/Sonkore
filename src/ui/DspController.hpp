@@ -377,6 +377,8 @@ signals:
     void outputStatusChanged();
     void trackFinished();
     void errorOccurred();
+    // The selected direct output belongs to `holder`, which refused to give it up.
+    void outputBusy(const QString& holder);
     void seeked(double seconds);
     void preferencesChanged();
     void visualizerActiveChanged();

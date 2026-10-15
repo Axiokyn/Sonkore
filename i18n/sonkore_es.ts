@@ -11,6 +11,10 @@
         <translation>%1 álbumes</translation>
     </message>
     <message>
+        <source>Unknown artist</source>
+        <translation>Artista desconocido</translation>
+    </message>
+    <message>
         <source>Back to albums</source>
         <translation>Volver a los álbumes</translation>
     </message>
@@ -226,10 +230,6 @@
     <message>
         <source>Follows the desktop's sound settings</source>
         <translation>Sigue la configuración de sonido del escritorio</translation>
-    </message>
-    <message>
-        <source>The DAC is in use by %1 and it did not let go of it.</source>
-        <translation>El DAC lo está usando %1 y no lo liberó.</translation>
     </message>
     <message>
         <source>1 kHz tone · %1 kHz</source>
@@ -1028,6 +1028,18 @@
         <translation>No hay archivos de audio en esa carpeta</translation>
     </message>
     <message>
+        <source>%1 has the DAC and will not let go of it</source>
+        <translation>%1 tiene el DAC y no lo suelta</translation>
+    </message>
+    <message>
+        <source>Retry</source>
+        <translation>Reintentar</translation>
+    </message>
+    <message>
+        <source>Use the system output</source>
+        <translation>Usar la salida del sistema</translation>
+    </message>
+    <message>
         <source>Nothing playing</source>
         <translation>No se está reproduciendo nada</translation>
     </message>
@@ -1234,6 +1246,10 @@
         <translation>Tono / tempo</translation>
     </message>
     <message>
+        <source>Unknown artist</source>
+        <translation>Artista desconocido</translation>
+    </message>
+    <message>
         <source>Volume · %1</source>
         <translation>Volumen · %1</translation>
     </message>
@@ -1354,6 +1370,10 @@
     <message>
         <source>Pick something from your library</source>
         <translation>Elige algo de tu biblioteca</translation>
+    </message>
+    <message>
+        <source>Unknown artist</source>
+        <translation>Artista desconocido</translation>
     </message>
     <message>
         <source>Shuffle</source>
@@ -3390,6 +3410,12 @@ Haz doble clic en cualquier pista, álbum o lista — o arrastra pistas aquí.</
         <translation>Haz clic en el corazón de cualquier pista para guardarla aquí.</translation>
     </message>
     <message>
+        <source>Add a music folder — it's watched and kept in sync automatically.
+FLAC, WAV, MP3, ALAC, AAC, Opus, DSD, CUE sheets and more. You can also drop files here.</source>
+        <translation>Agrega una carpeta de música: se vigila y se mantiene sincronizada automáticamente.
+FLAC, WAV, MP3, ALAC, AAC, Opus, DSD, hojas CUE y más. También puedes soltar archivos aquí.</translation>
+    </message>
+    <message>
         <source>Add music folder</source>
         <translation>Agregar carpeta de música</translation>
     </message>
@@ -3400,12 +3426,6 @@ Haz doble clic en cualquier pista, álbum o lista — o arrastra pistas aquí.</
     <message>
         <source>Your library is empty</source>
         <translation>Tu biblioteca está vacía</translation>
-    </message>
-    <message>
-        <source>Add a music folder — it's watched and kept in sync automatically.
-FLAC, WAV and MP3 are supported. You can also drop files here.</source>
-        <translation>Agrega una carpeta de música: se vigila y se mantiene sincronizada automáticamente.
-Se admiten FLAC, WAV y MP3. También puedes soltar archivos aquí.</translation>
     </message>
     <message>
         <source>No tracks match “%1”</source>

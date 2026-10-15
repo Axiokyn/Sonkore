@@ -62,7 +62,6 @@ T = {
 "System media controls (MPRIS)": ("Controles multimedia del sistema (MPRIS)", "Controles de mídia do sistema (MPRIS)", "Contrôles multimédia du système (MPRIS)", "System-Mediensteuerung (MPRIS)", "Controlli multimediali di sistema (MPRIS)"),
 "Taskbar buttons": ("Botones en la barra de tareas", "Botões na barra de tarefas", "Boutons de la barre des tâches", "Taskleisten-Schaltflächen", "Pulsanti nella barra delle applicazioni"),
 "Tempo": ("Tempo", "Tempo", "Tempo", "Tempo", "Tempo"),
-"The DAC is in use by %1 and it did not let go of it.": ("El DAC lo está usando %1 y no lo liberó.", "O DAC está em uso por %1, que não o liberou.", "Le DAC est utilisé par %1, qui ne l'a pas libéré.", "Der DAC wird von %1 verwendet und wurde nicht freigegeben.", "Il DAC è in uso da %1, che non l'ha rilasciato."),
 "The queue is empty.\nDouble-click any track, album or playlist — or drag tracks here.": (
     "La cola está vacía.\nHaz doble clic en cualquier pista, álbum o lista — o arrastra pistas aquí.",
     "A fila está vazia.\nClique duas vezes em qualquer faixa, álbum ou playlist — ou arraste faixas para cá.",

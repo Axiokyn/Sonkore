@@ -139,7 +139,7 @@ Item {
         }
         Label {
             Layout.alignment: Qt.AlignHCenter
-            text: qsTr("Add a music folder — it's watched and kept in sync automatically.\nFLAC, WAV and MP3 are supported. You can also drop files here.")
+            text: qsTr("Add a music folder — it's watched and kept in sync automatically.\nFLAC, WAV, MP3, ALAC, AAC, Opus, DSD, CUE sheets and more. You can also drop files here.")
             horizontalAlignment: Text.AlignHCenter
             color: Theme.textDim
             font.pixelSize: Theme.fontBody

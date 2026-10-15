@@ -23,12 +23,12 @@ T = {
 "About": ("Acerca de", "Sobre", "À propos", "Über", "Informazioni"),
 "Accent colour": ("Color de acento", "Cor de destaque", "Couleur d'accent", "Akzentfarbe", "Colore di accento"),
 "Add a music folder to see your albums": ("Agrega una carpeta de música para ver tus álbumes", "Adicione uma pasta de música para ver seus álbuns", "Ajoutez un dossier de musique pour voir vos albums", "Füge einen Musikordner hinzu, um deine Alben zu sehen", "Aggiungi una cartella musicale per vedere i tuoi album"),
-"Add a music folder — it's watched and kept in sync automatically.\nFLAC, WAV and MP3 are supported. You can also drop files here.": (
-    "Agrega una carpeta de música: se vigila y se mantiene sincronizada automáticamente.\nSe admiten FLAC, WAV y MP3. También puedes soltar archivos aquí.",
-    "Adicione uma pasta de música: ela é monitorada e sincronizada automaticamente.\nFLAC, WAV e MP3 são suportados. Você também pode soltar arquivos aqui.",
-    "Ajoutez un dossier de musique : il est surveillé et synchronisé automatiquement.\nFLAC, WAV et MP3 sont pris en charge. Vous pouvez aussi déposer des fichiers ici.",
-    "Füge einen Musikordner hinzu – er wird überwacht und automatisch synchron gehalten.\nFLAC, WAV und MP3 werden unterstützt. Du kannst Dateien auch hier ablegen.",
-    "Aggiungi una cartella musicale: viene monitorata e sincronizzata automaticamente.\nSono supportati FLAC, WAV e MP3. Puoi anche trascinare i file qui."),
+"Add a music folder — it's watched and kept in sync automatically.\nFLAC, WAV, MP3, ALAC, AAC, Opus, DSD, CUE sheets and more. You can also drop files here.": (
+    "Agrega una carpeta de música: se vigila y se mantiene sincronizada automáticamente.\nFLAC, WAV, MP3, ALAC, AAC, Opus, DSD, hojas CUE y más. También puedes soltar archivos aquí.",
+    "Adicione uma pasta de música: ela é monitorada e sincronizada automaticamente.\nFLAC, WAV, MP3, ALAC, AAC, Opus, DSD, folhas CUE e mais. Você também pode soltar arquivos aqui.",
+    "Ajoutez un dossier de musique : il est surveillé et synchronisé automatiquement.\nFLAC, WAV, MP3, ALAC, AAC, Opus, DSD, fiches CUE et plus. Vous pouvez aussi déposer des fichiers ici.",
+    "Füge einen Musikordner hinzu – er wird überwacht und automatisch synchron gehalten.\nFLAC, WAV, MP3, ALAC, AAC, Opus, DSD, CUE-Sheets und mehr. Du kannst Dateien auch hier ablegen.",
+    "Aggiungi una cartella musicale: viene monitorata e sincronizzata automaticamente.\nFLAC, WAV, MP3, ALAC, AAC, Opus, DSD, fogli CUE e altro. Puoi anche trascinare i file qui."),
 "Add audio files": ("Agregar archivos de audio", "Adicionar arquivos de áudio", "Ajouter des fichiers audio", "Audiodateien hinzufügen", "Aggiungi file audio"),
 "Add band": ("Agregar banda", "Adicionar banda", "Ajouter une bande", "Band hinzufügen", "Aggiungi banda"),
 "Add files": ("Agregar archivos", "Adicionar arquivos", "Ajouter des fichiers", "Dateien hinzufügen", "Aggiungi file"),

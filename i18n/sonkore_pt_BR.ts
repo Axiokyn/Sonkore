@@ -11,6 +11,10 @@
         <translation>%1 álbuns</translation>
     </message>
     <message>
+        <source>Unknown artist</source>
+        <translation>Artista desconhecido</translation>
+    </message>
+    <message>
         <source>Back to albums</source>
         <translation>Voltar aos álbuns</translation>
     </message>
@@ -226,10 +230,6 @@
     <message>
         <source>Follows the desktop's sound settings</source>
         <translation>Segue as configurações de som da área de trabalho</translation>
-    </message>
-    <message>
-        <source>The DAC is in use by %1 and it did not let go of it.</source>
-        <translation>O DAC está em uso por %1, que não o liberou.</translation>
     </message>
     <message>
         <source>1 kHz tone · %1 kHz</source>
@@ -1028,6 +1028,18 @@
         <translation>Não há arquivos de áudio nessa pasta</translation>
     </message>
     <message>
+        <source>%1 has the DAC and will not let go of it</source>
+        <translation>%1 está com o DAC e não o libera</translation>
+    </message>
+    <message>
+        <source>Retry</source>
+        <translation>Tentar de novo</translation>
+    </message>
+    <message>
+        <source>Use the system output</source>
+        <translation>Usar a saída do sistema</translation>
+    </message>
+    <message>
         <source>Nothing playing</source>
         <translation>Nada tocando</translation>
     </message>
@@ -1234,6 +1246,10 @@
         <translation>Tom / tempo</translation>
     </message>
     <message>
+        <source>Unknown artist</source>
+        <translation>Artista desconhecido</translation>
+    </message>
+    <message>
         <source>Volume · %1</source>
         <translation>Volume · %1</translation>
     </message>
@@ -1354,6 +1370,10 @@
     <message>
         <source>Pick something from your library</source>
         <translation>Escolha algo da sua biblioteca</translation>
+    </message>
+    <message>
+        <source>Unknown artist</source>
+        <translation>Artista desconhecido</translation>
     </message>
     <message>
         <source>Shuffle</source>
@@ -3390,6 +3410,12 @@ Clique duas vezes em qualquer faixa, álbum ou playlist — ou arraste faixas pa
         <translation>Clique no coração de qualquer faixa para guardá-la aqui.</translation>
     </message>
     <message>
+        <source>Add a music folder — it's watched and kept in sync automatically.
+FLAC, WAV, MP3, ALAC, AAC, Opus, DSD, CUE sheets and more. You can also drop files here.</source>
+        <translation>Adicione uma pasta de música: ela é monitorada e sincronizada automaticamente.
+FLAC, WAV, MP3, ALAC, AAC, Opus, DSD, folhas CUE e mais. Você também pode soltar arquivos aqui.</translation>
+    </message>
+    <message>
         <source>Add music folder</source>
         <translation>Adicionar pasta de música</translation>
     </message>
@@ -3400,12 +3426,6 @@ Clique duas vezes em qualquer faixa, álbum ou playlist — ou arraste faixas pa
     <message>
         <source>Your library is empty</source>
         <translation>Sua biblioteca está vazia</translation>
-    </message>
-    <message>
-        <source>Add a music folder — it's watched and kept in sync automatically.
-FLAC, WAV and MP3 are supported. You can also drop files here.</source>
-        <translation>Adicione uma pasta de música: ela é monitorada e sincronizada automaticamente.
-FLAC, WAV e MP3 são suportados. Você também pode soltar arquivos aqui.</translation>
     </message>
     <message>
         <source>No tracks match “%1”</source>

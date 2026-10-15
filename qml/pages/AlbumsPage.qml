@@ -111,7 +111,7 @@ Item {
                         }
                         Label {
                             width: parent.width
-                            text: cell.model.artist + (cell.model.year > 0 ? " · " + cell.model.year : "")
+                            text: (cell.model.artist || qsTr("Unknown artist")) + (cell.model.year > 0 ? " · " + cell.model.year : "")
                             elide: Text.ElideRight
                             color: Theme.textDim
                             font.pixelSize: Theme.fontSmall + 1
@@ -160,7 +160,7 @@ Item {
                         font.weight: Font.Bold
                     }
                     Label {
-                        text: page.album.artist || ""
+                        text: page.album.artist || qsTr("Unknown artist")
                         color: Theme.text
                         font.pixelSize: Theme.fontTitle + 1
                         font.weight: Font.DemiBold

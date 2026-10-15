@@ -32,6 +32,7 @@
 #include <QStandardPaths>
 #include <QRandomGenerator>
 #include <QSettings>
+#include <QCoreApplication>
 #include <QThread>
 
 #include <algorithm>
@@ -1034,8 +1035,16 @@ bool DspController::reserveOutput(bool* justTaken)
     if (card < 0)
         return true;
     QString holder;
-    if (!m_reservation.acquire(card, &holder)) {
-        reportError(tr("The DAC is in use by %1 and it did not let go of it.").arg(holder));
+    bool ok = m_reservation.acquire(card, &holder);
+    // Held by an earlier Sonkore that is still closing (it answered the
+    // release request but has not dropped the name yet): wait for it a little
+    // rather than telling the user that Sonkore is in its own way.
+    for (int i = 0; !ok && i < 8 && holder == QCoreApplication::applicationName(); ++i) {
+        QThread::msleep(250);
+        ok = m_reservation.acquire(card, &holder);
+    }
+    if (!ok) {
+        emit outputBusy(holder);
         return false;
     }
     *justTaken = true;

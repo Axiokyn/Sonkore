@@ -36,4 +36,7 @@ T = {
     "Volume · %1",
     "Lautstärke · %1",
     "Volume · %1"),
+"%1 has the DAC and will not let go of it": ("%1 tiene el DAC y no lo suelta", "%1 está com o DAC e não o libera", "%1 occupe le DAC et ne le libère pas", "%1 belegt den DAC und gibt ihn nicht frei", "%1 ha il DAC e non lo rilascia"),
+"Retry": ("Reintentar", "Tentar de novo", "Réessayer", "Erneut versuchen", "Riprova"),
+"Use the system output": ("Usar la salida del sistema", "Usar a saída do sistema", "Utiliser la sortie du système", "Systemausgabe verwenden", "Usa l'uscita di sistema"),
 }

@@ -119,6 +119,8 @@ TrackMeta TrackMeta::fromJson(const QJsonObject& o)
     t.path = o.value("p").toString();
     t.title = o.value("t").toString();
     t.artist = o.value("a").toString();
+    if (t.artist == QLatin1String("Unknown artist")) // caches written before 1.3.1 stored the English fallback
+        t.artist.clear();
     t.album = o.value("al").toString();
     t.albumArtist = o.value("aa").toString();
     t.genre = o.value("g").toString();
@@ -724,8 +726,6 @@ bool Metadata::read(const QString& path, TrackMeta& out)
         out.title = fi.completeBaseName();
     if (out.album.isEmpty())
         out.album = fi.dir().dirName();
-    if (out.artist.isEmpty() && out.albumArtist.isEmpty())
-        out.artist = QStringLiteral("Unknown artist");
     if (out.codec.isEmpty())
         out.codec = fi.suffix().toUpper();
     return ok;

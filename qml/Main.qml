@@ -384,9 +384,13 @@ ApplicationWindow {
         Qt.callLater(AppActions.revealPlayingRequested)
     }
 
-    function showToast(text) {
+    // `actions`: up to two {text, run} buttons after the message; a toast
+    // with actions stays longer and goes once one is pressed.
+    function showToast(text, actions) {
         toastLabel.text = text
+        toastActions.model = actions || []
         toast.opacity = 1
+        toastTimer.interval = actions && actions.length > 0 ? 8000 : 3200
         toastTimer.restart()
     }
 
@@ -454,6 +458,12 @@ ApplicationWindow {
         target: DspController
         function onErrorOccurred() { if (DspController.lastError.length > 0) window.showToast(DspController.lastError) }
         function onOutputTakenByOther() { window.showToast(qsTr("Another app asked for the DAC — playback paused")) }
+        function onOutputBusy(holder) {
+            window.showToast(qsTr("%1 has the DAC and will not let go of it").arg(holder), [
+                { text: qsTr("Retry"), run: function() { DspController.selectOutputDevice(DspController.currentDeviceKey); DspController.play() } },
+                { text: qsTr("Use the system output"), run: function() { DspController.selectOutputDevice(""); DspController.play() } }
+            ])
+        }
         function onOutputDevicesHotplugged(added, removed) {
             if (added.length > 0)
                 window.showToast(qsTr("Sound device connected: %1").arg(added.join(", ")))
@@ -1200,20 +1210,33 @@ ApplicationWindow {
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.bottom: nowPlaying.top
         anchors.bottomMargin: 16
-        width: Math.min(toastLabel.implicitWidth + 32, window.width - 80)
-        height: toastLabel.implicitHeight + 18
+        width: Math.min(toastRow.implicitWidth + 32, window.width - 80)
+        height: toastRow.implicitHeight + 18
         radius: Theme.squareShapes ? 3 : height / 2
         color: Theme.dark ? "#f2f2f4" : "#1d1d1f"
         opacity: 0
         visible: opacity > 0
         Behavior on opacity { NumberAnimation { duration: 180 } }
-        Label {
-            id: toastLabel
+        RowLayout {
+            id: toastRow
             anchors.centerIn: parent
-            width: Math.min(implicitWidth, window.width - 112)
-            elide: Text.ElideRight
-            color: Theme.dark ? "#111111" : "#ffffff"
-            font.weight: Font.Medium
+            spacing: 10
+            Label {
+                id: toastLabel
+                Layout.maximumWidth: window.width - 112 - toastActions.implicitWidth
+                elide: Text.ElideRight
+                color: Theme.dark ? "#111111" : "#ffffff"
+                font.weight: Font.Medium
+            }
+            Repeater {
+                id: toastActions
+                delegate: PillButton {
+                    required property var modelData
+                    text: modelData.text
+                    primary: true
+                    onClicked: { toast.opacity = 0; modelData.run() }
+                }
+            }
         }
         Timer {
             id: toastTimer

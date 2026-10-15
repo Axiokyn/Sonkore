@@ -125,7 +125,8 @@ Rectangle {
                 }
                 Label {
                     Layout.fillWidth: true
-                    text: bar.track.artist ? bar.track.artist + (bar.track.album ? "  ·  " + bar.track.album : "") : qsTr("Pick something from your library")
+                    text: DspController.currentPath.length === 0 ? qsTr("Pick something from your library")
+                        : (bar.track.artist || qsTr("Unknown artist")) + (bar.track.album ? "  ·  " + bar.track.album : "")
                     elide: Text.ElideRight
                     color: Theme.textDim
                     font.pixelSize: Theme.fontSmall + 1
