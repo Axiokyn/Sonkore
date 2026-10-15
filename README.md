@@ -11,7 +11,7 @@ En [Releases](https://github.com/Axiokyn/Sonkore/releases) están las compilacio
 | **Linux** x86_64 (cualquier distro con glibc 2.34+: Ubuntu 22.04+, Debian 12+, Fedora, Arch, openSUSE…) | `Sonkore-<versión>-x86_64.AppImage` | `chmod +x Sonkore-*.AppImage` y abrirlo. Trae Qt, los módulos QML y FFmpeg adentro |
 | **Windows** 10/11 de 64 bits | `Sonkore-<versión>-windows-x64.zip` | Descomprimir y abrir `Sonkore.exe`. Trae Qt, el runtime de Visual C++ y FFmpeg adentro |
 
-Cada archivo tiene al lado su `.sha256`. El AppImage se prueba en cada compilación sobre instalaciones limpias de Ubuntu 22.04 y 24.04, Debian 12, Fedora, Arch y openSUSE Tumbleweed (todas sus bibliotecas se resuelven y el reproductor arranca), y el paquete de Windows se compila con MSVC y se abre en Windows. Las compilaciones las hace GitHub Actions (`.github/workflows/build.yml`) desde el código de esta página, y cada tag `v*` publica una release.
+Cada archivo tiene al lado su `.sha256`. Los paquetes se compilan desde el código de esta página: el AppImage dentro de un contenedor (`packaging/appimage/build.sh`) y el de Windows con las herramientas de Microsoft contra Qt para MSVC. El workflow `.github/workflows/build.yml` hace lo mismo en GitHub Actions y, además, prueba el AppImage sobre instalaciones limpias de Ubuntu 22.04 y 24.04, Debian 12, Fedora, Arch y openSUSE Tumbleweed.
 
 ## Funciones
 
