@@ -2056,6 +2056,12 @@ void pipewire()
         }
         dsp.unload();
     }
+    // WirePlumber's ".N" suffix on a node made again: the same output.
+    CHECK(PipeWireOutput::baseSinkName("alsa_output.usb-Topping_DX1-00.HiFi__Headphones__sink.3")
+          == "alsa_output.usb-Topping_DX1-00.HiFi__Headphones__sink");
+    CHECK(PipeWireOutput::baseSinkName("alsa_output.pci-0000_0a_00.4.analog-stereo") == "alsa_output.pci-0000_0a_00.4.analog-stereo");
+    CHECK(PipeWireOutput::baseSinkName("test-dac") == "test-dac");
+    CHECK(PipeWireOutput::baseSinkName("sink.") == "sink.");
     // A filter program (Easy Effects, a loopback) puts its own sink in front
     // of the DAC and makes it the default; when it closes, the stream goes
     // back to the DAC. The engine's status names the sink really being fed,

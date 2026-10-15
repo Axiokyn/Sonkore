@@ -244,6 +244,10 @@
         <translation>Folgt den Toneinstellungen des Desktops</translation>
     </message>
     <message>
+        <source>Given back to PipeWire when chosen</source>
+        <translation>Wird bei Auswahl an PipeWire zurückgegeben</translation>
+    </message>
+    <message>
         <source>1 kHz tone · %1 kHz</source>
         <translation>1-kHz-Ton · %1 kHz</translation>
     </message>

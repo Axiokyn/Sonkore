@@ -333,14 +333,24 @@ std::vector<DSPManager::DeviceInfo> DSPManager::playbackDevices()
     m_pipewireNative = false;
     if (!m_nullBackend)
         for (const PipeWireOutput::Sink& sink : PipeWireOutput::sinks()) {
+            m_pipewireNative = true;
+            // WirePlumber's stand-in while no card is available (Sonkore
+            // holding the only one, for instance): it plays to nothing.
+            if (sink.name == "auto_null")
+                continue;
             DeviceEntry e;
             e.pw = true;
             e.pipewire = sink.name;
             e.name = sink.description;
-            const std::string key = "pipewire|" + sink.name;
+            // Keyed without WirePlumber's ".N" suffix, which changes when the
+            // node is made again: the saved output and its sound stay its own.
+            std::string key = "pipewire|" + PipeWireOutput::baseSinkName(sink.name);
+            if (m_devices.count(key))
+                key = "pipewire|" + sink.name; // two sinks of the same name: the second as it is
             m_devices[key] = e;
-            result.push_back({key, "PipeWire", sink.description, sink.name, sink.isDefault, false});
-            m_pipewireNative = true;
+            DeviceInfo info{key, "PipeWire", sink.description, sink.name, sink.isDefault, false};
+            info.alsaCard = sink.alsaCard;
+            result.push_back(info);
         }
 
     if (m_lazyServers && !m_pipewireNative) {
@@ -420,11 +430,15 @@ bool DSPManager::resolveDevice(const std::string& key, DeviceEntry& out)
         auto it = m_devices.find(key);
         if (it == m_devices.end() && m_pipewireNative && key.rfind("pulse|", 0) == 0)
             it = m_devices.find("pipewire|" + key.substr(6)); // the same sink, natively
+        if (it == m_devices.end() && key.rfind("pipewire|", 0) == 0) // saved with a ".N" suffix
+            it = m_devices.find("pipewire|" + PipeWireOutput::baseSinkName(key.substr(9)));
         if (it == m_devices.end() && m_lazyServers && key.rfind("jack|", 0) == 0)
             addBackend(ma_backend_jack); // a JACK device saved in the settings
         if (it == m_devices.end()) {
             playbackDevices(); // hot-plugged since the last enumeration?
             it = m_devices.find(key);
+            if (it == m_devices.end() && key.rfind("pipewire|", 0) == 0)
+                it = m_devices.find("pipewire|" + PipeWireOutput::baseSinkName(key.substr(9)));
         }
         if (it != m_devices.end()) {
             out = it->second;

@@ -143,3 +143,13 @@ T.update({
 "Cover Art Archive did not answer: %1": ("Cover Art Archive no respondió: %1", "O Cover Art Archive não respondeu: %1", "Cover Art Archive n'a pas répondu : %1", "Cover Art Archive hat nicht geantwortet: %1", "Cover Art Archive non ha risposto: %1"),
 "LRCLIB did not answer: %1": ("LRCLIB no respondió: %1", "O LRCLIB não respondeu: %1", "LRCLIB n'a pas répondu : %1", "LRCLIB hat nicht geantwortet: %1", "LRCLIB non ha risposto: %1"),
 })
+
+# The DAC's PipeWire output kept in the menu while Sonkore holds the card (1.3.4).
+T.update({
+"Given back to PipeWire when chosen": (
+    "Se devuelve a PipeWire al elegirla",
+    "Devolvido ao PipeWire ao escolher",
+    "Rendu à PipeWire une fois choisi",
+    "Wird bei Auswahl an PipeWire zurückgegeben",
+    "Restituito a PipeWire quando scelto"),
+})

@@ -244,6 +244,10 @@
         <translation>Segue as configurações de som da área de trabalho</translation>
     </message>
     <message>
+        <source>Given back to PipeWire when chosen</source>
+        <translation>Devolvido ao PipeWire ao escolher</translation>
+    </message>
+    <message>
         <source>1 kHz tone · %1 kHz</source>
         <translation>Tom de 1 kHz · %1 kHz</translation>
     </message>

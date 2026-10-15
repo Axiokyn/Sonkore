@@ -8,6 +8,7 @@
 #include <spa/pod/iter.h>
 
 #include <dlfcn.h>
+#include <unistd.h>
 
 #include <algorithm>
 #include <atomic>
@@ -190,7 +191,36 @@ struct SinkNode {
     uint32_t id = SPA_ID_INVALID;
     std::string name, description;
     bool hardware = false; // a device's node (ALSA...): its volume may be split between hardware and software
+    int alsaCard = -1;     // the ALSA card behind it, -1 for none
 };
+
+// The ALSA card number a node stands for. The registry announces only some
+// properties: "object.path" ("alsa:acp:DX1:0:playback", "alsa:pcm:1:hw:1,0:..."),
+// whose card id leads to the number through /proc/asound/<id> -> card<N>.
+int alsaCardOf(const spa_dict* props)
+{
+    for (const char* key : {"alsa.card", "api.alsa.pcm.card"})
+        if (const char* v = spa_dict_lookup(props, key); v && *v >= '0' && *v <= '9')
+            return std::atoi(v);
+    const char* path = spa_dict_lookup(props, PW_KEY_OBJECT_PATH);
+    if (!path || std::strncmp(path, "alsa:", 5) != 0)
+        return -1;
+    std::string rest = path + 5;            // "acp:DX1:0:playback"
+    const auto colon = rest.find(':');
+    if (colon == std::string::npos)
+        return -1;
+    rest = rest.substr(colon + 1);         // "DX1:0:playback"
+    const std::string id = rest.substr(0, rest.find(':'));
+    if (id.empty())
+        return -1;
+    if (std::all_of(id.begin(), id.end(), [](char ch) { return ch >= '0' && ch <= '9'; }))
+        return std::atoi(id.c_str());
+    char target[64] = {};
+    const ssize_t n = readlink(("/proc/asound/" + id).c_str(), target, sizeof(target) - 1);
+    if (n > 4 && std::strncmp(target, "card", 4) == 0)
+        return std::atoi(target + 4);
+    return -1;
+}
 
 struct LinkInfo {
     uint32_t id = SPA_ID_INVALID;
@@ -333,7 +363,7 @@ struct Connection {
             if (!cls || !name || std::strcmp(cls, "Audio/Sink") != 0)
                 return;
             const char* desc = spa_dict_lookup(props, PW_KEY_NODE_DESCRIPTION);
-            c->sinks.push_back({id, name, desc ? desc : name, spa_dict_lookup(props, PW_KEY_DEVICE_ID) != nullptr});
+            c->sinks.push_back({id, name, desc ? desc : name, spa_dict_lookup(props, PW_KEY_DEVICE_ID) != nullptr, alsaCardOf(props)});
             if (c->synced) {
                 // The sink asked for by name is back: its volume again.
                 if (!c->followDefault && c->watchedName == name && c->watchedSink == SPA_ID_INVALID) {
@@ -600,6 +630,13 @@ struct Connection {
                 id = s.id;
                 hardware = s.hardware;
             }
+        if (id == SPA_ID_INVALID && !name.empty()) // the same sink under another suffix (".2", ".3"...)
+            for (const SinkNode& s : sinks)
+                if (PipeWireOutput::baseSinkName(s.name) == PipeWireOutput::baseSinkName(name)) {
+                    id = s.id;
+                    hardware = s.hardware;
+                    break;
+                }
         if (id == watchedSink)
             return;
         unwatchSink();
@@ -820,7 +857,7 @@ std::vector<PipeWireOutput::Sink> PipeWireOutput::sinks()
         return result;
     c.lock();
     for (const SinkNode& s : c.sinks)
-        result.push_back({s.name, s.description, s.name == c.defaultSink});
+        result.push_back({s.name, s.description, s.name == c.defaultSink, s.alsaCard});
     c.unlock();
     c.disconnect();
     return result;
@@ -1077,7 +1114,7 @@ std::vector<PipeWireOutput::Sink> PipeWireOutput::currentSinks() const
         return result;
     c.lock();
     for (const SinkNode& s : c.sinks)
-        result.push_back({s.name, s.description, s.name == c.defaultSink});
+        result.push_back({s.name, s.description, s.name == c.defaultSink, s.alsaCard});
     c.unlock();
     return result;
 }
@@ -1232,5 +1269,18 @@ std::string PipeWireOutput::watchedSinkDescription() const { return {}; }
 void PipeWireOutput::setSinkChangedCallback(std::function<void()>) {}
 
 #endif
+
+std::string PipeWireOutput::baseSinkName(const std::string& name)
+{
+    // WirePlumber names a node "x.2", "x.3"... when "x" was taken a moment
+    // before (the card handed back while the old node was still going away).
+    const auto dot = name.find_last_of('.');
+    if (dot == std::string::npos || dot + 1 == name.size())
+        return name;
+    for (std::size_t i = dot + 1; i < name.size(); ++i)
+        if (name[i] < '0' || name[i] > '9')
+            return name;
+    return name.substr(0, dot);
+}
 
 } // namespace sonkore

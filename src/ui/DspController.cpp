@@ -1,4 +1,6 @@
 #include "DspController.hpp"
+
+#include "PipeWireOutput.hpp"
 #include "TrackSort.hpp"
 #include "SettingsLock.hpp"
 #include "AppPaths.hpp"
@@ -37,6 +39,7 @@
 #include <QRandomGenerator>
 #include <QSettings>
 #include <QCoreApplication>
+#include <QElapsedTimer>
 #include <QThread>
 
 #include <algorithm>
@@ -957,8 +960,9 @@ void DspController::refreshDevices()
         {"key", QString()}, {"backend", defaultGroup}, {"name", tr("System default")},
         {"detail", tr("Follows the desktop's sound settings")}, {"isDefault", true}, {"direct", false},
     };
+    QHash<int, QVariantList> cardSinks;
     for (const auto& d : devices) {
-        m_devices << QVariantMap{
+        const QVariantMap entry{
             {"key", QString::fromStdString(d.key)},
             {"backend", QString::fromStdString(d.backend)},
             {"name", QString::fromStdString(d.name)},
@@ -966,6 +970,25 @@ void DspController::refreshDevices()
             {"isDefault", d.isDefault},
             {"direct", d.direct},
         };
+        m_devices << entry;
+        if (d.alsaCard >= 0 && !d.direct)
+            cardSinks[d.alsaCard] << entry;
+    }
+    // The card Sonkore holds has no sink in PipeWire now: its entries as they
+    // were, so the way back is where it was in the menu.
+    const int held = m_reservation.held() ? m_reservation.card() : -1;
+    for (auto it = cardSinks.cbegin(); it != cardSinks.cend(); ++it)
+        m_cardSinks[it.key()] = it.value();
+    if (held >= 0 && !cardSinks.contains(held) && m_cardSinks.contains(held)) {
+        qsizetype at = 1; // after "System default" and the other PipeWire outputs
+        while (at < m_devices.size() && m_devices[at].toMap().value("key").toString().startsWith(QLatin1String("pipewire|")))
+            ++at;
+        for (const QVariant& v : m_cardSinks.value(held)) {
+            QVariantMap entry = v.toMap();
+            entry["detail"] = tr("Given back to PipeWire when chosen");
+            entry["isDefault"] = false;
+            m_devices.insert(at++, entry);
+        }
     }
     emit outputDevicesChanged();
 }
@@ -1051,6 +1074,43 @@ void DspController::updateSpectrum()
         m_spectrum[b] = std::clamp((db + 66.0) / 66.0, 0.0, 1.0);
     }
     emit spectrumChanged();
+}
+
+// The card just given back to the sound server: WirePlumber makes its sink
+// again a moment later. Opening a PipeWire output before that would land on
+// its stand-in ("Dummy Output", playing to nothing) or find no such sink.
+void DspController::waitForCardSink(int card, const QString& key)
+{
+#if defined(SONKORE_HAVE_PIPEWIRE_VOLUME)
+    const bool toDefault = key.isEmpty();
+    if (!toDefault && !key.startsWith(QLatin1String("pipewire|")) && !key.startsWith(QLatin1String("pulse|")))
+        return; // not through the sound server
+    const std::string wanted = sonkore::PipeWireOutput::baseSinkName(key.section(QLatin1Char('|'), 1).toStdString());
+    QElapsedTimer waited;
+    waited.start();
+    bool cardBack = false;
+    while (waited.elapsed() < 3000) {
+        bool defaultReal = false;
+        cardBack = false;
+        bool wantedThere = false;
+        for (const auto& sink : m_pwVolume->sinks()) {
+            cardBack = cardBack || sink.alsaCard == card;
+            wantedThere = wantedThere || sonkore::PipeWireOutput::baseSinkName(sink.name) == wanted;
+            defaultReal = defaultReal || (sink.isDefault && sink.name != "auto_null");
+        }
+        // A named sink: once it is there. The default: once the card is back
+        // and the desktop has chosen a real default again.
+        if (toDefault ? (cardBack && defaultReal) : wantedThere)
+            break;
+        QThread::msleep(20);
+    }
+    qInfo().noquote() << QStringLiteral("Sonkore: the card went back to PipeWire, its output there after %1 ms%2")
+                             .arg(waited.elapsed())
+                             .arg(cardBack ? QString() : QStringLiteral(" (not seen yet)"));
+#else
+    Q_UNUSED(card);
+    Q_UNUSED(key);
+#endif
 }
 
 void DspController::outputGraphChanged()
@@ -1202,9 +1262,12 @@ bool DspController::reserveOutput(bool* justTaken)
     if (card == m_reservation.card())
         return true;
     if (m_reservation.held()) {
+        const int given = m_reservation.card();
         m_engine.unload(); // close our handle before the card goes back
         m_reservation.release();
         emit outputStatusChanged();
+        if (card < 0)
+            waitForCardSink(given, m_deviceKey);
     }
     if (card < 0)
         return true;
@@ -2266,6 +2329,9 @@ void DspController::loadSettings()
     QSettings s;
     s.beginGroup("playback");
     m_deviceKey = s.value("device").toString();
+    if (m_deviceKey.startsWith(QLatin1String("pipewire|"))) // without WirePlumber's ".N" suffix, as the list has it
+        m_deviceKey = QStringLiteral("pipewire|")
+            + QString::fromStdString(sonkore::PipeWireOutput::baseSinkName(m_deviceKey.mid(9).toStdString()));
     m_exclusive = s.value("exclusive", true).toBool();
     m_followTrackRate = s.value("followTrackRate", true).toBool();
     // Older settings stored a plain on/off "dither".

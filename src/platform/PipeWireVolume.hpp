@@ -1,5 +1,7 @@
 #pragma once
 
+#include "PipeWireOutput.hpp"
+
 #include <QObject>
 #include <QStringList>
 #include <QString>
@@ -42,6 +44,8 @@ public:
     bool watchGraph();
     // The sinks of the graph, by name, as last seen (empty without a connection).
     QStringList sinkNames() const;
+    // The sinks as last seen, with their ALSA card and which is the default.
+    std::vector<sonkore::PipeWireOutput::Sink> sinks() const;
 
 signals:
     void volumeChanged();

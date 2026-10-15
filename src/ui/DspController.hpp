@@ -424,6 +424,7 @@ private:
     void poll();
     void devicesChangedOnSystem();
     void outputGraphChanged();
+    void waitForCardSink(int card, const QString& key);
     void updateSpectrum();
     void updateSpectrumTimer();
     void setVisualizerActive(bool on);
@@ -501,6 +502,10 @@ private:
     QString m_lastError;
 
     QVariantList m_devices;
+    // PipeWire's outputs for each ALSA card, as last seen: while Sonkore holds
+    // a card its sink is gone from PipeWire, and the menu still offers it
+    // (choosing it gives the card back).
+    QHash<int, QVariantList> m_cardSinks;
     QString m_deviceKey;
     DeviceReservation m_reservation;
     // When Sonkore last took a card from the sound server: the sink it had

@@ -35,7 +35,11 @@ public:
         std::string name;        // node.name: the key to open it by
         std::string description; // what the desktop calls it
         bool isDefault = false;
+        int alsaCard = -1;       // the ALSA card behind it, -1 for none (virtual sinks)
     };
+    // "alsa_output.x.3" -> "alsa_output.x": the name without the suffix
+    // WirePlumber adds when a node is made again under a name still in use.
+    static std::string baseSinkName(const std::string& name);
 
     // libpipewire loads and a PipeWire daemon answers.
     static bool available();

@@ -244,6 +244,10 @@
         <translation>Suit les réglages son du bureau</translation>
     </message>
     <message>
+        <source>Given back to PipeWire when chosen</source>
+        <translation>Rendu à PipeWire une fois choisi</translation>
+    </message>
+    <message>
         <source>1 kHz tone · %1 kHz</source>
         <translation>Son de 1 kHz · %1 kHz</translation>
     </message>

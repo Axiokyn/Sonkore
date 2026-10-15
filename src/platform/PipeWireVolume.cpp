@@ -30,6 +30,11 @@ bool PipeWireVolume::watchGraph()
     return m_pw->watchGraph(&error);
 }
 
+std::vector<sonkore::PipeWireOutput::Sink> PipeWireVolume::sinks() const
+{
+    return m_pw->currentSinks();
+}
+
 QStringList PipeWireVolume::sinkNames() const
 {
     QStringList out;

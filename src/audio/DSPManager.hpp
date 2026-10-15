@@ -102,6 +102,7 @@ public:
         std::string detail;     // e.g. "hw:CARD=DX1,DEV=0"
         bool isDefault = false;
         bool direct = false;    // raw hardware access, no mixer in the path
+        int alsaCard = -1;      // PipeWire: the ALSA card behind the sink (-1: virtual)
     };
 
     using TrackInfo = StreamInfo;
