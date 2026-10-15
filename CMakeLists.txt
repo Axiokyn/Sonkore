@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.21)
 
 project(Sonkore
-    VERSION 1.3.4
+    VERSION 1.3.5
     DESCRIPTION "Hi-Fi music player: bit-perfect output, SoundTouch, SuperEQ"
     LANGUAGES C CXX)
 
@@ -20,6 +20,9 @@ find_package(Threads REQUIRED)
 # is not, e.g. Ubuntu without libopengl0, where the binary would not start.
 set(OpenGL_GL_PREFERENCE LEGACY)
 find_package(Qt6 6.5 REQUIRED COMPONENTS Core Gui Widgets Qml Quick QuickControls2 Network Svg)
+# The software renderer's repaint area (SoftwareRepaint) uses two exported
+# members of its private class.
+find_package(Qt6 6.5 REQUIRED COMPONENTS QuickPrivate)
 if(UNIX AND NOT APPLE)
     find_package(Qt6 6.5 OPTIONAL_COMPONENTS DBus)
 endif()
@@ -228,6 +231,10 @@ qt_add_qml_module(Sonkore
         src/ui/DspController.cpp
         src/ui/EqController.hpp
         src/ui/EqController.cpp
+        src/ui/FrameAnimationDriver.hpp
+        src/ui/FrameAnimationDriver.cpp
+        src/ui/SoftwareRepaint.hpp
+        src/ui/SoftwareRepaint.cpp
         src/ui/WaveformController.hpp
         src/ui/WaveformController.cpp
         src/ui/BackdropItem.hpp
@@ -363,7 +370,7 @@ target_include_directories(Sonkore PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src/library
     ${CMAKE_CURRENT_SOURCE_DIR}/src/platform)
 target_link_libraries(Sonkore PRIVATE
-    sonkore_audio sonkore::ebur128 Qt6::Core Qt6::Gui Qt6::Widgets Qt6::Qml Qt6::Quick Qt6::QuickControls2 Qt6::Network Qt6::Svg)
+    sonkore_audio sonkore::ebur128 Qt6::Core Qt6::Gui Qt6::Widgets Qt6::Qml Qt6::Quick Qt6::QuickPrivate Qt6::QuickControls2 Qt6::Network Qt6::Svg)
 
 # Linux: MPRIS media controls (GNOME/KDE media widgets, media keys, playerctl).
 if(TARGET Qt6::DBus)

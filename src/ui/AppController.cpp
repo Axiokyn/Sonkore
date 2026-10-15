@@ -1,4 +1,6 @@
 #include "AppController.hpp"
+
+#include "SoftwareRepaint.hpp"
 #include "SettingsLock.hpp"
 #include "AppPaths.hpp"
 #include <QJsonDocument>
@@ -271,6 +273,8 @@ void AppController::applyStartupSettings(bool safeMode)
             QQuickWindow::setGraphicsApi(QSGRendererInterface::Vulkan);
         else if (software)
             QQuickWindow::setGraphicsApi(QSGRendererInterface::Software);
+        if (software)
+            SoftwareRepaint::prepare(); // partial repaints also at fractional scales
         if (!software && failedStarts == 0 && !safeMode)
             loadOnlyPresentGpuDrivers(renderer == QLatin1String("vulkan"));
         if (!software && !safeMode)
