@@ -20,18 +20,19 @@ cd "$work/src"
     --enable-w32threads --disable-pthreads \
     --extra-ldflags="-static-libgcc -Wl,-Bstatic -lwinpthread -Wl,-Bdynamic" \
     "${ffmpeg_options[@]}"
+ffmpeg_check_components
 make -j"$(nproc)"
 make install
 cp COPYING.LGPLv2.1 "$out/COPYING.LGPLv2.1"
 {
-    echo "FFmpeg $FFMPEG_VERSION (libavformat, libavcodec, libavutil)  LGPL-2.1-or-later"
+    echo "FFmpeg $FFMPEG_VERSION (libavformat, libavcodec, libavutil, libswresample)  LGPL-2.1-or-later"
     echo "  Unmodified source: https://ffmpeg.org/releases/ffmpeg-$FFMPEG_VERSION.tar.xz (sha256 $FFMPEG_SHA256)"
     echo "  Built by packaging/windows/build-ffmpeg.sh (Sonkore sources) with:"
     echo "  ./configure --arch=x86_64 --target-os=mingw32 ${ffmpeg_options[*]}"
 } > "$out/BUILD.txt"
 # Nothing but system DLLs may be needed.
 for dll in "$out"/bin/*.dll; do
-    deps="$(x86_64-w64-mingw32-objdump -p "$dll" | sed -n 's/.*DLL Name: //p' | grep -viE '^(kernel32|user32|advapi32|bcrypt|ole32|shell32|msvcrt|api-ms-win-.*|ucrtbase|av[a-z]*-[0-9]+)\.dll$' || true)"
+    deps="$(x86_64-w64-mingw32-objdump -p "$dll" | sed -n 's/.*DLL Name: //p' | grep -viE '^(kernel32|user32|advapi32|bcrypt|ole32|shell32|msvcrt|api-ms-win-.*|ucrtbase|av[a-z]*-[0-9]+|swresample-[0-9]+)\.dll$' || true)"
     [ -z "$deps" ] || { echo "$dll needs: $deps" >&2; exit 1; }
 done
 ls -la "$out/bin"

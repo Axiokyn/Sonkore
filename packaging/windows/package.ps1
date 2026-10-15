@@ -50,7 +50,7 @@ Qt $qtVersion  LGPL-3.0 (licenses/LGPL-3.0.txt)
   Unmodified binaries from the Qt online installer. Source:
   https://download.qt.io/official_releases/qt/
 
-FFmpeg (avformat, avcodec, avutil DLLs)  LGPL-2.1-or-later
+FFmpeg (avformat, avcodec, avutil, swresample DLLs)  LGPL-2.1-or-later
   See licenses/FFmpeg-BUILD.txt for the exact source and configuration.
 
 Microsoft Visual C++ runtime (msvcp140, vcruntime140...)  redistributed under

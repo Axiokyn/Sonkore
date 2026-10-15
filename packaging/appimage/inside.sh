@@ -40,6 +40,7 @@ if [ "$(cat "$ffmpeg/.done" 2>/dev/null)" != "${ffmpeg_options[*]}" ]; then
     (
         cd /work/ffmpeg-src
         ./configure --prefix="$ffmpeg" "${ffmpeg_options[@]}"
+        ffmpeg_check_components
         make -j"$jobs" && make install
         cp COPYING.LGPLv2.1 "$ffmpeg/COPYING.LGPLv2.1"
     )
@@ -74,7 +75,7 @@ Qt $(/qt/bin/qmake -query QT_VERSION)  LGPL-3.0 (licenses/LGPL-3.0.txt)
   Unmodified binaries from the Qt online installer. Source:
   https://download.qt.io/official_releases/qt/
 
-FFmpeg $FFMPEG_VERSION (libavformat, libavcodec, libavutil)  LGPL-2.1-or-later (licenses/LGPL-2.1.txt)
+FFmpeg $FFMPEG_VERSION (libavformat, libavcodec, libavutil, libswresample)  LGPL-2.1-or-later (licenses/LGPL-2.1.txt)
   Unmodified source: https://ffmpeg.org/releases/ffmpeg-$FFMPEG_VERSION.tar.xz
   (sha256 $FFMPEG_SHA256)
   Built by packaging/appimage/inside.sh (Sonkore sources) with:
@@ -100,7 +101,7 @@ done
 # plugin). libssl and libcrypto travel as a pair so a newer system libssl is
 # never mixed with the bundled libcrypto that Kerberos (Qt Network) needs.
 dlopened=()
-for lib in "$ffmpeg"/lib/lib{avutil,avcodec,avformat}.so /usr/lib64/libssl.so.3 /usr/lib64/libcrypto.so.3; do
+for lib in "$ffmpeg"/lib/lib{avutil,swresample,avcodec,avformat}.so /usr/lib64/libssl.so.3 /usr/lib64/libcrypto.so.3; do
     soname="$(LC_ALL=C readelf -d "$lib" | sed -n 's/.*(SONAME).*\[\(.*\)\]/\1/p')"
     install -Dm755 "$(realpath "$lib")" "$appdir/usr/lib/$soname"
     dlopened+=(--deploy-deps-only "$appdir/usr/lib/$soname")
@@ -148,7 +149,7 @@ install -Dm755 "$(realpath /usr/lib64/libcom_err.so.2)" "$appdir/usr/lib/libcom_
 
 # Drop libraries nothing in the AppDir links to (left behind by plugins whose
 # own dependency was taken from the system), except the dlopen()ed ones.
-keep=" libavutil.so.60 libavcodec.so.62 libavformat.so.62 libssl.so.3 libcrypto.so.3 "
+keep=" libavutil.so.60 libswresample.so.6 libavcodec.so.62 libavformat.so.62 libssl.so.3 libcrypto.so.3 "
 while :; do
     needed=" $(find "$appdir/usr" -type f \( -name '*.so*' -o -path '*/bin/*' \) -exec sh -c 'LC_ALL=C readelf -d "$@" 2>/dev/null; true' sh {} + \
         | sed -n 's/.*Shared library: \[\(.*\)\]/\1/p' | sort -u | tr '\n' ' ') "
