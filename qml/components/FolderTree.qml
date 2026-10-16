@@ -184,29 +184,37 @@ Item {
                     }
                     TapHandler { onTapped: if (node.canExpand) node.treeView.toggleExpanded(node.row) }
                 }
-                Icon {
+                // The folder's icon, or in its place the playing bars: they
+                // move while it plays, unless the open folder's list already
+                // shows the playing track moving (never twice), and stand
+                // still while paused.
+                Item {
+                    width: 15
+                    height: 16
                     anchors.verticalCenter: parent.verticalCenter
-                    glyph: "folder"
-                    size: 15
-                    color: node.selectedNode || node.holdsPlaying ? Theme.accent : Theme.textDim
+                    Icon {
+                        anchors.centerIn: parent
+                        visible: !node.showBars
+                        glyph: "folder"
+                        size: 15
+                        color: node.selectedNode || node.holdsPlaying ? Theme.accent : Theme.textDim
+                    }
+                    PlayingBars {
+                        anchors.centerIn: parent
+                        visible: node.showBars
+                        running: visible && DspController.playing
+                                 && !(tree.selected.length > 0 && node.playingPath.startsWith(tree.selected + "/"))
+                        time: 0.2
+                    }
                 }
                 Label {
                     anchors.verticalCenter: parent.verticalCenter
                     width: tree.width - 6 - node.depth * 16 - 16 - 15 - 12 - countLabel.width - 18
-                           - (playing.visible ? playing.width + 6 : 0)
                     text: node.name
                     elide: Text.ElideRight
                     color: node.holdsPlaying ? Theme.accent : (node.selectedNode ? Theme.text : Theme.textDim)
                     font.weight: node.selectedNode || node.playingHere ? Font.DemiBold : Font.Normal
                     font.pixelSize: Theme.fontBody
-                }
-                // Still: only the track row animates, so they never move twice.
-                PlayingBars {
-                    id: playing
-                    anchors.verticalCenter: parent.verticalCenter
-                    visible: node.showBars
-                    running: false
-                    time: 0.2
                 }
                 Label {
                     id: countLabel

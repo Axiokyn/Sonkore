@@ -22,13 +22,29 @@ Slider {
     property bool alwaysShowHandle: false
     // A seek bar: the progress bar's style, and the playing track's waveform
     // (WaveformController) for the "wave" style, a flat line while it is
-    // being read.
+    // being read. With no track (disabled) it rests on a made-up wave, so the
+    // bar is there from the first start, not only once something plays.
     property bool seekBar: false
     property string sliderStyle: seekBar ? Theme.sliderStyle : Theme.volumeStyle // Settings previews pass their own
     property var peaks: seekBar ? Waveform.peaks : []
     readonly property bool waveStyle: sliderStyle === "wave"
     readonly property string look: waveStyle && !seekBar ? "line" : sliderStyle
     readonly property bool waveLook: look === "wave"
+    readonly property var shownPeaks: waveLook && !enabled && peaks.length === 0 ? restingPeaks : peaks
+    readonly property var restingPeaks: {
+        // A steady pseudo-random level under a slow swell, faded in and out
+        // at the ends; squared like the real ones (energy).
+        const n = 300, out = []
+        let seed = 7
+        for (let i = 0; i < n; ++i) {
+            seed = (seed * 1103515245 + 12345) % 2147483648
+            const swell = 0.6 + 0.25 * Math.sin(i / n * Math.PI * 3.2)
+            const edge = Math.min(1, i / (n * 0.04), (n - 1 - i) / (n * 0.04))
+            const v = swell * (0.55 + 0.45 * seed / 2147483648) * edge
+            out.push(v * v)
+        }
+        return out
+    }
 
     readonly property bool active: hovered || pressed
     // Height of the bar at rest (NowPlayingBar lines the visualizer up on it).
@@ -44,7 +60,7 @@ Slider {
 
     hoverEnabled: true
     focusPolicy: Qt.NoFocus
-    opacity: enabled ? 1 : 0.45
+    opacity: enabled || waveLook ? 1 : 0.45 // the resting wave is already faint
     // Every style the same height (the waveform fills it: no knob to make
     // room for), so changing it moves nothing around it.
     implicitHeight: waveLook ? 20 : Math.max(20, restHeight + 10)
@@ -88,7 +104,7 @@ Slider {
             anchors.fill: parent
             WaveCanvas {
                 anchors.fill: parent
-                peaks: control.peaks
+                peaks: control.shownPeaks
                 tint: Qt.rgba(Theme.text.r, Theme.text.g, Theme.text.b, Theme.dark ? 0.22 : 0.28)
             }
             Item {
@@ -97,7 +113,7 @@ Slider {
                 clip: true
                 WaveCanvas {
                     width: control.availableWidth
-                    peaks: control.peaks
+                    peaks: control.shownPeaks
                         height: parent.height
                     tint: control.fill
                 }
