@@ -17,7 +17,7 @@ cmake --install build --prefix dist      # despliega el runtime de Qt
 cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=C:/Qt/6.x/msvc2022_64 `
       -DSONKORE_FFMPEG_INCLUDE_DIR=C:/ruta/a/ffmpeg/include      # solo headers; los DLL van junto al .exe
 cmake --build build
-packaging/windows/package.ps1 -Build build -FFmpeg C:/ruta/a/ffmpeg   # -> dist/Sonkore-<versión>-windows-x64.zip
+packaging/windows/package.ps1 -Build build -FFmpeg C:/ruta/a/ffmpeg   # -> dist/Sonkore-windows-x64.zip
 ```
 
 `packaging/windows/build-ffmpeg.sh` compila (desde Linux, con MinGW-w64) el mismo FFmpeg solo de audio que trae el AppImage. Los drivers ASIO no necesitan el SDK de Steinberg: la interfaz está declarada en `src/audio/AsioAbi.hpp`.
@@ -37,7 +37,7 @@ Reproducen archivos reales por el motor (en el dispositivo nulo de miniaudio, si
 
 ```bash
 packaging/appimage/build.sh [ruta/a/Qt/6.x/gcc_64]   # requiere podman
-# -> dist/Sonkore-<versión>-x86_64.AppImage (+ .sha256)
+# -> dist/Sonkore-x86_64.AppImage (+ .sha256)
 ```
 
 Se compila dentro de un contenedor AlmaLinux 9 (glibc 2.34, la misma base que los binarios de Qt), así que funciona en cualquier distro x86_64 desde 2021: Ubuntu 22.04+, Debian 12+, Fedora, Arch, openSUSE Tumbleweed, etc. Incluye Qt (con los plugins de X11 y Wayland y el diálogo de archivos del portal), los módulos QML y un FFmpeg solo de audio (LGPL), por lo que ALAC, AAC, Opus, DSD y el resto funcionan sin instalar nada. Los drivers gráficos y el audio (ALSA, PipeWire, PulseAudio, JACK) se toman del sistema. Las licencias y el detalle de lo incluido quedan en `usr/share/doc/sonkore/` dentro del AppImage.

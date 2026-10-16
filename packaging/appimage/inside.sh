@@ -117,7 +117,7 @@ export LINUXDEPLOY_EXCLUDED_LIBRARIES="libdbus-1.so.3;libglib-2.0.so.0;libgobjec
 
 export QMAKE=/qt/bin/qmake QML_SOURCES_PATHS=/src/qml EXTRA_PLATFORM_PLUGINS="libqwayland.so"
 export LD_LIBRARY_PATH="/qt/lib:$ffmpeg/lib"
-export LINUXDEPLOY_OUTPUT_VERSION="$version" LDAI_OUTPUT="/out/Sonkore-$version-x86_64.AppImage"
+export LINUXDEPLOY_OUTPUT_VERSION="$version" LDAI_OUTPUT="/out/Sonkore-x86_64.AppImage"
 rm -f "$LDAI_OUTPUT"
 icons=()
 for f in /work/icons/*/sonkore.png; do icons+=(--icon-file "$f"); done

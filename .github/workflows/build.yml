@@ -289,8 +289,8 @@ jobs:
           body: |
             Sonkore ${{ steps.version.outputs.tag }}
 
-            - **Linux x86_64:** `Sonkore-*-x86_64.AppImage` — make it executable and run it; nothing else to install (glibc 2.34 or newer).
-            - **Windows 64-bit:** `Sonkore-*-windows-x64.zip` — unzip and run `Sonkore.exe`.
+            - **Linux x86_64:** `Sonkore-x86_64.AppImage` — make it executable and run it; nothing else to install (glibc 2.34 or newer).
+            - **Windows 64-bit:** `Sonkore-windows-x64.zip` — unzip and run `Sonkore.exe`.
 
             Each file has a `.sha256` next to it.
           files: |

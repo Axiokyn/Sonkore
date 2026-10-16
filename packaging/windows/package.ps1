@@ -1,4 +1,6 @@
-# Builds dist/Sonkore-<version>-windows-x64.zip from a Release build: Qt and
+# Builds dist/Sonkore-windows-x64.zip (the same name for every version, so
+# releases/latest/download/ links never change; it unzips to a Sonkore folder)
+# from a Release build: Qt and
 # its QML modules (windeployqt), the MSVC runtime (app-local, so nothing has to
 # be installed first), the audio-only FFmpeg DLLs and every license.
 #   packaging/windows/package.ps1 -Build <build dir> -FFmpeg <ffmpeg prefix> [-Out dist]
@@ -12,8 +14,8 @@ param(
 $ErrorActionPreference = "Stop"
 $root = Resolve-Path "$PSScriptRoot/../.."
 $version = (Select-String -Path "$root/CMakeLists.txt" -Pattern '^\s*VERSION ([0-9.]+)$').Matches[0].Groups[1].Value
-$name = "Sonkore-$version-windows-x64"
-$stage = Join-Path $Out $name
+$name = "Sonkore-windows-x64"
+$stage = Join-Path $Out "Sonkore"
 if (Test-Path $stage) { Remove-Item -Recurse -Force $stage }
 New-Item -ItemType Directory -Force -Path $stage | Out-Null
 

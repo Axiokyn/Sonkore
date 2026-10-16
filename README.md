@@ -38,8 +38,8 @@ Listo para usar, sin instalar nada. Cada archivo trae al lado su `.sha256`.
 
 | Sistema | Archivo | Cómo se usa |
 |---|---|---|
-| **Linux** x86_64 (glibc 2.34+: Ubuntu 22.04+, Debian 12+, Fedora, Arch, openSUSE…) | `Sonkore-<versión>-x86_64.AppImage` | `chmod +x` y abrirlo |
-| **Windows** 10/11 de 64 bits | `Sonkore-<versión>-windows-x64.zip` | Descomprimir y abrir `Sonkore.exe` |
+| **Linux** x86_64 (glibc 2.34+: Ubuntu 22.04+, Debian 12+, Fedora, Arch, openSUSE…) | [`Sonkore-x86_64.AppImage`](https://github.com/Axiokyn/Sonkore/releases/latest/download/Sonkore-x86_64.AppImage) | `chmod +x` y abrirlo |
+| **Windows** 10/11 de 64 bits | [`Sonkore-windows-x64.zip`](https://github.com/Axiokyn/Sonkore/releases/latest/download/Sonkore-windows-x64.zip) | Descomprimir y abrir `Sonkore.exe` |
 
 En Linux, `packaging/linux/install-user.sh` agrega Sonkore al menú de aplicaciones.
 

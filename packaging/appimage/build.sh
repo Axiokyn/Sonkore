@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Builds dist/Sonkore-<version>-x86_64.AppImage: Qt, the QML modules and an
+# Builds dist/Sonkore-x86_64.AppImage (the same name for every version, so
+# releases/latest/download/ links never change): Qt, the QML modules and an
 # audio-only FFmpeg inside, so it runs on any x86_64 distro with glibc 2.34+.
 # Everything is compiled in an AlmaLinux 9 container (podman), never against
 # the host's newer glibc. Usage:
