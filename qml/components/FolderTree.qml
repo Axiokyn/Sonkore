@@ -129,14 +129,7 @@ Item {
 
             implicitWidth: tree.width
             implicitHeight: Theme.compact ? 26 : 32
-            // A row scrolling up under the section head fades as a whole once
-            // its text (16 px, centred) starts being cut, and is gone when the
-            // text is half cut: no sliver of text under the head, and no dimmed
-            // row that is still whole (an overlay fade could not avoid both).
-            opacity: {
-                const cut = tree.contentY - y - (height - 16) / 2
-                return Math.max(0, Math.min(1, 1 - cut / 8))
-            }
+            opacity: Theme.rowFade(tree.contentY - y, height, 16) // fades under the section head
 
             Rectangle {
                 anchors.fill: parent

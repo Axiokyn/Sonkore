@@ -1289,6 +1289,7 @@ Rectangle {
                 readonly property bool missing: model.missing === true
                 width: queueList.width - (queueBar.scrollable ? queueBar.width + 2 : 0)
                 height: mini.listRowHeight
+                opacity: Theme.rowFade(queueList.contentY - y, height, Math.max(mini.listCover, 16)) // fades under the column heads
                 radius: Theme.listMode ? 0 : Theme.radiusSmall
                 color: current ? Theme.accentSoft : lineHover.hovered ? Theme.hover
                      : Theme.alternateRows && index % 2 === 1 ? Theme.rowAlt : "transparent"
@@ -1384,17 +1385,6 @@ Rectangle {
                     }
                 }
             }
-        }
-        // Rows fade out as they scroll up under the column heads instead of
-        // being cut, no line between.
-        EdgeFade {
-            anchors.top: queueList.top
-            anchors.left: queueList.left
-            anchors.right: queueList.right
-            height: 14
-            tint: Theme.pane
-            opacity: queueList.contentY > queueList.originY + 1 ? 1 : 0
-            Behavior on opacity { NumberAnimation { duration: 120 } }
         }
         // No music at all: the way to add some.
         Column {

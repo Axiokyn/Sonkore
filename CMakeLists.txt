@@ -189,7 +189,6 @@ qt_add_qml_module(Sonkore
         qml/components/NumField.qml
         qml/components/PillButton.qml
         qml/components/PlayingBars.qml
-        qml/components/EdgeFade.qml
         qml/components/ResponseGraph.qml
         qml/components/SearchField.qml
         qml/components/SectionLabel.qml

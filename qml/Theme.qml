@@ -338,6 +338,16 @@ QtObject {
     readonly property bool alternateRows: setting("alternateRows")
     readonly property color rowAlt: Qt.rgba(text.r, text.g, text.b, dark ? 0.025 : 0.03)
     readonly property int rowHeight: listMode ? 22 : listCompact ? 30 : listSpacious ? 68 : 56
+    // How much of a list row shows while it scrolls up under a head:
+    // `hidden` px of it are past the edge, its content (`content` px tall,
+    // centred) is what reads. Whole until that content starts being cut,
+    // gone once it is half cut, so no sliver of text stays under the head
+    // and no row that is still whole looks dimmed (an overlay fade could
+    // not avoid both).
+    function rowFade(hidden, rowHeight, content) {
+        const cut = hidden - (rowHeight - content) / 2
+        return Math.max(0, Math.min(1, 1 - cut / (content / 2)))
+    }
     readonly property int spacing: compact ? 6 : spacious ? 16 : 12
 
     readonly property int fontSmall: 11

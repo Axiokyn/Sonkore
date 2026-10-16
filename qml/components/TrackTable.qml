@@ -350,7 +350,12 @@ Item {
         // edge, up to its rounded corner, a hairline under it. With something
         // above the list (sub-folders, a playlist's header...) it stays a band
         // of its own.
-        readonly property Item panel: headerFade.panel
+        readonly property Item panel: {
+            for (let p = table.parent; p; p = p.parent)
+                if (p.objectName === "pagePanel")
+                    return p
+            return null
+        }
         // (the sizes and the table's place are there to re-map when they change)
         readonly property point offset: panel && panel.width + panel.height + table.width + table.y
                                                  + (table.parent ? table.parent.y : 0) > -1e9
@@ -568,25 +573,6 @@ Item {
 
         }
     }
-    // Rows fade out as they scroll under the header instead of being cut,
-    // across the whole page panel (Main's "pagePanel"), not just the list.
-    EdgeFade {
-        id: headerFade
-        readonly property Item panel: {
-            for (let p = table.parent; p; p = p.parent)
-                if (p.objectName === "pagePanel")
-                    return p
-            return null
-        }
-        z: 2
-        anchors.top: headerBand.bottom
-        x: headerBand.joined ? headerBand.offset.x : 0
-        width: headerBand.joined ? panel.width : list.width
-        height: 10
-        tint: Theme.bg
-        visible: list.contentY > list.originY
-    }
-
     ListView {
         id: list
         WheelScroll { flickable: list }
@@ -642,6 +628,10 @@ Item {
             primaryWidth: table.primaryWidth
             restRatio: table.restRatio
             selected: { table.selectionVersion; return table.isSelected(index) }
+            // fades as it scrolls under the header: the cover, or the title
+            // (with the artist line under it) is what reads
+            opacity: Theme.rowFade(list.contentY - y, height,
+                                   showCover ? (Theme.listSpacious ? 52 : 40) : showArtistLine ? 34 : 16)
 
             onClicked: (modifiers) => table.clickRow(index, modifiers)
             onDoubleClicked: table.activated(index)
