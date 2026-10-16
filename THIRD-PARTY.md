@@ -50,6 +50,7 @@ font's license is in `fonts/<font>/OFL.txt`.
 | [FFmpeg](https://ffmpeg.org) (libavformat, libavcodec, libavutil; libswresample in the packages, for Opus) | LGPL-2.1-or-later (GPL if the installed build enables GPL parts) | Optional decoding of ALAC, AAC, Opus, Vorbis, AIFF, APE, WavPack, TTA, DSD and more. Not linked: the system's libraries (on Flathub, the runtime's) are loaded when such a file is scanned or played. A package that ships its own FFmpeg must use an LGPL build and offer its source: the AppImage carries an audio-only LGPL build, with its version, source and configure options in `usr/share/doc/sonkore/BUNDLED.txt`; the Windows package carries the same build as DLLs (`licenses/FFmpeg-BUILD.txt`) |
 | [alsa-lib](https://www.alsa-project.org) | LGPL-2.1-or-later | Linux only, linked dynamically and always taken from the system (also by the AppImage): the DAC's volume control |
 | [AutoEq](https://github.com/jaakkopasanen/AutoEq) by Jaakko Pasanen | MIT | Headphone correction profiles, downloaded only when you search for them |
+| [MusicBrainz](https://musicbrainz.org) and [Cover Art Archive](https://coverartarchive.org) | Web services (CC0 data; each cover belongs to its rights holder) | Only with "Missing covers" turned on (off by default): the album is looked up by artist and album name and its cover is kept in Sonkore's cache, for personal use |
 
 ## Methods
 

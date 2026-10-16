@@ -69,7 +69,8 @@ QString quoted(QString value)
 OnlineArt::OnlineArt(QObject* parent)
     : QObject(parent)
 {
-    m_enabled = QSettings().value("library/onlineCovers", true).toBool();
+    // Off until the user turns it on: it sends artist and album names out.
+    m_enabled = QSettings().value("library/onlineCovers", false).toBool();
     m_pace.setSingleShot(true);
     m_pace.setInterval(kPaceMs);
     connect(&m_pace, &QTimer::timeout, this, [this] {
