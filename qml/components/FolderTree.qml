@@ -185,9 +185,10 @@ Item {
                     TapHandler { onTapped: if (node.canExpand) node.treeView.toggleExpanded(node.row) }
                 }
                 // The folder's icon, or in its place the playing bars: they
-                // move while it plays, unless the open folder's list already
-                // shows the playing track moving (never twice), and stand
-                // still while paused.
+                // move while it plays with another folder open, and stand
+                // still otherwise. The open folder's list, or the list of
+                // every track, already shows the playing track moving: never
+                // twice.
                 Item {
                     width: 15
                     height: 16
@@ -202,8 +203,8 @@ Item {
                     PlayingBars {
                         anchors.centerIn: parent
                         visible: node.showBars
-                        running: visible && DspController.playing
-                                 && !(tree.selected.length > 0 && node.playingPath.startsWith(tree.selected + "/"))
+                        running: visible && DspController.playing && tree.selected.length > 0
+                                 && !node.playingPath.startsWith(tree.selected + "/")
                         time: 0.2
                     }
                 }
