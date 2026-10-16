@@ -51,17 +51,6 @@ Item {
         }
     }
 
-    // Once the tree is scrolled, the folders fade out under the section
-    // head instead of being cut off by it.
-    EdgeFade {
-        z: 2
-        width: root.width + root.scrollBarOutset
-        height: 10
-        tint: Theme.sidebar
-        opacity: tree.atYBeginning ? 0 : 1
-        Behavior on opacity { NumberAnimation { duration: 150 } }
-    }
-
     TreeView {
         id: tree
         property string selected: root.folder
@@ -140,6 +129,14 @@ Item {
 
             implicitWidth: tree.width
             implicitHeight: Theme.compact ? 26 : 32
+            // A row scrolling up under the section head fades as a whole once
+            // its text (16 px, centred) starts being cut, and is gone when the
+            // text is half cut: no sliver of text under the head, and no dimmed
+            // row that is still whole (an overlay fade could not avoid both).
+            opacity: {
+                const cut = tree.contentY - y - (height - 16) / 2
+                return Math.max(0, Math.min(1, 1 - cut / 8))
+            }
 
             Rectangle {
                 anchors.fill: parent
