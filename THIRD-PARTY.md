@@ -33,7 +33,7 @@ font's license is in `fonts/<font>/OFL.txt`.
 | Font | Copyright |
 |---|---|
 | Inter (the default) | © 2016 The Inter Project Authors — https://github.com/rsms/inter |
-| Manrope | © 2019 The Manrope Project Authors — https://github.com/sharanda/manrope |
+| Manrope | © 2019 The Manrope Project Authors — https://github.com/google/fonts/tree/main/ofl/manrope |
 | Plus Jakarta Sans | © 2020 The Plus Jakarta Sans Project Authors — https://github.com/tokotype/PlusJakartaSans |
 | Figtree | © 2022 The Figtree Project Authors — https://github.com/erikdkennedy/figtree |
 | Outfit | © 2021 The Outfit Project Authors — https://github.com/Outfitio/Outfit-Fonts |
