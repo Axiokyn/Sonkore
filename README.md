@@ -24,7 +24,7 @@ Linux · Windows 10/11 · Software libre (GPL-3.0)
 - **Ruta de la señal** a la vista: cada etapa del archivo al DAC, con su calidad.
 - **Gapless exacto al sample**, también con ecualizador o volumen activos.
 - **Casi todos los formatos:** FLAC, WAV, MP3, ALAC, AAC, Opus, Vorbis, AIFF, APE, WavPack, DSF/DFF, CUE y más.
-- **Una biblioteca cómoda:** carpetas vigiladas, árbol de carpetas, 20 columnas, listas M3U, reproductor mini y 39 temas, con Sonkore Sans, su propia tipografía.
+- **Una biblioteca cómoda:** carpetas vigiladas, árbol de carpetas, 20 columnas, listas M3U, reproductor mini y 39 temas.
 
 <p align="center">
   <img src="docs/screenshots/albums.webp" alt="Vista de álbumes" width="600">

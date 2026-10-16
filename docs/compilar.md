@@ -73,10 +73,10 @@ Sonkore/
 ├── docs/           # estas páginas y las capturas del README
 ├── tests/          # engine_test (bit-perfect, gapless, DSP, DSD, ASIO, stress) y make_corpus.sh (el audio que reproduce)
 ├── .github/        # workflows/build.yml: tests, AppImage, paquete de Windows y releases
-├── fonts/          # fuentes de la interfaz (SIL Open Font License, licencia en cada <fuente>/OFL.txt): Sonkore Sans
-│                   # (la predeterminada, derivada de Inter: latino, griego y cirílico, con hinting), Manrope,
+├── fonts/          # fuentes de la interfaz (SIL Open Font License, licencia en cada <fuente>/OFL.txt): Inter
+│                   # (la predeterminada: latino, griego y cirílico, con hinting), Manrope,
 │                   # Plus Jakarta Sans, Figtree, Outfit, DM Sans, Nunito Sans, Rubik; pesos 400-700
-├── packaging/      # icons/ (SVG maestros + generate.py), fonts/ (build-sonkore-sans.py: Sonkore Sans desde Inter), linux/ (.desktop, metainfo, install-user.sh), appimage/ (build.sh),
+├── packaging/      # icons/ (SVG maestros + generate.py), fonts/ (build-inter.py: Inter para la app), linux/ (.desktop, metainfo, install-user.sh), appimage/ (build.sh),
 │                   # ffmpeg/ (configuración común), windows/ (.rc, .ico, build-ffmpeg.sh, package.ps1)
 └── qml/
     ├── Main.qml, Theme.qml (temas), TrackColumns.qml (columnas), Prefs.qml, AppActions.qml (bus de eventos y arrastre)

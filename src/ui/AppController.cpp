@@ -178,10 +178,10 @@ AppController::AppController(QObject* parent)
     m_language = s.value("appearance/language").toString();
     m_mprisEnabled = s.value("system/mpris", true).toBool();
     installTranslators();
-    // Sonkore Sans unless a font (or the system's, "") was picked.
-    m_font = s.value("appearance/font", QStringLiteral("sonkore-sans")).toString();
-    if (m_font == QLatin1String("inter")) // no longer bundled: Sonkore Sans is derived from it
-        m_font = QStringLiteral("sonkore-sans");
+    // Inter unless a font (or the system's, "") was picked.
+    m_font = s.value("appearance/font", QStringLiteral("inter")).toString();
+    if (m_font == QLatin1String("sonkore-sans")) // no longer bundled: it was Inter with a few changes
+        m_font = QStringLiteral("inter");
     m_fontFamily = loadFont(m_font);
     if (m_fontFamily.isEmpty())
         m_font.clear();
@@ -607,7 +607,7 @@ void AppController::releaseMemory()
 // Open fonts (SIL OFL) shipped in the binary: ":/fonts/<id>/<weight>.ttf",
 // regular to bold. Loaded only when picked.
 static const struct { const char* id; const char* name; } kFonts[] = {
-    {"sonkore-sans", "Sonkore Sans"}, {"manrope", "Manrope"},
+    {"inter", "Inter"}, {"manrope", "Manrope"},
     {"plus-jakarta-sans", "Plus Jakarta Sans"},
     {"figtree", "Figtree"}, {"outfit", "Outfit"}, {"dm-sans", "DM Sans"},
     {"nunito-sans", "Nunito Sans"}, {"rubik", "Rubik"},
@@ -648,7 +648,7 @@ QString AppController::loadFont(const QString& id) const
 // The application font (what Text items and the windows start from): the
 // chosen family, hinted to the pixel grid. Small text then has whole-pixel
 // stems instead of the soft two-pixel ones of GNOME's light hinting; on
-// Windows DirectWrite renders it like GDI. Sonkore Sans carries its own
+// Windows DirectWrite renders it like GDI. Inter carries its own
 // hinting instructions (ttfautohint); other fonts get FreeType's.
 void AppController::applyFont()
 {
