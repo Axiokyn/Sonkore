@@ -570,7 +570,7 @@ Item {
     }
     // Rows fade out as they scroll under the header instead of being cut,
     // across the whole page panel (Main's "pagePanel"), not just the list.
-    Rectangle {
+    EdgeFade {
         id: headerFade
         readonly property Item panel: {
             for (let p = table.parent; p; p = p.parent)
@@ -582,11 +582,8 @@ Item {
         anchors.top: headerBand.bottom
         x: headerBand.joined ? headerBand.offset.x : 0
         width: headerBand.joined ? panel.width : list.width
-        height: 10
-        gradient: Gradient {
-            GradientStop { position: 0; color: Theme.bg }
-            GradientStop { position: 1; color: Qt.rgba(Theme.bg.r, Theme.bg.g, Theme.bg.b, 0) }
-        }
+        height: 16
+        tint: Theme.bg
         visible: list.contentY > list.originY
     }
 

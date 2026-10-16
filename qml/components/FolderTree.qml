@@ -53,16 +53,13 @@ Item {
 
     // Once the tree is scrolled, the folders fade out under the section
     // head instead of being cut off by it.
-    Rectangle {
+    EdgeFade {
         z: 2
         width: root.width + root.scrollBarOutset
-        height: 18
+        height: 26
+        tint: Theme.sidebar
         opacity: tree.atYBeginning ? 0 : 1
         Behavior on opacity { NumberAnimation { duration: 150 } }
-        gradient: Gradient {
-            GradientStop { position: 0; color: Theme.sidebar }
-            GradientStop { position: 1; color: Qt.rgba(Theme.sidebar.r, Theme.sidebar.g, Theme.sidebar.b, 0) }
-        }
     }
 
     TreeView {

@@ -1387,15 +1387,12 @@ Rectangle {
         }
         // Rows fade out as they scroll up under the column heads instead of
         // being cut, no line between.
-        Rectangle {
+        EdgeFade {
             anchors.top: queueList.top
             anchors.left: queueList.left
             anchors.right: queueList.right
-            height: 14
-            gradient: Gradient {
-                GradientStop { position: 0; color: Theme.pane }
-                GradientStop { position: 1; color: Qt.rgba(Theme.pane.r, Theme.pane.g, Theme.pane.b, 0) }
-            }
+            height: 20
+            tint: Theme.pane
             opacity: queueList.contentY > queueList.originY + 1 ? 1 : 0
             Behavior on opacity { NumberAnimation { duration: 120 } }
         }
