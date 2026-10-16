@@ -30,6 +30,9 @@ class LibraryModel : public QAbstractListModel {
     Q_PROPERTY(QStringList folders READ folders NOTIFY foldersChanged)
     Q_PROPERTY(int count READ count NOTIFY countChanged)
     Q_PROPERTY(double totalDuration READ totalDuration NOTIFY countChanged)
+    // Every format badge in the library ("FLAC 24/192", "DSD128 11290k"…), once each:
+    // the format column is never narrower than the widest of them.
+    Q_PROPERTY(QStringList formatLabels READ formatLabels NOTIFY countChanged)
     Q_PROPERTY(bool scanning READ scanning NOTIFY scanningChanged)
     Q_PROPERTY(int scannedFiles READ scannedFiles NOTIFY scanProgress)
     Q_PROPERTY(bool watchFolders READ watchFolders WRITE setWatchFolders NOTIFY preferencesChanged)
@@ -105,6 +108,7 @@ public:
     QStringList folders() const { return m_folders; }
     int count() const { return static_cast<int>(m_tracks.size()); }
     double totalDuration() const;
+    QStringList formatLabels() const;
     bool scanning() const { return m_scanning; }
     int scannedFiles() const { return m_scannedFiles; }
     bool watchFolders() const { return m_watchFolders; }

@@ -1,6 +1,7 @@
 pragma Singleton
 import QtQuick
 import QtCore
+import Sonkore
 
 // Track-list columns: the catalogue, which ones are visible (and in which
 // order), their widths, and how each value is displayed. Shared by every
@@ -107,8 +108,9 @@ QtObject {
             return 40 // its head is a heart, not the word
         if (!c)
             return 48
-        // A format badge stays whole ("FLAC 24/192"), never "FLAC 2…".
-        const badge = c.badge ? Math.ceil(badgeMetrics.advanceWidth("FLAC 24/192")) + 12 + 2 * cellPadding : 0
+        // A format badge stays whole ("FLAC 24/192"), never "FLAC 2…": the
+        // widest in the library, up to a long hi-res one.
+        const badge = c.badge ? Math.ceil(widestBadge) + 12 + 2 * cellPadding : 0
         return Math.max(48, headerWidth(c.title), badge)
     }
     // Header text as drawn (TrackTable's header): default widths grow to fit it,
@@ -118,6 +120,12 @@ QtObject {
     property FontMetrics headerMetrics: FontMetrics {
         font.pixelSize: Theme.fontSmall
         font.weight: Font.Medium
+    }
+    readonly property real widestBadge: {
+        let w = badgeMetrics.advanceWidth("FLAC 24/192")
+        for (const label of Library.formatLabels)
+            w = Math.max(w, badgeMetrics.advanceWidth(label))
+        return Math.min(w, badgeMetrics.advanceWidth("WavPack 24/352.8"))
     }
     property FontMetrics badgeMetrics: FontMetrics { // as Badge draws its text
         font.pixelSize: 10

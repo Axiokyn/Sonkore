@@ -1420,9 +1420,9 @@ Item {
                                         anchors.right: parent.right
                                         anchors.rightMargin: 8
                                         anchors.top: miniature.bottom
-                                        anchors.topMargin: 8
-                                        width: 26
-                                        height: 26
+                                        anchors.topMargin: 6
+                                        width: 22 // on the name's line: the hint below has the card's width
+                                        height: 22
                                         hoverEnabled: true
                                         focusPolicy: Qt.NoFocus
                                         onClicked: Theme.toggleInverted(skinCard.modelData)
@@ -1444,14 +1444,15 @@ Item {
                                     }
                                     Column {
                                         anchors.left: parent.left
-                                        anchors.right: check.left
+                                        anchors.right: parent.right
                                         anchors.leftMargin: 12
-                                        anchors.rightMargin: 6
+                                        anchors.rightMargin: 12
                                         anchors.top: miniature.bottom
                                         anchors.topMargin: 8
                                         spacing: 1
                                         Label {
-                                            width: parent.width
+                                            // clear of the check and the invert button on its line
+                                            width: (check.visible ? check.x : invertButton.x) - 6 - 12
                                             text: skinCard.modelData.name
                                             elide: Text.ElideRight
                                             color: Theme.text
@@ -1470,7 +1471,7 @@ Item {
                                         anchors.right: invertButton.left
                                         anchors.rightMargin: 4
                                         anchors.top: miniature.bottom
-                                        anchors.topMargin: 12
+                                        anchors.topMargin: 9
                                         visible: skinCard.selected
                                         glyph: "check"
                                         size: 16
@@ -1686,14 +1687,16 @@ Item {
                         Layout.fillWidth: true
                         Layout.topMargin: 6
                         spacing: 2
+                        // The hint wraps: longer translations are read whole.
                         RowLayout {
-                            SectionLabel { text: group.modelData.backend }
+                            SectionLabel { text: group.modelData.backend; Layout.alignment: Qt.AlignBaseline }
                             Label {
                                 Layout.fillWidth: true
+                                Layout.alignment: Qt.AlignBaseline
                                 text: page.backendHint(group.modelData.backend)
                                 color: Theme.textFaint
                                 font.pixelSize: Theme.fontSmall
-                                elide: Text.ElideRight
+                                wrapMode: Text.Wrap
                             }
                         }
                         Repeater {

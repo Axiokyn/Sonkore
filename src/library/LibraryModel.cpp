@@ -226,6 +226,14 @@ double LibraryModel::totalDuration() const
     return total;
 }
 
+QStringList LibraryModel::formatLabels() const
+{
+    QSet<QString> labels;
+    for (const TrackMeta& t : m_tracks)
+        labels.insert(t.formatLabel());
+    return QStringList(labels.cbegin(), labels.cend());
+}
+
 const TrackMeta* LibraryModel::find(const QString& path) const
 {
     const auto it = m_index.constFind(path);
