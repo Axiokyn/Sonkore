@@ -2,8 +2,8 @@ import QtQuick
 
 // What scrolls up under a head fades out instead of being cut: `tint`
 // (the surface behind) fully at the top, clear at the bottom. Eased at both
-// ends, so it has no visible start or stop line across the rows under it;
-// a straight ramp ended in a band halfway down a line of text.
+// ends, so it has no visible start or stop line across the rows under it.
+// Keep it short (10-14 px): taller, it dims rows that are still whole.
 Rectangle {
     property color tint
 

@@ -56,7 +56,7 @@ Item {
     EdgeFade {
         z: 2
         width: root.width + root.scrollBarOutset
-        height: 26
+        height: 10
         tint: Theme.sidebar
         opacity: tree.atYBeginning ? 0 : 1
         Behavior on opacity { NumberAnimation { duration: 150 } }

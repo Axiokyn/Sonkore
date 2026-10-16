@@ -1391,7 +1391,7 @@ Rectangle {
             anchors.top: queueList.top
             anchors.left: queueList.left
             anchors.right: queueList.right
-            height: 20
+            height: 14
             tint: Theme.pane
             opacity: queueList.contentY > queueList.originY + 1 ? 1 : 0
             Behavior on opacity { NumberAnimation { duration: 120 } }

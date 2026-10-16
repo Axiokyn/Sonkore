@@ -582,7 +582,7 @@ Item {
         anchors.top: headerBand.bottom
         x: headerBand.joined ? headerBand.offset.x : 0
         width: headerBand.joined ? panel.width : list.width
-        height: 16
+        height: 10
         tint: Theme.bg
         visible: list.contentY > list.originY
     }
