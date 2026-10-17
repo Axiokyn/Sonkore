@@ -1,74 +1,74 @@
-# Hoja de ruta
+# Roadmap
 
-Objetivo: un reproductor Hi-Fi a la altura de Roon y JRiver en todo lo que piden los usuarios más puristas, hecho solo con software libre y publicable gratis en todas partes.
+Goal: a hi-fi player that matches Roon and JRiver in everything the most demanding listeners ask for, built only with free software and free to publish everywhere.
 
-## Reglas
+## Rules
 
-1. Sonkore es GPL-3.0-or-later. Solo se agregan dependencias compatibles: MIT, BSD, Apache-2.0, LGPL o GPLv3.
-2. Sin SDKs privativos, salvo las APIs del sistema (ALSA, PipeWire, WASAPI). ASIO es GPLv3 desde octubre de 2025.
-3. Cada binario publicado incluye sus licencias y el acceso al código fuente (ver `THIRD-PARTY.md` y `packaging/appimage/`).
+1. Sonkore is GPL-3.0-or-later. Only compatible dependencies are added: MIT, BSD, Apache-2.0, LGPL or GPLv3.
+2. No proprietary SDKs, except the system APIs (ALSA, PipeWire, WASAPI). ASIO has been GPLv3 since October 2025.
+3. Every published binary includes its licenses and access to the source code (see `THIRD-PARTY.md` and `packaging/appimage/`).
 
-## Fase 1: núcleo purista
+## Phase 1: purist core
 
-- [x] **Gapless**: la pista siguiente se decodifica y empalma sin silencio, exacta al sample; se recorta el relleno del codificador (MP3 LAME/Xing, AAC/MP4, Opus pre-skip). El final de la última pista ya no se corta.
-- [x] **ReplayGain / EBU R128** (libebur128, MIT): etiquetas ReplayGain y R128, análisis por pista y por álbum sin modificar los archivos, modo pista/álbum/apagado, preamp y prevención de clipping por true peak.
-- [x] **Volumen por hardware** en Linux: control del mixer del DAC (ALSA, en dB) para conservar el bit-perfect al bajar el volumen; con PipeWire, el volumen del sink (el mismo control, a través del servidor de sonido).
-- [x] **Volumen por hardware** en Windows: IAudioEndpointVolume con WASAPI exclusivo, en los dispositivos que lo implementan en hardware.
-- [x] **DSD nativo y DoP** en Linux: DSF y DSDIFF sin pasar a PCM (ALSA DSD_U32_BE/LE, DoP de 24 bits), hasta la frecuencia máxima del DAC.
-- [x] **DSD nativo** en Windows: salida ASIO (modo DSD de ASIO 2.2), también PCM bit-perfect en el formato propio del driver.
-- [x] **DST** (DSD comprimido en DSDIFF, el formato de los SACD): decodificador propio (ISO/IEC 14496-3 subparte 10) que devuelve los bits exactos, así que va como DSD nativo o DoP.
-- [x] **DSD → PCM propio** en doble precisión (FIR de 160 dB + SoX VHQ): 88,2 / 176,4 kHz, sin el ruido ultrasónico que deja FFmpeg (~−120 contra ~−28 dBFS).
-- [x] **Signal path**: cada etapa (archivo → decodificador → DSP → dispositivo) con formato, bits, frecuencia y calidad.
-- [x] **Reproducción desde RAM**: el archivo completo en RAM (bloqueado si el sistema lo permite) antes de reproducir; la siguiente pista se carga en segundo plano.
-- [x] **Prioridad de tiempo real** del hilo de audio (rtkit).
-- [x] **CUE sheets y multicanal** (5.1 / 7.1 sin mezclar a estéreo, con reordenamiento exacto de canales).
-- [x] **HDCD**: decodificación a 20 bits (libhdcd), solo en pistas con códigos HDCD.
+- [x] **Gapless**: the next track is decoded and spliced without silence, sample-exact; encoder padding is trimmed (MP3 LAME/Xing, AAC/MP4, Opus pre-skip). The end of the last track is no longer cut off.
+- [x] **ReplayGain / EBU R128** (libebur128, MIT): ReplayGain and R128 tags, per-track and per-album analysis without modifying the files, track/album/off modes, preamp and true-peak clipping prevention.
+- [x] **Hardware volume** on Linux: the DAC's mixer control (ALSA, in dB) to keep bit-perfect playback when turning the volume down; with PipeWire, the sink volume (the same control, through the sound server).
+- [x] **Hardware volume** on Windows: IAudioEndpointVolume with WASAPI exclusive, on devices that implement it in hardware.
+- [x] **Native DSD and DoP** on Linux: DSF and DSDIFF without going through PCM (ALSA DSD_U32_BE/LE, 24-bit DoP), up to the DAC's highest rate.
+- [x] **Native DSD** on Windows: ASIO output (ASIO 2.2 DSD mode), plus bit-perfect PCM in the driver's own format.
+- [x] **DST** (compressed DSD in DSDIFF, the SACD format): an in-house decoder (ISO/IEC 14496-3 subpart 10) that returns the exact bits, so it plays as native DSD or DoP.
+- [x] **In-house DSD → PCM** in double precision (160 dB FIR + SoX VHQ): 88.2 / 176.4 kHz, without the ultrasonic noise FFmpeg leaves (~−120 vs. ~−28 dBFS).
+- [x] **Signal path**: every stage (file → decoder → DSP → device) with format, bits, rate and quality.
+- [x] **Playback from RAM**: the whole file in RAM (locked if the system allows it) before playing; the next track loads in the background.
+- [x] **Real-time priority** for the audio thread (rtkit).
+- [x] **CUE sheets and multichannel** (5.1 / 7.1 without downmixing to stereo, with exact channel reordering).
+- [x] **HDCD**: decoding to 20 bits (libhdcd), only on tracks with HDCD codes.
 
-## Fase 2: DSP de referencia
+## Phase 2: reference DSP
 
-- [x] **Convolución FIR** (pocketfft, BSD-3, doble precisión): corrección de sala y filtros de REW, Dirac, etc.; mono, estéreo y true stereo.
-- [x] **Crossfeed** para auriculares (diseño Bauer / bs2b, MIT).
-- [x] **Remuestreo con filtros a elegir** (fase lineal, intermedia, mínima o lineal abrupto, SoX VHQ) y **upsampling** ×2 / ×4 / máximo del DAC.
-- [x] **Dither con noise shaping** (F-weighted de 9 coeficientes).
-- [x] **Upsampling PCM → DSD** (DSD64–DSD512) con modulador sigma-delta de 8.º orden (~113 dB de SNR en DSD64), un hilo por canal.
-- [x] **Gestión de headroom** antes del DSP, con detector de clipping.
-- [x] **Limitador true-peak** opcional al final del procesamiento (BS.1770, 4×; −1 dBTP de fábrica; exacto al bit por debajo del techo).
-- [x] **Perfiles de sonido por salida**: EQ, convolución, crossfeed, headroom, dither, sobremuestreo y DSD recordados por dispositivo.
-- [x] **Página Sonando ahora**: carátula grande, signal path y cola en una vista.
-- [x] **Ecualizador de fase lineal**: la curva del EQ como FIR (convolución por FFT), activable en plena reproducción sin cortes.
-- [x] **Salida nativa de PipeWire** con cambio de frecuencia por pista: bit-perfect (hasta 24 bits) sin tomar el DAC en exclusiva.
-- [x] **Señales de prueba** desde la app: frecuencia del DAC (PCM y DSD), canales y bit-perfect (DTS).
+- [x] **FIR convolution** (pocketfft, BSD-3, double precision): room correction and filters from REW, Dirac, etc.; mono, stereo and true stereo.
+- [x] **Crossfeed** for headphones (Bauer / bs2b design, MIT).
+- [x] **Resampling with a choice of filters** (linear phase, intermediate, minimum or steep linear, SoX VHQ) and **upsampling** ×2 / ×4 / the DAC's maximum.
+- [x] **Noise-shaped dither** (9-coefficient F-weighted).
+- [x] **PCM → DSD upsampling** (DSD64–DSD512) with an 8th-order sigma-delta modulator (~113 dB SNR at DSD64), one thread per channel.
+- [x] **Headroom management** before the DSP, with a clipping detector.
+- [x] Optional **true-peak limiter** at the end of processing (BS.1770, 4×; −1 dBTP by default; bit-exact below the ceiling).
+- [x] **Sound profiles per output**: EQ, convolution, crossfeed, headroom, dither, oversampling and DSD remembered per device.
+- [x] **Now playing page**: large cover, signal path and queue in one view.
+- [x] **Linear-phase equalizer**: the EQ curve as an FIR (FFT convolution), switchable during playback without dropouts.
+- [x] **Native PipeWire output** with per-track rate switching: bit-perfect (up to 24 bits) without taking the DAC exclusively.
+- [x] **Test signals** from the app: DAC sample rate (PCM and DSD), channels and bit-perfect (DTS).
 
-## Calidad
+## Quality
 
-- [x] Tests del motor (`tests/engine_test.cpp`): bit-perfect, gapless exacto, DSP, DSD, ASIO, estrés; limpios con ASan, UBSan y TSan. Corren en cada push (CI).
+- [x] Engine tests (`tests/engine_test.cpp`): bit-perfect, exact gapless, DSP, DSD, ASIO, stress; clean under ASan, UBSan and TSan. They run on every push (CI).
 
-## Fase 3: biblioteca
+## Phase 3: library
 
-- [x] Carátulas de Cover Art Archive para los álbumes sin imagen (búsqueda en MusicBrainz por artista y álbum).
-- [ ] Metadatos, créditos y versiones desde MusicBrainz (CC0).
-- [ ] Biografías desde Wikipedia/Wikidata (CC BY-SA, citando la fuente).
+- [x] Covers from the Cover Art Archive for albums without a picture (MusicBrainz lookup by artist and album, off by default).
+- [ ] Metadata, credits and releases from MusicBrainz (CC0).
+- [ ] Biographies from Wikipedia/Wikidata (CC BY-SA, citing the source).
 - [ ] Scrobbling (ListenBrainz, Last.fm).
-- [x] Vistas de artistas y géneros, paneles Género → Artista → Álbum y disposiciones al estilo de Spotify, Roon, MusicBee, JRiver, foobar2000, Winamp y Audacious.
-- [x] Escaneo configurable: carpetas omitidas y archivos cortos fuera.
-- [ ] Listas inteligentes, historial, valoraciones y filtros.
+- [x] Artist and genre views, Genre → Artist → Album panes and layouts in the style of Spotify, Roon, MusicBee, JRiver, foobar2000, Winamp and Audacious.
+- [x] Configurable scanning: skipped folders and short files left out.
+- [ ] Smart playlists, history, ratings and filters.
 
-## Fase 4: red y multiroom
+## Phase 4: network and multiroom
 
-- [ ] Control remoto desde el navegador y el celular.
-- [ ] UPnP/DLNA para enviar a streamers y DACs de red (libupnp, BSD).
+- [ ] Remote control from the browser and the phone.
+- [ ] UPnP/DLNA to send to streamers and network DACs (libupnp, BSD).
 - [ ] Chromecast.
-- [ ] Multiroom sincronizado (Snapcast, GPLv3).
+- [ ] Synchronized multiroom (Snapcast, GPLv3).
 
-## Fase 5: plataformas y distribución
+## Phase 5: platforms and distribution
 
-- [x] Linux: AppImage en GitHub Releases (CI en AlmaLinux 9: corre en cualquier distro con glibc 2.34+).
+- [x] Linux: AppImage on GitHub Releases (built on AlmaLinux 9 in CI: runs on any distribution with glibc 2.34+).
 - [ ] Linux: AUR, COPR, openSUSE Build Service, Snap.
-- [x] Windows x64: ASIO + WASAPI exclusivo; zip portable en GitHub Releases (Qt, runtime de MSVC y FFmpeg incluidos).
-- [ ] Windows: instalador, Scoop, winget.
+- [x] Windows x64: ASIO + WASAPI exclusive; portable zip on GitHub Releases (Qt, the MSVC runtime and FFmpeg included).
+- [ ] Windows: installer, Scoop, winget.
 
-## Fuera de alcance
+## Out of scope
 
-- **MQA**: privativo, sin implementación abierta.
-- **Roon Ready / RAAT**: protocolo cerrado (alternativa: UPnP + Snapcast).
-- **Tidal / Qobuz integrados**: requieren un acuerdo comercial con cada servicio.
+- **MQA**: proprietary, with no open implementation.
+- **Roon Ready / RAAT**: closed protocol (alternative: UPnP + Snapcast).
+- **Built-in Tidal / Qobuz**: they require a commercial agreement with each service.

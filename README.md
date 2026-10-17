@@ -4,49 +4,51 @@
 
 # Sonkore
 
-**Reproductor de música Hi-Fi para escritorio: bit-perfect, liviano y sin distracciones.**
+**A hi-fi music player for the desktop: bit-perfect, lightweight and distraction-free.**
 
-Linux · Windows 10/11 · Software libre (GPL-3.0)
+Linux · Windows 10/11 · Free software (GPL-3.0)
 
-[**Descargar**](https://github.com/Axiokyn/Sonkore/releases/latest) &nbsp;·&nbsp; [Funciones](docs/funciones.md) &nbsp;·&nbsp; [Compilar](docs/compilar.md) &nbsp;·&nbsp; [Hoja de ruta](ROADMAP.md)
+[**Download**](https://github.com/Axiokyn/Sonkore/releases/latest) &nbsp;·&nbsp; [Features](docs/features.md) &nbsp;·&nbsp; [Building](docs/building.md) &nbsp;·&nbsp; [Roadmap](ROADMAP.md) &nbsp;·&nbsp; [sonkore.org](https://sonkore.org)
 
 <br>
 
-<img src="docs/screenshots/now-playing.webp" alt="Sonkore: la página Sonando ahora, con la carátula, la ruta de la señal y la cola" width="900">
+<img src="docs/screenshots/now-playing.webp" alt="Sonkore: the Now playing page, with the cover, the signal path and the queue" width="900">
 
 </div>
 
-## Por qué Sonkore
+## Why Sonkore
 
-- **Bit-perfect de verdad.** ALSA `hw:` directo, PipeWire nativo (sigue la frecuencia de cada pista), JACK, WASAPI exclusivo y ASIO. Sin tocar el volumen ni el DSP, cada bit del archivo llega al DAC.
-- **DSD nativo, DoP o a PCM**, incluido DST, con un conversor propio en doble precisión.
-- **DSP de referencia.** Ecualizador gráfico o paramétrico con fase lineal y AutoEQ para unos 7000 auriculares, convolución FIR, crossfeed, sobremuestreo, limitador true-peak, dither con noise shaping, ReplayGain 2.0 y HDCD.
-- **Ruta de la señal** a la vista: cada etapa del archivo al DAC, con su calidad.
-- **Gapless exacto al sample**, también con ecualizador o volumen activos.
-- **Casi todos los formatos:** FLAC, WAV, MP3, ALAC, AAC, Opus, Vorbis, AIFF, APE, WavPack, DSF/DFF, CUE y más.
-- **Una biblioteca cómoda:** carpetas vigiladas, árbol de carpetas, 20 columnas, listas M3U, reproductor mini y 39 temas.
+- **Truly bit-perfect.** Direct ALSA `hw:`, native PipeWire (follows each track's sample rate), JACK, WASAPI exclusive and ASIO. Leave volume and DSP alone and every bit of the file reaches the DAC.
+- **Native DSD, DoP or conversion to PCM**, DST included, with its own double-precision converter.
+- **Reference DSP.** Graphic or parametric equalizer, optionally linear-phase, with AutoEQ for about 7,000 headphones; FIR convolution, crossfeed, oversampling, true-peak limiter, noise-shaped dither, ReplayGain 2.0 and HDCD.
+- **Signal path** in plain sight: every stage from the file to the DAC, with its quality.
+- **Sample-exact gapless playback**, also with the equalizer or volume in use.
+- **Almost every format:** FLAC, WAV, MP3, ALAC, AAC, Opus, Vorbis, AIFF, APE, WavPack, DSF/DFF, CUE and more.
+- **A comfortable library:** watched folders, folder tree, 20 columns, M3U playlists, a mini player and 39 themes.
 
 <p align="center">
-  <img src="docs/screenshots/albums.webp" alt="Vista de álbumes" width="600">
+  <img src="docs/screenshots/albums.webp" alt="Album view" width="600">
   &nbsp;
-  <img src="docs/screenshots/mini-player.webp" alt="Reproductor mini" width="270">
+  <img src="docs/screenshots/mini-player.webp" alt="Mini player" width="270">
 </p>
 
-## Descargar
+## Download
 
-Listo para usar, sin instalar nada. Cada archivo trae al lado su `.sha256`.
+Ready to use, nothing to install. Each file has its `.sha256` next to it.
 
-| Sistema | Archivo | Cómo se usa |
+| System | File | How to use it |
 |---|---|---|
-| **Linux** x86_64 (glibc 2.34+: Ubuntu 22.04+, Debian 12+, Fedora, Arch, openSUSE…) | [`Sonkore-x86_64.AppImage`](https://github.com/Axiokyn/Sonkore/releases/latest/download/Sonkore-x86_64.AppImage) | `chmod +x` y abrirlo |
-| **Windows** 10/11 de 64 bits | [`Sonkore-windows-x64.zip`](https://github.com/Axiokyn/Sonkore/releases/latest/download/Sonkore-windows-x64.zip) | Descomprimir y abrir `Sonkore.exe` |
+| **Linux** x86_64 (glibc 2.34+: Ubuntu 22.04+, Debian 12+, Fedora, Arch, openSUSE…) | [`Sonkore-x86_64.AppImage`](https://github.com/Axiokyn/Sonkore/releases/latest/download/Sonkore-x86_64.AppImage) | `chmod +x` it and run it |
+| **Windows** 10/11, 64-bit | [`Sonkore-windows-x64.zip`](https://github.com/Axiokyn/Sonkore/releases/latest/download/Sonkore-windows-x64.zip) | Unzip it and run `Sonkore.exe` |
 
-En Linux, `packaging/linux/install-user.sh` agrega Sonkore al menú de aplicaciones.
+On Linux, `packaging/linux/install-user.sh` adds Sonkore to the application menu.
 
-## Desarrollo
+The app speaks English, Spanish, Portuguese, French, German and Italian.
 
-Para compilarlo, ver [docs/compilar.md](docs/compilar.md).
+## Development
 
-## Licencia
+To build it, see [docs/building.md](docs/building.md).
 
-© Axiokyn. Software libre bajo la [GNU General Public License v3.0 o posterior](LICENSE). Los componentes de terceros (SoundTouch, libsoxr, miniaudio, dr_libs, FFmpeg, íconos basados en Feather y fuentes OFL) y sus avisos de copyright están en [THIRD-PARTY.md](THIRD-PARTY.md).
+## License
+
+© Axiokyn. Free software under the [GNU General Public License v3.0 or later](LICENSE). Third-party components (SoundTouch, libsoxr, miniaudio, dr_libs, FFmpeg, icons based on Feather and OFL fonts) and their copyright notices are listed in [THIRD-PARTY.md](THIRD-PARTY.md).
