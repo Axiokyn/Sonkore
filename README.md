@@ -45,7 +45,7 @@ En Linux, `packaging/linux/install-user.sh` agrega Sonkore al menú de aplicacio
 
 ## Desarrollo
 
-Sonkore se desarrolla con asistencia de IA (Claude, de Anthropic). Todo el código se revisa, se compila y se prueba antes de publicarse. Para compilarlo, ver [docs/compilar.md](docs/compilar.md).
+Para compilarlo, ver [docs/compilar.md](docs/compilar.md).
 
 ## Licencia
 

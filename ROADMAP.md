@@ -7,7 +7,6 @@ Objetivo: un reproductor Hi-Fi a la altura de Roon y JRiver en todo lo que piden
 1. Sonkore es GPL-3.0-or-later. Solo se agregan dependencias compatibles: MIT, BSD, Apache-2.0, LGPL o GPLv3.
 2. Sin SDKs privativos, salvo las APIs del sistema (ALSA, PipeWire, WASAPI). ASIO es GPLv3 desde octubre de 2025.
 3. Cada binario publicado incluye sus licencias y el acceso al código fuente (ver `THIRD-PARTY.md` y `packaging/appimage/`).
-4. El README declara que el desarrollo usa asistencia de IA.
 
 ## Fase 1: núcleo purista
 
@@ -73,4 +72,3 @@ Objetivo: un reproductor Hi-Fi a la altura de Roon y JRiver en todo lo que piden
 - **MQA**: privativo, sin implementación abierta.
 - **Roon Ready / RAAT**: protocolo cerrado (alternativa: UPnP + Snapcast).
 - **Tidal / Qobuz integrados**: requieren un acuerdo comercial con cada servicio.
-- **Flathub**: no acepta apps desarrolladas con IA.
