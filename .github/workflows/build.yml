@@ -260,16 +260,18 @@ jobs:
         id: version
         run: |
           if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
-            echo "tag=$GITHUB_REF_NAME" >> "$GITHUB_OUTPUT"
+            tag=$GITHUB_REF_NAME
           else
-            echo "tag=v$(sed -n 's/^ *VERSION \([0-9.]*\)$/\1/p' CMakeLists.txt | head -1)" >> "$GITHUB_OUTPUT"
+            tag=v$(sed -n 's/^ *VERSION \([0-9.]*\)$/\1/p' CMakeLists.txt | head -1)
           fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "version=${tag#v}" >> "$GITHUB_OUTPUT"
       - uses: actions/download-artifact@v4
         with:
           path: artifacts
-      # A release of the same version built from another commit is replaced,
-      # tag included, so the tag always names the commit the files came from.
-      - name: Replace an older build of this version
+      # A published version is never replaced: if this version's tag already
+      # names another commit, raise VERSION in CMakeLists.txt.
+      - name: Refuse to overwrite a published version
         if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
         env:
           GH_TOKEN: ${{ github.token }}
@@ -278,14 +280,14 @@ jobs:
           # (No such tag yet: the API answers with an error, not a commit.)
           sha=$(gh api "repos/$GITHUB_REPOSITORY/commits/$TAG" --jq .sha 2>/dev/null || true)
           if [[ "$sha" =~ ^[0-9a-f]{40}$ ]] && [ "$sha" != "$GITHUB_SHA" ]; then
-            gh release delete "$TAG" --repo "$GITHUB_REPOSITORY" --cleanup-tag --yes \
-              || gh api -X DELETE "repos/$GITHUB_REPOSITORY/git/refs/tags/$TAG"
+            echo "::error::$TAG is already published from ${sha:0:7}; raise VERSION in CMakeLists.txt"
+            exit 1
           fi
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.version.outputs.tag }}
           target_commitish: ${{ github.sha }}
-          name: Sonkore ${{ steps.version.outputs.tag }}
+          name: Sonkore ${{ steps.version.outputs.version }}
           body: |
             Sonkore ${{ steps.version.outputs.tag }}
 
