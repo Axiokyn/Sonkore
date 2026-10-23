@@ -61,6 +61,13 @@
     <control>pointing</control>
   </supports>
   <releases>
+    <release version="1.0.1" date="2026-10-23">
+      <description>
+        <p>Sonkore is now also available as a Flatpak. The desktop entry and icons take the app ID com.axiokyn.Sonkore,
+        and the old ones are replaced on their own. The play/pause, next and previous quick actions no longer need
+        dbus-send, and the audio thread gets real-time priority inside a Flatpak too.</p>
+      </description>
+    </release>
     <release version="1.0.0" date="2026-10-16">
       <description>
         <p>First release: bit-perfect playback through PipeWire, ALSA and JACK, native DSD, a parametric and
