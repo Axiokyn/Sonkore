@@ -39,6 +39,7 @@ Ready to use, nothing to install. Each file has its `.sha256` next to it.
 | System | File | How to use it |
 |---|---|---|
 | **Linux** x86_64 (glibc 2.34+: Ubuntu 22.04+, Debian 12+, Fedora, Arch, openSUSE…) | [`Sonkore-x86_64.AppImage`](https://github.com/Axiokyn/Sonkore/releases/latest/download/Sonkore-x86_64.AppImage) | `chmod +x` it and run it |
+| **Linux** x86_64, Flatpak (any distribution with Flatpak) | [`Sonkore-x86_64.flatpak`](https://github.com/Axiokyn/Sonkore/releases/latest/download/Sonkore-x86_64.flatpak) | `flatpak install --user Sonkore-x86_64.flatpak` (the KDE runtime comes from Flathub) |
 | **Windows** 10/11, 64-bit | [`Sonkore-windows-x64.zip`](https://github.com/Axiokyn/Sonkore/releases/latest/download/Sonkore-windows-x64.zip) | Unzip it and run `Sonkore.exe` |
 
 On Linux, `packaging/linux/install-user.sh` adds Sonkore to the application menu.

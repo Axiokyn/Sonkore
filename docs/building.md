@@ -42,9 +42,18 @@ packaging/appimage/build.sh [path/to/Qt/6.x/gcc_64]   # needs podman
 
 It is built inside an AlmaLinux 9 container (glibc 2.34, the same base as Qt's binaries), so it works on any x86_64 distribution since 2021: Ubuntu 22.04+, Debian 12+, Fedora, Arch, openSUSE Tumbleweed, etc. It includes Qt (with the X11 and Wayland plugins and the portal file dialog), the QML modules and an audio-only FFmpeg (LGPL), so ALAC, AAC, Opus, DSD and the rest work without installing anything. Graphics drivers and audio (ALSA, PipeWire, PulseAudio, JACK) come from the system. The licenses and the details of what is bundled are in `usr/share/doc/sonkore/` inside the AppImage.
 
+## Flatpak (Linux, any distribution)
+
+```bash
+packaging/flatpak/build.sh   # needs flatpak and flatpak-builder (or the org.flatpak.Builder app)
+# -> dist/Sonkore-x86_64.flatpak (+ .sha256)
+```
+
+A single-file bundle of `packaging/flatpak/com.axiokyn.Sonkore.yml`: Sonkore and the same audio-only FFmpeg as the AppImage (`packaging/ffmpeg/options.sh`) on the KDE runtime, which `flatpak install --user Sonkore-x86_64.flatpak` fetches from Flathub. Inside the sandbox the settings and data folders live under `~/.var/app/com.axiokyn.Sonkore/`.
+
 ## Published packages
 
-The packages on [Releases](https://github.com/Axiokyn/Sonkore/releases) are built from this code by the `.github/workflows/build.yml` workflow on GitHub Actions: the AppImage inside the container above and the Windows zip with MSVC against Qt for MSVC. Before publishing, it runs the engine tests and tries the AppImage on clean installs of Ubuntu 22.04 and 24.04, Debian 12, Fedora, Arch and openSUSE Tumbleweed.
+The packages on [Releases](https://github.com/Axiokyn/Sonkore/releases) are built from this code by the `.github/workflows/build.yml` workflow on GitHub Actions: the AppImage inside the container above, the Flatpak bundle with flatpak-builder and the Windows zip with MSVC against Qt for MSVC. Before publishing, it runs the engine tests and tries the AppImage on clean installs of Ubuntu 22.04 and 24.04, Debian 12, Fedora, Arch and openSUSE Tumbleweed, and installs and starts the Flatpak bundle.
 
 To publish a version, raise `VERSION` in `CMakeLists.txt`, add it to `packaging/linux/com.axiokyn.Sonkore.metainfo.xml` and push a commit whose message contains `[release]`. A version that is already published is never replaced.
 
@@ -106,7 +115,7 @@ Sonkore/
 │                   # (the default: Latin, Greek and Cyrillic, hinted), Manrope,
 │                   # Plus Jakarta Sans, Figtree, Outfit, DM Sans, Nunito Sans, Rubik; weights 400-700
 ├── i18n/           # translations (Spanish, Portuguese, French, German, Italian)
-├── packaging/      # icons/ (master SVGs + generate.py), fonts/ (build-inter.py: Inter for the app), linux/ (.desktop, metainfo, screenshots, install-user.sh), appimage/ (build.sh),
+├── packaging/      # icons/ (master SVGs + generate.py), fonts/ (build-inter.py: Inter for the app), linux/ (.desktop, metainfo, screenshots, install-user.sh), appimage/ (build.sh), flatpak/ (manifest, build.sh),
 │                   # ffmpeg/ (shared configuration), windows/ (.rc, .ico, build-ffmpeg.sh, package.ps1)
 └── qml/
     ├── Main.qml, Theme.qml (themes), TrackColumns.qml (columns), Prefs.qml, AppActions.qml (event bus and drag and drop)

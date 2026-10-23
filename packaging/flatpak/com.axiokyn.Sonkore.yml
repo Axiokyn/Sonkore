@@ -1,0 +1,106 @@
+# Sonkore's own Flatpak, published with each release on GitHub and on
+# sonkore.org as a single-file bundle. It is not the Flathub manifest.
+#   packaging/flatpak/build.sh   (or the "flatpak" job in .github/workflows/build.yml)
+id: com.axiokyn.Sonkore
+runtime: org.kde.Platform
+runtime-version: '6.11'
+sdk: org.kde.Sdk
+command: Sonkore
+finish-args:
+  - --share=ipc
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --device=dri
+  # PulseAudio, JACK through PipeWire, and /dev/snd for direct ALSA hw:
+  # output, native DSD and the DAC's mixer.
+  - --socket=pulseaudio
+  # Native PipeWire output and the sink volume.
+  - --filesystem=xdg-run/pipewire-0
+  # Watched music folders can be anywhere; Sonkore never writes next to the
+  # music (playlists and EQ profiles are saved through the file chooser).
+  - --filesystem=host:ro
+  # Missing covers (opt-in) and AutoEQ's headphone list.
+  - --share=network
+  - --own-name=org.mpris.MediaPlayer2.sonkore
+  # Device reservation while it holds a card for hw: output.
+  - --own-name=org.freedesktop.ReserveDevice1.*
+  - --talk-name=org.freedesktop.ReserveDevice1.*
+  # Tray icon (off by default).
+  - --talk-name=org.kde.StatusNotifierWatcher
+
+modules:
+  # Audio-only FFmpeg, the same build the AppImage carries
+  # (packaging/ffmpeg/options.sh); Sonkore opens it only when a file needs it.
+  - name: ffmpeg
+    buildsystem: simple
+    build-commands:
+      - bash -c 'source ./options.sh && ./configure --prefix=/app "${ffmpeg_options[@]}" --enable-zlib && ffmpeg_check_components'
+      - make -j"$FLATPAK_BUILDER_N_JOBS"
+      - make install
+      - install -Dm644 COPYING.LGPLv2.1 /app/share/licenses/com.axiokyn.Sonkore/ffmpeg/COPYING.LGPLv2.1
+    cleanup:
+      - /include
+      - /lib/pkgconfig
+      - /share/ffmpeg
+    sources:
+      # Version and hash as in packaging/ffmpeg/options.sh.
+      - type: archive
+        url: https://ffmpeg.org/releases/ffmpeg-8.1.3.tar.xz
+        sha256: 7138d28c96d9d3e3af4ee3d8cad72741f8ffb40da90c1112235dea3ecd3178a3
+      - type: file
+        path: ../ffmpeg/options.sh
+
+  - name: sonkore
+    buildsystem: cmake-ninja
+    builddir: true
+    config-opts:
+      - -DCMAKE_BUILD_TYPE=Release
+      - -DSONKORE_WITH_FFMPEG=ON
+      - -DSONKORE_DEPLOY_QT=OFF
+      - -DFETCHCONTENT_FULLY_DISCONNECTED=ON
+      - -DFETCHCONTENT_SOURCE_DIR_MINIAUDIO=/run/build/sonkore/offline-deps/miniaudio
+      - -DFETCHCONTENT_SOURCE_DIR_DR_LIBS=/run/build/sonkore/offline-deps/dr_libs
+      - -DFETCHCONTENT_SOURCE_DIR_LIBEBUR128=/run/build/sonkore/offline-deps/libebur128
+      - -DFETCHCONTENT_SOURCE_DIR_LIBHDCD=/run/build/sonkore/offline-deps/libhdcd
+      - -DFETCHCONTENT_SOURCE_DIR_POCKETFFT=/run/build/sonkore/offline-deps/pocketfft
+      - -DFETCHCONTENT_SOURCE_DIR_SOUNDTOUCH=/run/build/sonkore/offline-deps/soundtouch
+      - -DFETCHCONTENT_SOURCE_DIR_SOXR=/run/build/sonkore/offline-deps/soxr
+    sources:
+      - type: dir
+        path: ../..
+        skip:
+          - .git
+          - .flatpak-builder
+          - build
+          - build-sandbox
+          - build-test
+          - dist
+      # The tarballs of cmake/Dependencies.cmake, same URLs and hashes.
+      - type: archive
+        url: https://github.com/mackron/miniaudio/archive/refs/tags/0.11.21.tar.gz
+        sha256: 6afb5c231613d2fab4f1c668b7243ff9a7d6d78a7f5a2692c133f026fe508506
+        dest: offline-deps/miniaudio
+      - type: archive
+        url: https://github.com/mackron/dr_libs/archive/dfe8377631000664666519fdb83da193fd8037f4.tar.gz
+        sha256: 4654acb029f4f2a43ac2edb60c4cb09f40615b4b5bee9709954f910cb979e5fd
+        dest: offline-deps/dr_libs
+      - type: archive
+        url: https://github.com/jiixyj/libebur128/archive/refs/tags/v1.2.6.tar.gz
+        sha256: baa7fc293a3d4651e244d8022ad03ab797ca3c2ad8442c43199afe8059faa613
+        dest: offline-deps/libebur128
+      - type: archive
+        url: https://github.com/bp0/libhdcd/archive/refs/tags/v1.4.tar.gz
+        sha256: 0a576ee42fdff97f15b8e82cc2d27ddb1eb667df0c38971f2d5a9afc5a77b8b4
+        dest: offline-deps/libhdcd
+      - type: archive
+        url: https://github.com/mreineck/pocketfft/archive/c90e55b3d529f8efa40ed01a20de22405f45fc65.tar.gz
+        sha256: 2d90016da31a8cc1dd0ac0c89c1f2fb55df8f4ccc3f0386dcfbad09ac6d1c3ba
+        dest: offline-deps/pocketfft
+      - type: archive
+        url: https://codeberg.org/soundtouch/soundtouch/archive/2.3.3.tar.gz
+        sha256: 06c00f37d28e5984944951c20d0845c7931e691c59820922230915d205131a47
+        dest: offline-deps/soundtouch
+      - type: archive
+        url: https://downloads.sourceforge.net/project/soxr/soxr-0.1.3-Source.tar.xz
+        sha256: b111c15fdc8c029989330ff559184198c161100a59312f5dc19ddeb9b5a15889
+        dest: offline-deps/soxr

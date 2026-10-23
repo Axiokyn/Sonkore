@@ -5,6 +5,7 @@
 #                  Qt, QML and FFmpeg inside, runs on any distro from 2021 on
 #   ffmpeg-windows audio-only FFmpeg DLLs, cross-compiled with MinGW-w64
 #   windows        Windows x64 (MSVC), portable zip with everything inside
+#   flatpak        Linux x86_64 Flatpak bundle (KDE runtime from Flathub)
 #   release        on a "v*" tag or a commit marked [release]: the files
 #                  above on the release page
 name: Build
@@ -244,11 +245,45 @@ jobs:
             dist/*.sha256
           if-no-files-found: error
 
+  flatpak:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Tools
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q flatpak flatpak-builder xvfb dbus
+          # bubblewrap needs unprivileged user namespaces, which Ubuntu 24.04 restricts.
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/sonkore-flatpak/state
+          key: flatpak-${{ hashFiles('packaging/flatpak/com.axiokyn.Sonkore.yml', 'packaging/ffmpeg/options.sh') }}
+          restore-keys: flatpak-
+      - name: Build
+        run: packaging/flatpak/build.sh
+      - name: Starts and keeps running
+        run: |
+          flatpak install --user -y --noninteractive dist/Sonkore-x86_64.flatpak
+          export QT_QUICK_BACKEND=software
+          dbus-run-session -- xvfb-run -a -s "-screen 0 1280x800x24" \
+            timeout -s TERM 20 flatpak run com.axiokyn.Sonkore > run.log 2>&1 || status=$?
+          cat run.log
+          [ "${status:-0}" = 124 ] || [ "${status:-0}" = 0 ] || exit 1
+          ! grep -E "QQmlApplicationEngine failed|is not installed|Cannot load library|could not load the Qt platform plugin|cannot open shared object" run.log
+      - uses: actions/upload-artifact@v4
+        with:
+          name: flatpak
+          path: |
+            dist/*.flatpak
+            dist/*.sha256
+          if-no-files-found: error
+
   # A "v*" tag, or a pushed commit whose message says [release], publishes the
   # packages as the release v<project version> (the tag is made here).
   release:
     if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'push' && contains(github.event.head_commit.message, '[release]'))
-    needs: [tests, appimage, appimage-distros, windows]
+    needs: [tests, appimage, appimage-distros, windows, flatpak]
     runs-on: ubuntu-24.04
     # Pushing one commit to two branches must not publish it twice at once.
     concurrency: release-${{ github.sha }}
@@ -292,6 +327,7 @@ jobs:
             Sonkore ${{ steps.version.outputs.tag }}
 
             - **Linux x86_64:** `Sonkore-x86_64.AppImage` — make it executable and run it; nothing else to install (glibc 2.34 or newer).
+            - **Linux x86_64, Flatpak:** `Sonkore-x86_64.flatpak` — `flatpak install --user Sonkore-x86_64.flatpak`; the KDE runtime comes from Flathub.
             - **Windows 64-bit:** `Sonkore-windows-x64.zip` — unzip and run `Sonkore.exe`.
 
             Each file has a `.sha256` next to it.
@@ -300,3 +336,5 @@ jobs:
             artifacts/appimage/*.sha256
             artifacts/windows-x64/*.zip
             artifacts/windows-x64/*.sha256
+            artifacts/flatpak/*.flatpak
+            artifacts/flatpak/*.sha256
