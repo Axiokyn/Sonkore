@@ -22,9 +22,10 @@ finish-args:
   # Missing covers (opt-in) and AutoEQ's headphone list.
   - --share=network
   - --own-name=org.mpris.MediaPlayer2.sonkore
-  # Device reservation while it holds a card for hw: output.
+  # Device reservation while it holds a card for hw: output. Owning a name
+  # includes talking to it; a --talk-name for the same name would replace
+  # this permission (one policy per name) and the reservation would fail.
   - --own-name=org.freedesktop.ReserveDevice1.*
-  - --talk-name=org.freedesktop.ReserveDevice1.*
   # Tray icon (off by default).
   - --talk-name=org.kde.StatusNotifierWatcher
 

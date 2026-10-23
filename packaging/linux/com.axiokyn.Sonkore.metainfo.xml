@@ -61,6 +61,12 @@
     <control>pointing</control>
   </supports>
   <releases>
+    <release version="1.0.2" date="2026-10-23">
+      <description>
+        <p>The Flatpak can take the DAC for direct hw: output again: its permissions kept it from reserving the card
+        after the sound server let it go.</p>
+      </description>
+    </release>
     <release version="1.0.1" date="2026-10-23">
       <description>
         <p>Sonkore is now also available as a Flatpak. The desktop entry and icons take the app ID com.axiokyn.Sonkore,
