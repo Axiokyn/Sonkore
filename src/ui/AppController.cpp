@@ -29,6 +29,11 @@
 #include <QStandardPaths>
 #include <QTimer>
 #include <QUrl>
+#if defined(SONKORE_HAVE_DBUS)
+#include <QDBusConnection>
+#include <QDBusMessage>
+#include <QDBusVariant>
+#endif
 
 #include <algorithm>
 #include <chrono>
@@ -471,6 +476,29 @@ QStringList AppController::readSystemWindowButtons()
             return QString();
         return QString::fromUtf8(p.readAllStandardOutput()).trimmed();
     };
+    // Inside a Flatpak, gsettings reads the sandbox's own settings (GNOME's
+    // default, close only), not the desktop's: the Settings portal has those.
+    const auto portalSetting = [](const QString& schema, const QString& key) {
+#if defined(SONKORE_HAVE_DBUS)
+        for (const char* method : {"ReadOne", "Read"}) { // Read: portals before 1.17
+            QDBusMessage call = QDBusMessage::createMethodCall(
+                QStringLiteral("org.freedesktop.portal.Desktop"), QStringLiteral("/org/freedesktop/portal/desktop"),
+                QStringLiteral("org.freedesktop.portal.Settings"), QString::fromLatin1(method));
+            call << schema << key;
+            const QDBusMessage reply = QDBusConnection::sessionBus().call(call, QDBus::Block, 500);
+            if (reply.type() != QDBusMessage::ReplyMessage || reply.arguments().isEmpty())
+                continue;
+            QVariant value = reply.arguments().constFirst();
+            while (value.userType() == qMetaTypeId<QDBusVariant>()) // Read wraps it twice
+                value = value.value<QDBusVariant>().variant();
+            return value.toString();
+        }
+#else
+        Q_UNUSED(schema);
+        Q_UNUSED(key);
+#endif
+        return QString();
+    };
     // Each desktop names the buttons its own way; `names` maps them to ours.
     const auto pick = [](const QString& layout, const QHash<QString, QString>& names, bool letters) {
         QStringList shown;
@@ -512,7 +540,9 @@ QStringList AppController::readSystemWindowButtons()
         // GNOME and the desktops built on its settings: "appmenu:minimize,maximize,close".
         const QString schema = desktop.contains(QLatin1String("cinnamon")) ? QStringLiteral("org.cinnamon.desktop.wm.preferences")
                                                                            : QStringLiteral("org.gnome.desktop.wm.preferences");
-        QString layout = run(QStringLiteral("gsettings"), {QStringLiteral("get"), schema, QStringLiteral("button-layout")});
+        QString layout = QFile::exists(QStringLiteral("/.flatpak-info"))
+                             ? portalSetting(schema, QStringLiteral("button-layout"))
+                             : run(QStringLiteral("gsettings"), {QStringLiteral("get"), schema, QStringLiteral("button-layout")});
         layout.remove(u'\'');
         if (layout.contains(u':')) {
             buttons = pick(layout, {{"minimize", "minimize"}, {"maximize", "maximize"}, {"close", "close"}}, false);
