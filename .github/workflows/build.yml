@@ -261,7 +261,7 @@ jobs:
           key: flatpak-${{ hashFiles('packaging/flatpak/com.axiokyn.Sonkore.yml', 'packaging/ffmpeg/options.sh') }}
           restore-keys: flatpak-
       - name: Build
-        run: packaging/flatpak/build.sh
+        run: bash packaging/flatpak/build.sh
       - name: Starts and keeps running
         run: |
           flatpak install --user -y --noninteractive dist/Sonkore-x86_64.flatpak
