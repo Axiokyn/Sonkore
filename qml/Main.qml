@@ -788,8 +788,9 @@ ApplicationWindow {
         Brand {
             id: topBrand
             x: window.sidebarCollapsed ? Math.round((sidebar.width - width) / 2) : 13
-            logoSize: 34
-            textSize: 21
+            // 9 px of bar above and below the logo at every density.
+            logoSize: topBar.height - 18
+            textSize: Math.round(logoSize * 0.62)
             anchors.verticalCenter: parent.verticalCenter
             logoOnly: window.sidebarCollapsed
             clickable: window.sidebarCollapsed
