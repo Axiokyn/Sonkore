@@ -61,6 +61,12 @@
     <control>pointing</control>
   </supports>
   <releases>
+    <release version="1.0.3" date="2026-10-23">
+      <description>
+        <p>The logo in the top bar keeps some room above and below at every density. In the Flatpak, the window buttons
+        follow the desktop's layout again instead of showing only the close button.</p>
+      </description>
+    </release>
     <release version="1.0.2" date="2026-10-23">
       <description>
         <p>The Flatpak can take the DAC for direct hw: output again: its permissions kept it from reserving the card

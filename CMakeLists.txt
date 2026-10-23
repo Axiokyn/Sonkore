@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.21)
 
 project(Sonkore
-    VERSION 1.0.2
+    VERSION 1.0.3
     DESCRIPTION "Hi-Fi music player: bit-perfect output, SoundTouch, SuperEQ"
     LANGUAGES C CXX)
 
