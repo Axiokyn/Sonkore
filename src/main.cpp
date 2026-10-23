@@ -62,6 +62,21 @@ QIcon appIcon()
     return icon;
 }
 
+// The desktop entry's quick actions (`Sonkore --play-pause`): MPRIS methods
+// for the instance that is already running.
+QString playerCommand(const QStringList& args)
+{
+    for (const QString& arg : args) {
+        if (arg == QLatin1String("--play-pause"))
+            return QStringLiteral("PlayPause");
+        if (arg == QLatin1String("--next"))
+            return QStringLiteral("Next");
+        if (arg == QLatin1String("--previous"))
+            return QStringLiteral("Previous");
+    }
+    return {};
+}
+
 // Audio files passed on the command line ("Open with Sonkore", drag onto the
 // launcher, `Sonkore song.flac`).
 QStringList audioArguments(const QStringList& args)
@@ -110,20 +125,30 @@ void integrateAppImage()
     if (appImage.isEmpty() || appDir.isEmpty() || !QFileInfo(appImage).isFile())
         return;
     const QString data = QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation);
-    const QString entryPath = data + QStringLiteral("/applications/sonkore.desktop");
+    const QString entryPath = data + QStringLiteral("/applications/com.axiokyn.Sonkore.desktop");
     constexpr char kMarker[] = "X-Sonkore-AppImage=true";
 
+    bool changed = false;
+    // Versions before the app ID wrote sonkore.desktop and sonkore icons.
+    const QString oldEntry = data + QStringLiteral("/applications/sonkore.desktop");
+    if (resource(oldEntry).contains(kMarker)) {
+        QFile::remove(oldEntry);
+        for (int size : {16, 22, 24, 32, 48, 64, 128, 256, 512})
+            QFile::remove(data + QStringLiteral("/icons/hicolor/%1x%1/apps/sonkore.png").arg(size));
+        QFile::remove(data + QStringLiteral("/icons/hicolor/scalable/apps/sonkore.svg"));
+        changed = true;
+    }
+
     bool ours = true;
-    for (const QString& existing : QStandardPaths::locateAll(QStandardPaths::ApplicationsLocation, QStringLiteral("sonkore.desktop"))) {
+    for (const QString& existing : QStandardPaths::locateAll(QStandardPaths::ApplicationsLocation, QStringLiteral("com.axiokyn.Sonkore.desktop"))) {
         if (QFileInfo(existing).absoluteFilePath() != QFileInfo(entryPath).absoluteFilePath())
             ours = false; // installed by a package
         else if (!resource(existing).contains(kMarker))
             ours = false; // installed by hand (install-user.sh)
     }
 
-    bool changed = false;
     if (ours) {
-        QString entry = QString::fromUtf8(resource(appDir + QStringLiteral("/sonkore.desktop")));
+        QString entry = QString::fromUtf8(resource(appDir + QStringLiteral("/com.axiokyn.Sonkore.desktop")));
         if (!entry.isEmpty()) {
             const QString quoted = QLatin1Char('"') + appImage + QLatin1Char('"');
             entry.replace(QRegularExpression(QStringLiteral("(?m)^Exec=Sonkore")), QStringLiteral("Exec=") + quoted);
@@ -131,9 +156,9 @@ void integrateAppImage()
             entry.replace(QStringLiteral("[Desktop Entry]\n"), QStringLiteral("[Desktop Entry]\n") + QLatin1String(kMarker) + QLatin1Char('\n'));
             changed |= writeIfChanged(entryPath, entry.toUtf8());
             for (int size : {16, 22, 24, 32, 48, 64, 128, 256, 512})
-                changed |= writeIfChanged(data + QStringLiteral("/icons/hicolor/%1x%1/apps/sonkore.png").arg(size),
+                changed |= writeIfChanged(data + QStringLiteral("/icons/hicolor/%1x%1/apps/com.axiokyn.Sonkore.png").arg(size),
                                           resource(QStringLiteral(":/icons/png/%1.png").arg(size)));
-            changed |= writeIfChanged(data + QStringLiteral("/icons/hicolor/scalable/apps/sonkore.svg"),
+            changed |= writeIfChanged(data + QStringLiteral("/icons/hicolor/scalable/apps/com.axiokyn.Sonkore.svg"),
                                       resource(QStringLiteral(":/icons/sonkore.svg")));
         }
     }
@@ -211,7 +236,7 @@ int main(int argc, char* argv[])
     // work instead of idling for half a minute.
     QThreadPool::globalInstance()->setExpiryTimeout(3000);
     QGuiApplication::setApplicationDisplayName(QStringLiteral("Sonkore"));
-    QGuiApplication::setDesktopFileName(QStringLiteral("sonkore")); // Wayland app_id -> sonkore.desktop
+    QGuiApplication::setDesktopFileName(QStringLiteral("com.axiokyn.Sonkore")); // Wayland app_id -> com.axiokyn.Sonkore.desktop
     QGuiApplication::setWindowIcon(appIcon());
     QQuickStyle::setStyle(QStringLiteral("Fusion"));
 #if defined(Q_OS_UNIX)
@@ -225,6 +250,12 @@ int main(int argc, char* argv[])
 #if defined(SONKORE_HAVE_MPRIS)
     // Already running: hand the files over and bring that window forward.
     if (!files.isEmpty() && MprisService::forwardToRunningInstance(files)) {
+        AppController::abandonStartup();
+        return 0;
+    }
+    // A quick action with nothing running just starts Sonkore.
+    if (const QString command = playerCommand(app.arguments().mid(1));
+        !command.isEmpty() && MprisService::sendToRunningInstance(command)) {
         AppController::abandonStartup();
         return 0;
     }

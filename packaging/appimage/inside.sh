@@ -56,11 +56,14 @@ cmake --build /work/build
 appdir=/work/AppDir
 rm -rf "$appdir" /work/icons
 install -Dm755 /work/build/bin/Sonkore "$appdir/usr/bin/Sonkore"
-install -Dm644 /src/packaging/linux/sonkore.metainfo.xml "$appdir/usr/share/metainfo/sonkore.appdata.xml"
+# Desktop entry, metainfo and icons are named after the app ID.
+id=com.axiokyn.Sonkore
+install -Dm644 "/src/packaging/linux/$id.metainfo.xml" "$appdir/usr/share/metainfo/$id.metainfo.xml"
 for size in 16 22 24 32 48 64 128 256 512; do
-    install -Dm644 "/src/packaging/icons/png/$size.png" "/work/icons/${size}x${size}/sonkore.png"
+    install -Dm644 "/src/packaging/icons/png/$size.png" "/work/icons/${size}x${size}/$id.png"
 done
-install -Dm644 /src/packaging/icons/sonkore-symbolic.svg "$appdir/usr/share/icons/hicolor/symbolic/apps/sonkore-symbolic.svg"
+install -Dm644 /src/packaging/icons/sonkore.svg "/work/icons/scalable/$id.svg"
+install -Dm644 /src/packaging/icons/sonkore-symbolic.svg "$appdir/usr/share/icons/hicolor/symbolic/apps/$id-symbolic.svg"
 
 docs="$appdir/usr/share/doc/sonkore"
 install -Dm644 /src/LICENSE "$docs/LICENSE"
@@ -120,11 +123,11 @@ export LD_LIBRARY_PATH="/qt/lib:$ffmpeg/lib"
 export LINUXDEPLOY_OUTPUT_VERSION="$version" LDAI_OUTPUT="/out/Sonkore-x86_64.AppImage"
 rm -f "$LDAI_OUTPUT"
 icons=()
-for f in /work/icons/*/sonkore.png; do icons+=(--icon-file "$f"); done
+for f in /work/icons/*/"$id".png; do icons+=(--icon-file "$f"); done
 linuxdeploy-x86_64.AppImage --appdir "$appdir" \
     --executable "$appdir/usr/bin/Sonkore" \
-    --desktop-file /src/packaging/linux/sonkore.desktop \
-    --icon-file /src/packaging/icons/sonkore.svg "${icons[@]}" \
+    --desktop-file "/src/packaging/linux/$id.desktop" \
+    --icon-file "/work/icons/scalable/$id.svg" "${icons[@]}" \
     "${dlopened[@]}" "${excluded[@]}" \
     --deploy-deps-only "$appdir/usr/plugins/platformthemes" \
     --deploy-deps-only "$appdir/usr/plugins/wayland-shell-integration" \

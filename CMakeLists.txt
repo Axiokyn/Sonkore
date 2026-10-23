@@ -426,19 +426,39 @@ install(TARGETS Sonkore
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
 if(UNIX AND NOT APPLE)
-    install(FILES packaging/linux/sonkore.desktop DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
-    install(FILES packaging/linux/sonkore.metainfo.xml DESTINATION ${CMAKE_INSTALL_DATADIR}/metainfo)
-    install(FILES packaging/icons/sonkore.svg DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps)
-    install(FILES packaging/icons/sonkore-symbolic.svg DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/symbolic/apps)
+    # Desktop entry, metainfo and icons are named after the app ID.
+    set(SONKORE_APP_ID com.axiokyn.Sonkore)
+    install(FILES packaging/linux/${SONKORE_APP_ID}.desktop DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
+    install(FILES packaging/linux/${SONKORE_APP_ID}.metainfo.xml DESTINATION ${CMAKE_INSTALL_DATADIR}/metainfo)
+    install(FILES packaging/icons/sonkore.svg
+            DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps
+            RENAME ${SONKORE_APP_ID}.svg)
+    install(FILES packaging/icons/sonkore-symbolic.svg
+            DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/symbolic/apps
+            RENAME ${SONKORE_APP_ID}-symbolic.svg)
     foreach(size 16 22 24 32 48 64 128 256 512)
         install(FILES packaging/icons/png/${size}.png
                 DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/${size}x${size}/apps
-                RENAME sonkore.png)
+                RENAME ${SONKORE_APP_ID}.png)
+    endforeach()
+    # Sonkore's license and those of what is built into it (SoundTouch and
+    # libsoxr under the LGPL, the fonts under the OFL; THIRD-PARTY.md lists all).
+    set(SONKORE_LICENSE_DIR ${CMAKE_INSTALL_DATADIR}/licenses/${SONKORE_APP_ID})
+    install(FILES LICENSE THIRD-PARTY.md licenses/LGPL-2.1.txt licenses/LGPL-3.0.txt DESTINATION ${SONKORE_LICENSE_DIR})
+    file(GLOB SONKORE_FONT_DIRS LIST_DIRECTORIES true RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}/fonts" fonts/*)
+    foreach(font ${SONKORE_FONT_DIRS})
+        install(FILES fonts/${font}/OFL.txt DESTINATION ${SONKORE_LICENSE_DIR}/fonts/${font})
     endforeach()
 endif()
 
-qt_generate_deploy_qml_app_script(
-    TARGET Sonkore
-    OUTPUT_SCRIPT sonkore_deploy_script
-    NO_UNSUPPORTED_PLATFORM_ERROR)
-install(SCRIPT ${sonkore_deploy_script})
+# Copies the Qt runtime into the install prefix, for a self-contained folder.
+# Off for distribution packages and Flatpak, which use the system's or the
+# runtime's Qt.
+option(SONKORE_DEPLOY_QT "Copy the Qt runtime into the install prefix" ON)
+if(SONKORE_DEPLOY_QT)
+    qt_generate_deploy_qml_app_script(
+        TARGET Sonkore
+        OUTPUT_SCRIPT sonkore_deploy_script
+        NO_UNSUPPORTED_PLATFORM_ERROR)
+    install(SCRIPT ${sonkore_deploy_script})
+endif()

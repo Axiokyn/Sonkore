@@ -3,8 +3,9 @@
 #include <QtGlobal>
 
 // Real-time scheduling for the audio thread on Linux, through rtkit (the
-// D-Bus service PipeWire and PulseAudio use): an ordinary user may not set
-// SCHED_FIFO directly, rtkit grants it within safe limits.
+// D-Bus service PipeWire and PulseAudio use; in a Flatpak, the Realtime
+// portal in front of it): an ordinary user may not set SCHED_FIFO directly,
+// rtkit grants it within safe limits.
 namespace RealtimeKit {
 
 // Priority of `tid` (a thread of this process) when it already runs under

@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Copyright Axiokyn -->
+<component type="desktop-application">
+  <id>com.axiokyn.Sonkore</id>
+  <name>Sonkore</name>
+  <summary>Play your music bit for bit</summary>
+  <developer id="com.axiokyn">
+    <name>Axiokyn</name>
+  </developer>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+  <launchable type="desktop-id">com.axiokyn.Sonkore.desktop</launchable>
+  <provides>
+    <binary>Sonkore</binary>
+    <id>sonkore.desktop</id>
+  </provides>
+  <description>
+    <p>Sonkore plays your files exactly as they were recorded. Leave the volume and the effects alone and every bit
+    reaches your DAC untouched; the signal path shows each stage from the file to the speakers, with its quality.</p>
+    <ul>
+      <li>Bit-perfect output through PipeWire, which follows each track's sample rate, direct ALSA devices or JACK</li>
+      <li>Native DSD, DoP or high-quality conversion to PCM, compressed DST included</li>
+      <li>Graphic or parametric equalizer, optionally linear-phase, with AutoEQ corrections for about 7,000 headphones</li>
+      <li>Convolution, crossfeed, oversampling, a true-peak limiter, ReplayGain 2.0 and HDCD decoding</li>
+      <li>Sample-exact gapless playback, also with the equalizer or the volume in use</li>
+      <li>FLAC, WAV, MP3, ALAC, AAC, Opus, Vorbis, AIFF, APE, WavPack, DSF/DFF, CUE sheets and more</li>
+      <li>Watched folders, a folder tree, 20 columns, M3U playlists, a mini player and 39 themes</li>
+    </ul>
+    <p>Covers missing from your files can be looked up on MusicBrainz and the Cover Art Archive. This is off until
+    you turn it on in the settings.</p>
+  </description>
+  <screenshots>
+    <screenshot type="default">
+      <caption>The track playing, its signal path and the queue</caption>
+      <image>https://raw.githubusercontent.com/Axiokyn/Sonkore/68c70eee9c3f08b8d78b234cd9865da39d70ca95/packaging/linux/screenshots/now-playing.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>The library's tracks with their covers and formats</caption>
+      <image>https://raw.githubusercontent.com/Axiokyn/Sonkore/68c70eee9c3f08b8d78b234cd9865da39d70ca95/packaging/linux/screenshots/tracks.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Albums in the light Parchment theme</caption>
+      <image>https://raw.githubusercontent.com/Axiokyn/Sonkore/68c70eee9c3f08b8d78b234cd9865da39d70ca95/packaging/linux/screenshots/albums-light.png</image>
+    </screenshot>
+  </screenshots>
+  <url type="homepage">https://sonkore.org</url>
+  <url type="vcs-browser">https://github.com/Axiokyn/Sonkore</url>
+  <branding>
+    <color type="primary" scheme_preference="light">#5ee08f</color>
+    <color type="primary" scheme_preference="dark">#0f5130</color>
+  </branding>
+  <content_rating type="oars-1.1">
+    <!-- Opt-in cover lookups send the artist and album to MusicBrainz. -->
+    <content_attribute id="social-info">mild</content_attribute>
+  </content_rating>
+  <requires>
+    <display_length compare="ge">768</display_length>
+  </requires>
+  <supports>
+    <control>keyboard</control>
+    <control>pointing</control>
+  </supports>
+  <releases>
+    <release version="1.0.0" date="2026-10-16">
+      <description>
+        <p>First release: bit-perfect playback through PipeWire, ALSA and JACK, native DSD, a parametric and
+        linear-phase equalizer with AutoEQ, and a library built from watched folders.</p>
+      </description>
+    </release>
+  </releases>
+</component>

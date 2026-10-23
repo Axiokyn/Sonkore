@@ -179,6 +179,18 @@ bool MprisService::forwardToRunningInstance(const QStringList& paths)
     return true;
 }
 
+bool MprisService::sendToRunningInstance(const QString& method)
+{
+    QDBusConnection bus = QDBusConnection::sessionBus();
+    if (!bus.isConnected() || !bus.interface()->isServiceRegistered(kService))
+        return false;
+    QDBusInterface player(kService, kPath, kPlayerIface, bus);
+    if (!player.isValid())
+        return false;
+    player.call(method);
+    return true;
+}
+
 // --- org.mpris.MediaPlayer2 ---------------------------------------------------------
 
 MprisRootAdaptor::MprisRootAdaptor(MprisService* service)

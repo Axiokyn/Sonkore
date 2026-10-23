@@ -7,6 +7,14 @@ include(FetchContent)
 # rejects unless a policy floor is provided.
 set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
 
+# SoundTouch and libsoxr are linked statically: their own install rules
+# (headers, static libraries, CMake and pkg-config files) stay out of
+# Sonkore's install. Older CMake installs them too, harmlessly.
+set(SONKORE_FETCH_EXCLUDE "")
+if(CMAKE_VERSION VERSION_GREATER_EQUAL 3.28)
+    set(SONKORE_FETCH_EXCLUDE EXCLUDE_FROM_ALL)
+endif()
+
 option(SONKORE_USE_SYSTEM_SOUNDTOUCH "Link the system SoundTouch (pkg-config) instead of fetching it" OFF)
 
 # --- miniaudio (header-only; implementation compiled in backend_impl.c) -------
@@ -111,7 +119,8 @@ else()
 
     FetchContent_Declare(soundtouch
         URL      https://codeberg.org/soundtouch/soundtouch/archive/2.3.3.tar.gz
-        URL_HASH SHA256=06c00f37d28e5984944951c20d0845c7931e691c59820922230915d205131a47)
+        URL_HASH SHA256=06c00f37d28e5984944951c20d0845c7931e691c59820922230915d205131a47
+        ${SONKORE_FETCH_EXCLUDE})
     FetchContent_MakeAvailable(soundtouch)
 
     target_link_libraries(sonkore_soundtouch INTERFACE SoundTouch)
@@ -138,11 +147,19 @@ else()
     set(WITH_AVFFT         OFF CACHE BOOL "" FORCE)
     set(WITH_DEV_TRACE     OFF CACHE BOOL "" FORCE)
 
-    set(SONKORE_SOXR_SOURCE_DIR ${CMAKE_BINARY_DIR}/_deps/soxr-src)
+    # A source tree given with FETCHCONTENT_SOURCE_DIR_SOXR (offline builds,
+    # see docs/building.md) is used as it is, without the patch below, which
+    # only matters for build paths with spaces.
+    if(FETCHCONTENT_SOURCE_DIR_SOXR)
+        set(SONKORE_SOXR_SOURCE_DIR ${FETCHCONTENT_SOURCE_DIR_SOXR})
+    else()
+        set(SONKORE_SOXR_SOURCE_DIR ${CMAKE_BINARY_DIR}/_deps/soxr-src)
+    endif()
     FetchContent_Declare(soxr
         URL      https://downloads.sourceforge.net/project/soxr/soxr-0.1.3-Source.tar.xz
         URL_HASH SHA256=b111c15fdc8c029989330ff559184198c161100a59312f5dc19ddeb9b5a15889
         SOURCE_DIR ${SONKORE_SOXR_SOURCE_DIR}
+        ${SONKORE_FETCH_EXCLUDE}
         PATCH_COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_LIST_DIR}/patches/soxr-paths-with-spaces.cmake)
     # soxr looks for its CMake modules under CMAKE_SOURCE_DIR (ours), lists
     # its sources without extensions and predates CMP0127.

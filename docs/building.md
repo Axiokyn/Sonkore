@@ -46,7 +46,34 @@ It is built inside an AlmaLinux 9 container (glibc 2.34, the same base as Qt's b
 
 The packages on [Releases](https://github.com/Axiokyn/Sonkore/releases) are built from this code by the `.github/workflows/build.yml` workflow on GitHub Actions: the AppImage inside the container above and the Windows zip with MSVC against Qt for MSVC. Before publishing, it runs the engine tests and tries the AppImage on clean installs of Ubuntu 22.04 and 24.04, Debian 12, Fedora, Arch and openSUSE Tumbleweed.
 
-To publish a version, raise `VERSION` in `CMakeLists.txt`, add it to `packaging/linux/sonkore.metainfo.xml` and push a commit whose message contains `[release]`. A version that is already published is never replaced.
+To publish a version, raise `VERSION` in `CMakeLists.txt`, add it to `packaging/linux/com.axiokyn.Sonkore.metainfo.xml` and push a commit whose message contains `[release]`. A version that is already published is never replaced.
+
+## Offline builds (Flatpak, distribution packages)
+
+CMake downloads seven SHA256-pinned tarballs from `cmake/Dependencies.cmake` (miniaudio, dr_libs, libebur128, libhdcd, pocketfft, SoundTouch, libsoxr). Without network, extract each one and give its folder instead:
+
+```bash
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/app \
+      -DFETCHCONTENT_FULLY_DISCONNECTED=ON -DSONKORE_DEPLOY_QT=OFF \
+      -DFETCHCONTENT_SOURCE_DIR_MINIAUDIO=/path/to/miniaudio \
+      -DFETCHCONTENT_SOURCE_DIR_DR_LIBS=/path/to/dr_libs \
+      -DFETCHCONTENT_SOURCE_DIR_LIBEBUR128=/path/to/libebur128 \
+      -DFETCHCONTENT_SOURCE_DIR_LIBHDCD=/path/to/libhdcd \
+      -DFETCHCONTENT_SOURCE_DIR_POCKETFFT=/path/to/pocketfft \
+      -DFETCHCONTENT_SOURCE_DIR_SOUNDTOUCH=/path/to/soundtouch \
+      -DFETCHCONTENT_SOURCE_DIR_SOXR=/path/to/soxr
+```
+
+`-DSONKORE_DEPLOY_QT=OFF` leaves the Qt runtime out of the install: the system's (or the Flatpak runtime's) is used. `-DSONKORE_USE_SYSTEM_SOUNDTOUCH=ON` and `-DSONKORE_USE_SYSTEM_SOXR=ON` replace the last two. `cmake --install` puts the program, the desktop entry, the metainfo and the icons (all named after the app ID, `com.axiokyn.Sonkore`) and the licenses (`share/licenses/com.axiokyn.Sonkore`) under the prefix.
+
+What Sonkore uses at run time on Linux, for a sandbox or a package:
+
+- **Audio:** PipeWire's socket (`$XDG_RUNTIME_DIR/pipewire-0`, native output and volume), PulseAudio and JACK as fallbacks, and `/dev/snd` for direct ALSA `hw:` output, native DSD and the DAC's mixer.
+- **Session bus:** it owns `org.mpris.MediaPlayer2.sonkore` (MPRIS; a second launch also hands its files and the desktop entry's quick actions to the running instance through it) and, while it holds a card for `hw:` output, `org.freedesktop.ReserveDevice1.Audio<card>`, asking the owner of that name to release the card.
+- **Real-time priority:** rtkit on the system bus, or the Realtime portal (`org.freedesktop.portal.Realtime`) inside a Flatpak.
+- **Files:** the music folders the user adds (read only; nothing is written next to the music) and the file chooser for playlists and EQ profiles; its own data under `~/.config/sonkore`, `~/.local/share/sonkore` and `~/.cache/sonkore`.
+- **Network:** only when the user turns on missing covers (MusicBrainz and the Cover Art Archive) and for AutoEQ's headphone list.
+- **FFmpeg:** `libavformat`, `libavcodec` and `libavutil` with the same major version as the headers it was built with, opened only when a file needs them.
 
 ## Registering Sonkore with the desktop (Linux)
 
@@ -54,7 +81,7 @@ To publish a version, raise `VERSION` in `CMakeLists.txt`, add it to `packaging/
 packaging/linux/install-user.sh          # menu entry + icons in ~/.local/share
 ```
 
-On Wayland the dock matches the window to `sonkore.desktop`: without this step the panel shows a generic icon.
+On Wayland the dock matches the window to `com.axiokyn.Sonkore.desktop` (the app ID): without this step the panel shows a generic icon.
 
 ## Code layout
 
@@ -79,7 +106,7 @@ Sonkore/
 │                   # (the default: Latin, Greek and Cyrillic, hinted), Manrope,
 │                   # Plus Jakarta Sans, Figtree, Outfit, DM Sans, Nunito Sans, Rubik; weights 400-700
 ├── i18n/           # translations (Spanish, Portuguese, French, German, Italian)
-├── packaging/      # icons/ (master SVGs + generate.py), fonts/ (build-inter.py: Inter for the app), linux/ (.desktop, metainfo, install-user.sh), appimage/ (build.sh),
+├── packaging/      # icons/ (master SVGs + generate.py), fonts/ (build-inter.py: Inter for the app), linux/ (.desktop, metainfo, screenshots, install-user.sh), appimage/ (build.sh),
 │                   # ffmpeg/ (shared configuration), windows/ (.rc, .ico, build-ffmpeg.sh, package.ps1)
 └── qml/
     ├── Main.qml, Theme.qml (themes), TrackColumns.qml (columns), Prefs.qml, AppActions.qml (event bus and drag and drop)

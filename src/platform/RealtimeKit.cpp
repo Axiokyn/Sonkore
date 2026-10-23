@@ -3,6 +3,7 @@
 #include <QDBusConnection>
 #include <QDBusInterface>
 #include <QDBusReply>
+#include <QFile>
 #include <QVariant>
 
 #include <sched.h>
@@ -13,13 +14,29 @@ namespace RealtimeKit {
 
 namespace {
 
-const QString kService = QStringLiteral("org.freedesktop.RealtimeKit1");
-const QString kPath = QStringLiteral("/org/freedesktop/RealtimeKit1");
+// rtkit on the system bus, or inside a Flatpak sandbox (which cannot reach
+// it) the Realtime portal on the session bus: same methods and properties,
+// and the portal maps the sandbox's PIDs to the host's.
+struct Service {
+    QString name;
+    QString path;
+    QString interface;
+    QDBusConnection bus;
+};
 
-QVariant property(const char* name)
+Service service()
 {
-    QDBusInterface props(kService, kPath, QStringLiteral("org.freedesktop.DBus.Properties"), QDBusConnection::systemBus());
-    const QDBusReply<QVariant> reply = props.call(QStringLiteral("Get"), kService, QString::fromLatin1(name));
+    if (QFile::exists(QStringLiteral("/.flatpak-info")))
+        return {QStringLiteral("org.freedesktop.portal.Desktop"), QStringLiteral("/org/freedesktop/portal/desktop"),
+                QStringLiteral("org.freedesktop.portal.Realtime"), QDBusConnection::sessionBus()};
+    return {QStringLiteral("org.freedesktop.RealtimeKit1"), QStringLiteral("/org/freedesktop/RealtimeKit1"),
+            QStringLiteral("org.freedesktop.RealtimeKit1"), QDBusConnection::systemBus()};
+}
+
+QVariant property(const Service& rt, const char* name)
+{
+    QDBusInterface props(rt.name, rt.path, QStringLiteral("org.freedesktop.DBus.Properties"), rt.bus);
+    const QDBusReply<QVariant> reply = props.call(QStringLiteral("Get"), rt.interface, QString::fromLatin1(name));
     return reply.isValid() ? reply.value() : QVariant();
 }
 
@@ -37,10 +54,11 @@ int currentPriority(qint64 tid)
 
 int makeRealtime(qint64 tid)
 {
-    if (!QDBusConnection::systemBus().isConnected())
+    const Service rt = service();
+    if (!rt.bus.isConnected())
         return 0;
-    const int priority = property("MaxRealtimePriority").toInt();
-    const qlonglong rtTime = property("RTTimeUSecMax").toLongLong();
+    const int priority = property(rt, "MaxRealtimePriority").toInt();
+    const qlonglong rtTime = property(rt, "RTTimeUSecMax").toLongLong();
     if (priority <= 0 || rtTime <= 0)
         return 0;
     // rtkit only serves processes whose real-time CPU time is capped: a
@@ -48,7 +66,7 @@ int makeRealtime(qint64 tid)
     rlimit limit{static_cast<rlim_t>(rtTime), static_cast<rlim_t>(rtTime)};
     if (setrlimit(RLIMIT_RTTIME, &limit) != 0)
         return 0;
-    QDBusInterface rtkit(kService, kPath, kService, QDBusConnection::systemBus());
+    QDBusInterface rtkit(rt.name, rt.path, rt.interface, rt.bus);
     const QDBusMessage reply = rtkit.call(QStringLiteral("MakeThreadRealtimeWithPID"),
                                           QVariant::fromValue(static_cast<quint64>(getpid())),
                                           QVariant::fromValue(static_cast<quint64>(tid)),

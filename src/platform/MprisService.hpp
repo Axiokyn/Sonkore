@@ -26,6 +26,8 @@ public:
 
     // Sends file paths to an already running instance; true if one answered.
     static bool forwardToRunningInstance(const QStringList& paths);
+    // Calls a Player method (PlayPause, Next...) on a running instance; true if one answered.
+    static bool sendToRunningInstance(const QString& method);
 
 signals:
     void raiseRequested();
@@ -65,7 +67,7 @@ public:
     bool fullscreen() const { return false; }
     bool hasTrackList() const { return false; }
     QString identity() const { return QStringLiteral("Sonkore"); }
-    QString desktopEntry() const { return QStringLiteral("sonkore"); }
+    QString desktopEntry() const { return QStringLiteral("com.axiokyn.Sonkore"); }
     QStringList supportedUriSchemes() const { return {QStringLiteral("file")}; }
     QStringList supportedMimeTypes() const;
 
