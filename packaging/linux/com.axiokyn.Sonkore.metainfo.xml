@@ -61,6 +61,12 @@
     <control>pointing</control>
   </supports>
   <releases>
+    <release version="1.0.4" date="2026-10-24">
+      <description>
+        <p>Track lists start with the file name, format, time and favourite columns, in the main window and in the mini
+        player. In the mini player, the column heads can now be dragged to change their order.</p>
+      </description>
+    </release>
     <release version="1.0.3" date="2026-10-23">
       <description>
         <p>The logo in the top bar keeps some room above and below at every density. In the Flatpak, the window buttons
