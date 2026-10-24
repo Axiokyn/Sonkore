@@ -33,10 +33,10 @@ QtObject {
         // A heart per row; never the column that stretches.
         { key: "favorite",    title: qsTr("Favorite"),     width: 44, fixed: true }
     ]
-    // Title, artist and album first (a file without tags shows its name as
-    // the title); the format badge; time. Bitrate and file name are a click
+    // The file name (what every file has, tagged or not), the format badge,
+    // the time and the heart. Title, artist, album and the rest are a click
     // away in the header's menu.
-    readonly property var defaultKeys: ["title", "artist", "album", "format", "duration", "favorite"]
+    readonly property var defaultKeys: ["fileName", "format", "duration", "favorite"]
     // Space between a cell's text and the column dividers (header and rows).
     readonly property int cellPadding: 12
 

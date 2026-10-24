@@ -154,6 +154,39 @@ Rectangle {
     }
     // Column heads once there is more than one column.
     readonly property bool listColumns: shownColumns.length > 1
+    // x (in the heads' row) of the boundary before shown column `i`.
+    function headEdge(i) {
+        let x = 6 + numberWidth + columnGap + (listCover > 0 ? listCover + columnGap : 0)
+        for (let j = 0; j < i && j < shownColumns.length; ++j)
+            x += (columnWidths[shownColumns[j]] || 0) + columnGap
+        return x
+    }
+    // Moving a column by dragging its head: `headDropTarget` is the boundary
+    // among the shown columns where it would land.
+    property string headDragKey: ""
+    property real headDragX: 0
+    property int headDropTarget: -1
+    function updateHeadDrag(x) {
+        let target = 0
+        for (let i = 0; i < shownColumns.length; ++i)
+            if (x > headEdge(i) + (columnWidths[shownColumns[i]] || 0) / 2)
+                target = i + 1
+        headDropTarget = target
+    }
+    function endHeadDrag() {
+        const shown = shownColumns
+        const key = headDragKey, target = headDropTarget
+        const from = shown.indexOf(key)
+        headDragKey = ""
+        headDropTarget = -1
+        if (from < 0 || target < 0 || target === from || target === from + 1)
+            return
+        // Before the shown column it lands on, or right after the last shown
+        // one (the columns that do not fit keep their place behind it).
+        const k = columnKeys.filter(x => x !== key)
+        k.splice(target < shown.length ? k.indexOf(shown[target]) : k.indexOf(shown[shown.length - 1]) + 1, 0, key)
+        Prefs.store.compactColumns = JSON.stringify(k)
+    }
     // A track field's name, as the track lists' columns call it.
     function fieldTitle(field) {
         return field === "path" ? qsTr("As in the folder") : TrackColumns.title(field)
@@ -1124,7 +1157,7 @@ Rectangle {
         }
 
         // Column heads: a click sorts by that column (again: reversed), a
-        // right-click chooses the columns.
+        // drag moves it, a right-click chooses the columns.
         Item {
             id: listHead
             visible: mini.listColumns && queueList.count > 0
@@ -1134,6 +1167,7 @@ Rectangle {
             anchors.leftMargin: 4
             anchors.rightMargin: 4
             height: visible ? 26 : 0
+            clip: true // the head being dragged stays inside the list
             TapHandler {
                 acceptedButtons: Qt.RightButton
                 onTapped: (point) => columnsMenu.popup(listHead, point.position.x, point.position.y)
@@ -1153,27 +1187,56 @@ Rectangle {
                         readonly property bool sortable: true
                         readonly property bool sorted: !mini.showingQueue && Prefs.store.compactSort === modelData
                         width: mini.columnWidths[modelData] || 0
+                        opacity: mini.headDragKey === modelData ? 0.3 : 1
                         text: modelData === "favorite" ? ""
                               : mini.fieldTitle(modelData) + (sorted ? (Prefs.store.compactSortDesc ? "  ↓" : "  ↑") : "")
                         elide: Text.ElideRight
-                        color: sorted ? Theme.accent : (headHover.hovered && sortable ? Theme.text : Theme.textDim)
+                        color: sorted ? Theme.accent : (headMouse.containsMouse && sortable ? Theme.text : Theme.textDim)
                         font.pixelSize: Theme.fontSmall
                         font.weight: Font.Medium
-                        HoverHandler { id: headHover; cursorShape: head.sortable ? Qt.PointingHandCursor : Qt.ArrowCursor }
                         // Favorite: a heart over the rows' hearts, named on hover.
                         Icon {
                             visible: head.modelData === "favorite"
                             anchors.centerIn: parent
                             glyph: "heart-filled"
                             size: 11
-                            color: head.sorted ? Theme.accent : headHover.hovered ? Theme.text : Theme.textDim
+                            color: head.sorted ? Theme.accent : headMouse.containsMouse ? Theme.text : Theme.textDim
                         }
-                        ToolTip.visible: head.modelData === "favorite" && headHover.hovered
+                        ToolTip.visible: head.modelData === "favorite" && headMouse.containsMouse && mini.headDragKey.length === 0
                         ToolTip.delay: 500
                         ToolTip.text: mini.fieldTitle("favorite")
-                        TapHandler {
-                            enabled: head.sortable
-                            onTapped: {
+                        // Left button only: a right-click reaches the heads' menu.
+                        MouseArea {
+                            id: headMouse
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            preventStealing: true
+                            cursorShape: mini.headDragKey.length > 0 ? Qt.ClosedHandCursor
+                                       : head.sortable ? Qt.PointingHandCursor : Qt.ArrowCursor
+                            property real pressX
+                            property bool moved: false
+                            onPressed: (mouse) => {
+                                pressX = mouse.x
+                                moved = false
+                            }
+                            onPositionChanged: (mouse) => {
+                                if (!pressed)
+                                    return
+                                if (!moved && Math.abs(mouse.x - pressX) > 8) {
+                                    moved = true
+                                    mini.headDragKey = head.modelData
+                                }
+                                if (moved) {
+                                    const hx = mapToItem(listHead, mouse.x, 0).x
+                                    mini.headDragX = hx - pressX
+                                    mini.updateHeadDrag(hx)
+                                }
+                            }
+                            onReleased: if (moved) mini.endHeadDrag()
+                            onCanceled: if (moved) { mini.headDragKey = ""; mini.headDropTarget = -1; moved = false }
+                            onClicked: {
+                                if (moved || !head.sortable)
+                                    return
                                 if (head.sorted)
                                     Prefs.store.compactSortDesc = !Prefs.store.compactSortDesc
                                 else
@@ -1182,6 +1245,45 @@ Rectangle {
                         }
                     }
                 }
+            }
+            // Column being moved, and where it would land.
+            RoundRect {
+                visible: mini.headDragKey.length > 0
+                x: mini.headDragX - 6
+                y: 2
+                width: mini.headDragKey.length > 0 ? (mini.columnWidths[mini.headDragKey] || 0) + 12 : 0
+                height: parent.height - 4
+                radius: Theme.radiusSmall
+                color: Theme.surfaceHi
+                borderWidth: 1
+                borderColor: Theme.accent
+                opacity: 0.95
+                Icon {
+                    visible: mini.headDragKey === "favorite"
+                    anchors.centerIn: parent
+                    glyph: "heart-filled"
+                    size: 11
+                    color: Theme.text
+                }
+                Label {
+                    visible: mini.headDragKey !== "favorite"
+                    anchors.verticalCenter: parent.verticalCenter
+                    x: 6
+                    width: parent.width - 12
+                    elide: Text.ElideRight
+                    text: mini.headDragKey.length > 0 ? mini.fieldTitle(mini.headDragKey) : ""
+                    color: Theme.text
+                    font.pixelSize: Theme.fontSmall
+                    font.weight: Font.Medium
+                }
+            }
+            Rectangle {
+                visible: mini.headDragKey.length > 0 && mini.headDropTarget >= 0
+                x: mini.headEdge(mini.headDropTarget) - mini.columnGap / 2 - 1.5
+                width: 3
+                height: parent.height
+                radius: 1.5
+                color: Theme.accent
             }
         }
         // The columns to show: two columns of check boxes, compact.
@@ -1242,8 +1344,8 @@ Rectangle {
                 }
             }
             LMenuSeparator {}
-            // Back to the full view's columns.
-            LMenuItem { dense: true; text: qsTr("Reset columns"); onTriggered: Prefs.store.compactColumns = JSON.stringify(TrackColumns.keys) }
+            // Back to the default columns (the same as the full view's).
+            LMenuItem { dense: true; text: qsTr("Reset columns"); onTriggered: Prefs.store.compactColumns = JSON.stringify(TrackColumns.defaultKeys) }
         }
 
         ListView {
