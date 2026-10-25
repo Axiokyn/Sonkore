@@ -12,7 +12,7 @@ set -euo pipefail
 
 here="$(cd "$(dirname "$0")" && pwd)"
 root="$(cd "$here/../.." && pwd)"
-qt="$(realpath "${1:-$HOME/Qt/6.11.3/gcc_64}")"
+qt="$(realpath "${1:-/Projects/Tools/Qt/6.11.3/gcc_64}")"
 image="sonkore-appimage-builder"
 work="${SONKORE_APPIMAGE_WORK:-${XDG_CACHE_HOME:-$HOME/.cache}/sonkore-appimage}"
 
