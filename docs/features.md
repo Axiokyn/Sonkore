@@ -69,5 +69,5 @@ Everything goes into `sonkore` folders, with no company folder:
 
 ## Still to do
 
-* The rest of the [roadmap](../ROADMAP.md): library (MusicBrainz metadata, scrobbling), network and multiroom.
+* Library (MusicBrainz metadata, scrobbling), network and multiroom.
 * Windows: ASIO and hardware volume are tested in CI against a simulated driver; they still need confirming with real DACs (reports are welcome).

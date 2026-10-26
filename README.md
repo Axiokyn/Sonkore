@@ -8,7 +8,7 @@
 
 Linux · Windows 10/11 · Free software (GPL-3.0)
 
-[**Download**](https://github.com/Axiokyn/Sonkore/releases/latest) &nbsp;·&nbsp; [Features](docs/features.md) &nbsp;·&nbsp; [Building](docs/building.md) &nbsp;·&nbsp; [Roadmap](ROADMAP.md) &nbsp;·&nbsp; [sonkore.org](https://sonkore.org)
+[**Download**](https://github.com/Axiokyn/Sonkore/releases/latest) &nbsp;·&nbsp; [Features](docs/features.md) &nbsp;·&nbsp; [Building](docs/building.md) &nbsp;·&nbsp; [sonkore.org](https://sonkore.org)
 
 <br>
 
