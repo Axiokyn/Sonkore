@@ -61,6 +61,15 @@
     <control>pointing</control>
   </supports>
   <releases>
+    <release version="1.0.5" date="2026-10-29">
+      <description>
+        <p>The mini player's folder menu shows the playing bars on the folder that holds the playing track, as the main
+        window's folder tree does.</p>
+        <p>A track whose file was moved, renamed or deleted now says "File not found" instead of "Unreadable FLAC file",
+        and the library is rescanned to catch up. If a whole music folder is missing, Sonkore names it and suggests
+        connecting its drive or adding it again.</p>
+      </description>
+    </release>
     <release version="1.0.4" date="2026-10-24">
       <description>
         <p>Track lists start with the file name, format, time and favourite columns, in the main window and in the mini
