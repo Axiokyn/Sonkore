@@ -120,3 +120,15 @@ T.update({
 "Clear downloaded covers": ("Borrar carátulas descargadas", "Apagar capas baixadas", "Effacer les pochettes téléchargées", "Geladene Cover löschen", "Elimina copertine scaricate"),
 "no connection": ("sin conexión", "sem conexão", "pas de connexion", "keine Verbindung", "nessuna connessione"),
 })
+
+# A track that does not open because its file or folder is gone.
+T.update({
+"File not found: %1": ("No se encontró el archivo: %1", "Arquivo não encontrado: %1", "Fichier introuvable : %1", "Datei nicht gefunden: %1", "File non trovato: %1"),
+"No permission to read %1": ("Sin permiso para leer %1", "Sem permissão para ler %1", "Pas l'autorisation de lire %1", "Keine Berechtigung, %1 zu lesen", "Nessun permesso per leggere %1"),
+"The folder “%1” is not available: connect its drive, or add it again if it moved.": (
+    "La carpeta «%1» no está disponible: conecta su disco o vuelve a agregarla si cambió de lugar.",
+    "A pasta “%1” não está disponível: conecte o disco dela ou adicione-a de novo se ela mudou de lugar.",
+    "Le dossier « %1 » n'est pas disponible : branchez son disque, ou ajoutez-le à nouveau s'il a été déplacé.",
+    "Der Ordner „%1“ ist nicht verfügbar: Schließe sein Laufwerk an oder füge ihn erneut hinzu, falls er verschoben wurde.",
+    "La cartella «%1» non è disponibile: collega il suo disco, oppure aggiungila di nuovo se è stata spostata."),
+})

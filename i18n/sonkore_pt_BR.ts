@@ -320,6 +320,18 @@
         <translation> · volume do sistema abaixo de 100 %</translation>
     </message>
     <message>
+        <source>No permission to read %1</source>
+        <translation>Sem permissão para ler %1</translation>
+    </message>
+    <message>
+        <source>The folder “%1” is not available: connect its drive, or add it again if it moved.</source>
+        <translation>A pasta “%1” não está disponível: conecte o disco dela ou adicione-a de novo se ela mudou de lugar.</translation>
+    </message>
+    <message>
+        <source>File not found: %1</source>
+        <translation>Arquivo não encontrado: %1</translation>
+    </message>
+    <message>
         <source>Source</source>
         <translation>Origem</translation>
     </message>

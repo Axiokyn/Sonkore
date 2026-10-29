@@ -18,6 +18,8 @@
 #include <QVector>
 #include <QtQml/qqmlregistration.h>
 
+#include <string>
+
 namespace sonkore {
 class DSPManager;
 }
@@ -429,6 +431,7 @@ private:
     void updateSpectrumTimer();
     void setVisualizerActive(bool on);
     void reportError(const QString& message);
+    QString loadError(const QString& path, const std::string& error);
     bool openIndex(int index, bool autoplay, double startAt = 0.0);
     bool reserveOutput(bool* justTaken);
     void updateIdleRelease();

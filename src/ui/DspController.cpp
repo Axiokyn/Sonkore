@@ -1842,6 +1842,30 @@ bool DspController::load(const QUrl& url)
     return loaded();
 }
 
+// Why a track did not open, in words that say what to do: a file that is
+// gone (moved, renamed, its drive unplugged) or closed to us is not
+// "unreadable". A missing file also rescans the library, which drops it and
+// finds it where it went.
+QString DspController::loadError(const QString& path, const std::string& error)
+{
+    // A CD image track is its sheet's.
+    const qsizetype cue = path.lastIndexOf(QLatin1String(".cue#"), -1, Qt::CaseInsensitive);
+    const QFileInfo file(cue >= 0 ? path.left(cue + 4) : path);
+    if (file.exists())
+        return file.isReadable() ? QString::fromStdString(error) : tr("No permission to read %1").arg(file.fileName());
+    if (LibraryModel* lib = LibraryModel::instance()) {
+        // Its whole library folder is gone: a rescan keeps its tracks (as for
+        // an unplugged drive), so only the folder can be named.
+        for (const QString& folder : lib->folders())
+            if (path.startsWith(folder + u'/') && !QFileInfo(folder).isDir())
+                return tr("The folder “%1” is not available: connect its drive, or add it again if it moved.")
+                    .arg(QFileInfo(folder).fileName());
+        if (lib->contains(path))
+            lib->rescan();
+    }
+    return tr("File not found: %1").arg(file.fileName());
+}
+
 bool DspController::openIndex(int index, bool autoplay, double startAt)
 {
     if (index < 0 || index >= m_queue.size())
@@ -1877,7 +1901,7 @@ bool DspController::openIndex(int index, bool autoplay, double startAt)
         m_lastError.clear();
         emit errorOccurred();
     } else {
-        reportError(QString::fromStdString(error));
+        reportError(loadError(path, error));
     }
     m_resumePosition = 0.0;
     m_armedPath.clear(); // a fresh load forgets the queued track

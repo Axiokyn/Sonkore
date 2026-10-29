@@ -692,12 +692,8 @@ Rectangle {
             return
         if (playingRow() < 0 && search.length > 0)
             closeSearch()
-        if (playingRow() < 0) {
-            const path = DspController.currentPath
-            const holder = shownFolders.filter(f => path.startsWith(f.path + "/"))
-                                       .reduce((best, f) => !best || f.depth > best.depth ? f : best, null)
-            Prefs.store.compactSource = holder ? holder.path : ""
-        }
+        if (playingRow() < 0)
+            Prefs.store.compactSource = playingFolder
         Qt.callLater(() => {
             const row = playingRow()
             if (row >= 0)
@@ -756,6 +752,13 @@ Rectangle {
     readonly property int folderLevels: Prefs.store.compactSubfolders
                                         ? Math.max(1, Math.min(Prefs.store.compactFolderDepth, folderDeepest)) : 0
     readonly property var shownFolders: folderTree.filter(n => n.depth <= folderLevels)
+    // The deepest folder of the menu that holds the playing track ("" none).
+    readonly property string playingFolder: {
+        const path = DspController.currentPath
+        const holder = shownFolders.filter(f => path.startsWith(f.path + "/"))
+                                   .reduce((best, f) => !best || f.depth > best.depth ? f : best, null)
+        return holder ? holder.path : ""
+    }
     // A folder that left the library (removed, or the last one gone, also
     // between sessions) falls back to the queue, once the library is read.
     function checkSource() {
@@ -907,6 +910,10 @@ Rectangle {
             readonly property bool selected: modelData.path === mini.source
             // A hidden subfolder of it is the one shown.
             readonly property bool holdsSelected: !selected && mini.source.startsWith(modelData.path + "/")
+            // As in the full view's tree: the playing bars take the place of
+            // the icon on the deepest folder shown that holds the track.
+            readonly property bool playingHere: modelData.path === mini.playingFolder
+            readonly property bool holdsPlaying: !playingHere && mini.playingFolder.startsWith(modelData.path + "/")
             implicitHeight: 26
             leftPadding: 8
             rightPadding: 10
@@ -940,10 +947,17 @@ Rectangle {
                     id: folderIcon
                     x: parent.indent
                     anchors.verticalCenter: parent.verticalCenter
+                    visible: !folderItem.playingHere
                     glyph: "folder"
                     size: folderItem.depth === 0 ? 14 : 12
-                    color: folderItem.selected || folderItem.holdsSelected ? Theme.accent
+                    color: folderItem.selected || folderItem.holdsSelected || folderItem.holdsPlaying ? Theme.accent
                          : folderItem.depth === 0 ? Theme.textDim : Theme.textFaint
+                }
+                PlayingBars {
+                    anchors.centerIn: folderIcon
+                    visible: folderItem.playingHere
+                    running: visible && DspController.playing
+                    time: 0.2
                 }
                 Label {
                     id: folderName
@@ -954,7 +968,7 @@ Rectangle {
                     anchors.rightMargin: 10
                     text: folderItem.modelData.name
                     elide: Text.ElideRight
-                    color: folderItem.selected ? Theme.accent : folderItem.depth === 0 ? Theme.text : Theme.textDim
+                    color: folderItem.selected || folderItem.playingHere ? Theme.accent : folderItem.depth === 0 ? Theme.text : Theme.textDim
                     font.pixelSize: Theme.fontSmall + 1
                     font.weight: folderItem.depth === 0 || folderItem.selected ? Font.DemiBold : Font.Normal
                 }

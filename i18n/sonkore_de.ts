@@ -320,6 +320,18 @@
         <translation> · Systemlautstärke unter 100 %</translation>
     </message>
     <message>
+        <source>No permission to read %1</source>
+        <translation>Keine Berechtigung, %1 zu lesen</translation>
+    </message>
+    <message>
+        <source>The folder “%1” is not available: connect its drive, or add it again if it moved.</source>
+        <translation>Der Ordner „%1“ ist nicht verfügbar: Schließe sein Laufwerk an oder füge ihn erneut hinzu, falls er verschoben wurde.</translation>
+    </message>
+    <message>
+        <source>File not found: %1</source>
+        <translation>Datei nicht gefunden: %1</translation>
+    </message>
+    <message>
         <source>Source</source>
         <translation>Quelle</translation>
     </message>
