@@ -61,6 +61,13 @@
     <control>pointing</control>
   </supports>
   <releases>
+    <release version="1.0.6" date="2026-10-30">
+      <description>
+        <p>In the Flatpak, a music folder chosen with the file chooser no longer goes missing after a while: Sonkore keeps
+        the folder's real path instead of a temporary one, so it stays available without adding it again. Libraries,
+        favourites and playlists saved with a temporary path are moved to the real one on start-up.</p>
+      </description>
+    </release>
     <release version="1.0.5" date="2026-10-29">
       <description>
         <p>The mini player's folder menu shows the playing bars on the folder that holds the playing track, as the main
