@@ -2,6 +2,7 @@
 #include "AppPaths.hpp"
 #include "Loudness.hpp"
 #include "CueSheet.hpp"
+#include "DocumentPortal.hpp"
 
 #include <QCollator>
 #include <QDateTime>
@@ -102,7 +103,7 @@ LibraryModel::LibraryModel(QObject* parent)
     QSettings settings;
     m_watchFolders = settings.value("library/watchFolders", true).toBool();
     m_rescanOnStartup = settings.value("library/rescanOnStartup", true).toBool();
-    m_excludedFolders = settings.value("library/excludedFolders").toStringList();
+    m_excludedFolders = DocumentPortal::hostPaths(settings.value("library/excludedFolders").toStringList());
     m_minDuration = std::clamp(settings.value("library/minDuration", 0).toInt(), 0, 600);
 
     loadCache();
@@ -332,7 +333,7 @@ void LibraryModel::setRescanOnStartup(bool on)
 
 void LibraryModel::addExcludedFolder(const QUrl& folder)
 {
-    excludeFolder(folder.toLocalFile());
+    excludeFolder(DocumentPortal::localPath(folder));
 }
 
 void LibraryModel::excludeFolder(const QString& folder)
@@ -414,7 +415,7 @@ QStringList LibraryModel::audioPaths(const QList<QUrl>& urls) const
 {
     QStringList paths;
     for (const QUrl& url : urls) {
-        const QString path = QDir::cleanPath(url.isLocalFile() ? url.toLocalFile() : url.toString());
+        const QString path = QDir::cleanPath(DocumentPortal::localPath(url));
         if (QFileInfo(path).isFile() && sonkore::Metadata::isAudioFile(path))
             paths << path;
         else if (QFileInfo(path).suffix().compare(QLatin1String("cue"), Qt::CaseInsensitive) == 0)
@@ -427,7 +428,7 @@ QStringList LibraryModel::expandAudioPaths(const QList<QUrl>& urls) const
 {
     QStringList paths;
     for (const QUrl& url : urls) {
-        const QString path = QDir::cleanPath(url.isLocalFile() ? url.toLocalFile() : url.toString());
+        const QString path = QDir::cleanPath(DocumentPortal::localPath(url));
         const QFileInfo fi(path);
         if (fi.isFile() && sonkore::Metadata::isAudioFile(path)) {
             paths << path;
@@ -508,7 +509,7 @@ bool LibraryModel::watchFolder(const QString& path)
 
 void LibraryModel::addFolder(const QUrl& folder)
 {
-    const QString path = QDir::cleanPath(folder.isLocalFile() ? folder.toLocalFile() : folder.toString());
+    const QString path = QDir::cleanPath(DocumentPortal::localPath(folder));
     if (path.isEmpty() || !QFileInfo(path).isDir())
         return;
     if (watchFolder(path))
@@ -530,7 +531,7 @@ void LibraryModel::addUrls(const QList<QUrl>& urls)
 {
     bool changed = false;
     for (const QUrl& url : urls) {
-        const QString path = QDir::cleanPath(url.isLocalFile() ? url.toLocalFile() : url.toString());
+        const QString path = QDir::cleanPath(DocumentPortal::localPath(url));
         const QFileInfo fi(path);
         if (fi.isDir()) {
             changed = watchFolder(path) || changed;
@@ -917,12 +918,18 @@ void LibraryModel::loadCache()
     // Straight from the JSON tree: a QVariant copy of it would triple the
     // start-up peak and leave the heap fragmented.
     QVector<TrackMeta> tracks;
+    bool moved = false;
     {
         const QJsonObject root = QJsonDocument::fromJson(f.readAll()).object();
         f.close();
-        m_folders = stringList(root.value("folders"));
-        m_extraFiles = stringList(root.value("files"));
-        m_excluded = stringList(root.value("excluded"));
+        // Paths a Flatpak got from the document portal become the real ones
+        // while the portal still knows them (see DocumentPortal).
+        const QStringList folders = stringList(root.value("folders"));
+        m_folders = DocumentPortal::hostPaths(folders);
+        moved = m_folders != folders;
+        m_folders.removeDuplicates();
+        m_extraFiles = DocumentPortal::hostPaths(stringList(root.value("files")));
+        m_excluded = DocumentPortal::hostPaths(stringList(root.value("excluded")));
         const QJsonArray list = root.value("tracks").toArray();
         // Version 1 did not read loudness tags: mark its entries as changed
         // so the next scan reads every file again (dates added are kept).
@@ -931,6 +938,11 @@ void LibraryModel::loadCache()
         for (const QJsonValue& v : list) {
             tracks.push_back(TrackMeta::fromJson(v.toObject()));
             TrackMeta& t = tracks.back();
+            if (t.path.startsWith(QLatin1String("/run/"))) {
+                const QString real = DocumentPortal::hostPath(t.path);
+                moved = moved || real != t.path;
+                t.path = real;
+            }
             // Version 2 read DSD without its length and kept files with no
             // audio: only those are read again (measured loudness is kept).
             if (version < 2 || (version < 3 && (t.duration <= 0.0 || t.sampleRate <= 0)))
@@ -946,6 +958,8 @@ void LibraryModel::loadCache()
         }
     }
     setTracks(std::move(tracks));
+    if (moved) // kept for when the portal's paths are gone
+        saveCache();
 }
 
 void LibraryModel::saveCache() const
@@ -971,8 +985,12 @@ void LibraryModel::loadFavorites()
     QFile f(favoritesPath());
     if (!f.open(QIODevice::ReadOnly))
         return;
-    const QStringList list = stringList(QJsonDocument::fromJson(f.readAll()).object().value("tracks"));
+    const QStringList stored = stringList(QJsonDocument::fromJson(f.readAll()).object().value("tracks"));
+    f.close();
+    const QStringList list = DocumentPortal::hostPaths(stored);
     m_favorites = QSet<QString>(list.cbegin(), list.cend());
+    if (list != stored)
+        saveFavorites();
 }
 
 void LibraryModel::saveFavorites() const

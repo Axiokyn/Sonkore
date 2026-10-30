@@ -2,6 +2,7 @@
 #include "AppPaths.hpp"
 #include "CoverImageProvider.hpp"
 #include "DSPManager.hpp"
+#include "DocumentPortal.hpp"
 #include "DspController.hpp"
 #include "EqController.hpp"
 #include "FrameAnimationDriver.hpp"
@@ -84,7 +85,7 @@ QStringList audioArguments(const QStringList& args)
     QStringList files;
     for (const QString& arg : args) {
         const QUrl url(arg);
-        const QString path = url.isLocalFile() ? url.toLocalFile() : arg;
+        const QString path = DocumentPortal::hostPath(url.isLocalFile() ? url.toLocalFile() : arg);
         if (QFileInfo(path).isFile() && sonkore::Metadata::isAudioFile(path))
             files << QFileInfo(path).absoluteFilePath();
         else if (QFileInfo(path).suffix().compare(QLatin1String("cue"), Qt::CaseInsensitive) == 0)

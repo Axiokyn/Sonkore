@@ -1,5 +1,6 @@
 #include "PlaylistManager.hpp"
 #include "AppPaths.hpp"
+#include "DocumentPortal.hpp"
 
 #include "LibraryModel.hpp"
 
@@ -190,7 +191,8 @@ double PlaylistManager::duration(const QString& name) const
 
 QString PlaylistManager::importM3u(const QUrl& file)
 {
-    const QString path = localPath(file);
+    // Its real folder: entries are often relative to it.
+    const QString path = DocumentPortal::localPath(file);
     QFile f(path);
     if (!f.open(QIODevice::ReadOnly | QIODevice::Text))
         return {};
@@ -237,10 +239,17 @@ void PlaylistManager::load()
     QFile f(storePath());
     if (!f.open(QIODevice::ReadOnly))
         return;
+    bool moved = false;
     for (const QVariant& v : QJsonDocument::fromJson(f.readAll()).toVariant().toList()) {
         const QVariantMap m = v.toMap();
-        m_playlists.push_back({m.value("name").toString(), m.value("tracks").toStringList()});
+        const QStringList paths = m.value("tracks").toStringList();
+        const QStringList real = DocumentPortal::hostPaths(paths);
+        moved = moved || real != paths;
+        m_playlists.push_back({m.value("name").toString(), real});
     }
+    f.close();
+    if (moved) // kept for when the portal's paths are gone
+        save();
 }
 
 void PlaylistManager::save() const

@@ -2,6 +2,7 @@
 #include "AppPaths.hpp"
 
 #include "DspController.hpp"
+#include "DocumentPortal.hpp"
 #include "Metadata.hpp"
 
 #include <QCoreApplication>
@@ -278,7 +279,7 @@ void MprisPlayerAdaptor::SetPosition(const QDBusObjectPath& trackId, qlonglong p
 void MprisPlayerAdaptor::OpenUri(const QString& uri)
 {
     const QUrl url(uri);
-    const QString path = url.isLocalFile() ? url.toLocalFile() : uri;
+    const QString path = url.isLocalFile() ? DocumentPortal::localPath(url) : uri;
     QStringList queue = m_service->player()->queue();
     queue << path;
     m_service->player()->playPaths(queue, static_cast<int>(queue.size()) - 1);

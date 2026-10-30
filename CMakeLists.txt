@@ -341,7 +341,8 @@ qt_add_resources(Sonkore "fonts"
 )
 
 target_sources(Sonkore PRIVATE src/platform/WinTaskbar.hpp src/platform/WinTaskbar.cpp
-    src/platform/DeviceReservation.hpp src/platform/DeviceReservation.cpp)
+    src/platform/DeviceReservation.hpp src/platform/DeviceReservation.cpp
+    src/platform/DocumentPortal.hpp src/platform/DocumentPortal.cpp)
 
 # Interface translations (English is the source text). Edit
 # i18n/translations_*.py and run i18n/update.py to refresh the .ts files;

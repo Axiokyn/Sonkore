@@ -8,6 +8,7 @@
 #include "DsdToPcm.hpp"
 
 #include "DSPManager.hpp"
+#include "DocumentPortal.hpp"
 #include "EqController.hpp"
 #include "LibraryModel.hpp"
 #include "DsdDecoder.hpp"
@@ -751,7 +752,7 @@ bool DspController::applyConvolution(QString* error)
 
 bool DspController::loadConvolution(const QUrl& file)
 {
-    const QString path = file.isLocalFile() ? file.toLocalFile() : file.toString();
+    const QString path = DocumentPortal::localPath(file);
     const QString previous = m_convolutionFile;
     const bool wasEnabled = m_convolutionEnabled;
     m_convolutionFile = path;
@@ -1837,7 +1838,7 @@ void DspController::clearQueue()
 
 bool DspController::load(const QUrl& url)
 {
-    const QString path = url.isLocalFile() ? url.toLocalFile() : url.toString();
+    const QString path = DocumentPortal::localPath(url);
     playPaths({path}, 0);
     return loaded();
 }
@@ -2366,7 +2367,7 @@ void DspController::loadSettings()
     m_limiter = s.value("limiter", false).toBool();
     m_limiterCeilingDb = std::clamp(s.value("limiterCeilingDb", -1.0).toDouble(), -6.0, 0.0);
     m_upsampling = std::clamp(s.value("upsampling", 0).toInt(), 0, 3);
-    m_convolutionFile = s.value("convolutionFile").toString();
+    m_convolutionFile = DocumentPortal::hostPath(s.value("convolutionFile").toString());
     m_convolutionEnabled = s.value("convolution", false).toBool();
     m_resampleFilter = std::clamp(s.value("resampleFilter", 0).toInt(), 0, 3);
     m_volumeMode = std::clamp(s.value("volumeMode", VolumeAuto).toInt(), 0, 2);
@@ -2473,7 +2474,7 @@ void DspController::loadSession(QSettings& legacy)
 
     if (!m_resume)
         return;
-    m_queue = queue;
+    m_queue = DocumentPortal::hostPaths(queue);
     m_currentIndex = m_queue.isEmpty() ? -1 : std::clamp(index, 0, static_cast<int>(m_queue.size()) - 1);
     m_resumePosition = std::max(0.0, position);
 }
