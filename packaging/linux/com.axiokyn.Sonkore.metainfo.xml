@@ -61,6 +61,14 @@
     <control>pointing</control>
   </supports>
   <releases>
+    <release version="1.0.7" date="2026-11-10">
+      <description>
+        <p>The icon looks the same at every size: KDE's task manager now shows the two sound waves too.</p>
+        <p>A music folder on a drive that is missing or mounted somewhere else can be removed from the library again
+        (from the mini player's folder menu, for instance); before, it stayed listed.</p>
+        <p>In the Flatpak, exporting an EQ profile or a playlist works when the name is typed without its extension.</p>
+      </description>
+    </release>
     <release version="1.0.6" date="2026-10-30">
       <description>
         <p>In the Flatpak, a music folder chosen with the file chooser no longer goes missing after a while: Sonkore keeps
