@@ -1,15 +1,18 @@
 #!/usr/bin/env python3
 """Regenerates every raster icon from the SVG masters.
 
-Requires ImageMagick (`magick`) with SVG support and Pillow.
+Requires Pillow, and ImageMagick (`magick`) with SVG support or, without it,
+librsvg's `rsvg-convert`.
   sonkore.svg        - master, used for 64 px and up
-  sonkore-small.svg  - thicker strokes, used for 16-48 px; each size is drawn
-                       from it with its edges moved onto whole pixels
+  sonkore-small.svg  - the same mark with thicker strokes, used for 16-48 px;
+                       each size is drawn from it with its edges moved onto
+                       whole pixels
 Every PNG is rasterized at its final size (no downscaling, no palette).
 Outputs: png/<size>.png and ../windows/sonkore.ico
 """
 import pathlib
 import re
+import shutil
 import subprocess
 
 from PIL import Image
@@ -29,14 +32,17 @@ def small_svg(size: int) -> str:
     inset = snap(16)
     text = text.replace('<rect x="16" y="16" width="992" height="992" rx="240"',
                         f'<rect x="{inset:g}" y="{inset:g}" width="{1024 - 2 * inset:g}" height="{1024 - 2 * inset:g}" rx="240"')
-    # The bar: a pill on whole pixels (was a 140-wide stroke from y 290 to 734).
-    w = max(2, round(140 / u)) * u
-    x = snap(330 - w / 2)
-    top, bottom = snap(290 - 70), snap(734 + 70)
-    text = text.replace('<path d="M330 290V734" stroke-width="140"/>',
+    # The bar: a pill on whole pixels (a vertical stroke with round caps).
+    bar = re.search(r'<path d="M(\d+) (\d+)V(\d+)" stroke-width="(\d+)"/>', text)
+    cx, y0, y1, width = (int(v) for v in bar.groups())
+    w = max(2, round(width / u)) * u
+    x = snap(cx - w / 2)
+    top, bottom = snap(y0 - width / 2), snap(y1 + width / 2)
+    text = text.replace(bar.group(0),
                         f'<rect x="{x:g}" y="{top:g}" width="{w:g}" height="{bottom - top:g}" rx="{w / 2:g}" fill="{mark}" stroke="none"/>')
-    wave = max(2, round(130 / u)) * u
-    text = text.replace('stroke-width="130"', f'stroke-width="{wave:g}"')
+    # The waves: whole-pixel strokes.
+    text = re.sub(r'(<path d="M[^"]*A[^"]*" stroke-width=")(\d+)"',
+                  lambda m: f'{m.group(1)}{max(2, round(int(m.group(2)) / u)) * u:g}"', text)
     return text
 
 
@@ -52,9 +58,13 @@ def render(size: int) -> pathlib.Path:
         declared = 1024
     # librsvg draws the vector straight at `size`: sharper than drawing larger
     # and scaling down. PNG32 keeps full 8-bit RGBA, never a palette.
-    subprocess.run(["magick", "-limit", "memory", "256MiB", "-limit", "disk", "512MiB",
-                    "-background", "none", "-density", f"{96 * size / declared:.4f}", str(master),
-                    "-define", "png:compression-level=9", f"PNG32:{out}"], check=True)
+    if shutil.which("magick"):
+        subprocess.run(["magick", "-limit", "memory", "256MiB", "-limit", "disk", "512MiB",
+                        "-background", "none", "-density", f"{96 * size / declared:.4f}", str(master),
+                        "-define", "png:compression-level=9", f"PNG32:{out}"], check=True)
+    else:
+        subprocess.run(["rsvg-convert", "-w", str(size), "-h", str(size), "-o", str(out), str(master)], check=True)
+        Image.open(out).convert("RGBA").save(out, optimize=True)
     if size <= 48:
         master.unlink()
     return out

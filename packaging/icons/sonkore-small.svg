@@ -1,9 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 1024 1024">
-  <!-- for 16-48 px: fuller shape, thicker strokes, one wave; flat colours,
-       no sheen or edge, which blur at this size -->
+  <!-- for 16-48 px: the mark of sonkore.svg (the "l" and two sound waves) on
+       a fuller shape, with thicker strokes and wider gaps; flat colours, no
+       sheen or edge, which blur at this size -->
   <rect x="16" y="16" width="992" height="992" rx="240" fill="#111215"/>
   <g fill="none" stroke="#24E86C" stroke-linecap="round">
-    <path d="M330 290V734" stroke-width="140"/>
-    <path d="M560 330A250 250 0 0 1 560 694" stroke-width="130"/>
+    <path d="M290 300V724" stroke-width="120"/>
+    <path d="M505 387A170 170 0 0 1 505 637" stroke-width="104"/>
+    <path d="M653 290A344 344 0 0 1 653 734" stroke-width="104"/>
   </g>
 </svg>
