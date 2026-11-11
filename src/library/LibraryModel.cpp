@@ -631,10 +631,17 @@ void LibraryModel::rescan()
         QSet<QString> visitedDirs; // canonical paths: each real folder is read once
         for (const QString& folder : folders) {
             if (!QFileInfo(folder).isDir()) {
-                // Unplugged drive / unmounted share: keep what was known
-                // instead of emptying that part of the library.
+                // Unplugged drive / unmounted share (or a drive mounted
+                // somewhere else now): keep what was known instead of
+                // emptying that part of the library, except the folders
+                // skipped since (removed from the library while it is gone).
+                const auto skipped = [&](const QString& path) {
+                    return std::any_of(excludedFolders.cbegin(), excludedFolders.cend(),
+                                       [&](const QString& f) { return path.startsWith(f + u'/'); });
+                };
                 for (auto it = known.cbegin(); it != known.cend(); ++it)
-                    if (it.key().startsWith(folder + u'/') && !excluded.contains(it.key()) && !seen.contains(it.key())) {
+                    if (it.key().startsWith(folder + u'/') && !excluded.contains(it.key()) && !seen.contains(it.key())
+                        && !skipped(it.key())) {
                         seen.insert(it.key());
                         result.tracks.push_back(it.value());
                     }
