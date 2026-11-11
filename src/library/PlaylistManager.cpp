@@ -21,11 +21,6 @@ QString storePath()
     return sonkore::paths::dataFile(QStringLiteral("playlists.json"));
 }
 
-QString localPath(const QUrl& url)
-{
-    return url.isLocalFile() ? url.toLocalFile() : url.toString();
-}
-
 } // namespace
 
 PlaylistManager::PlaylistManager(QObject* parent)
@@ -220,8 +215,8 @@ bool PlaylistManager::exportM3u(const QString& name, const QUrl& file) const
     const Playlist* p = find(name);
     if (!p)
         return false;
-    QFile f(localPath(file));
-    if (!f.open(QIODevice::WriteOnly | QIODevice::Truncate | QIODevice::Text))
+    QFile f;
+    if (!DocumentPortal::openForSave(f, file))
         return false;
     QTextStream out(&f);
     out.setEncoding(QStringConverter::Utf8);

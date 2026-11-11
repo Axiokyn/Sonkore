@@ -1,5 +1,6 @@
 #pragma once
 
+#include <QFile>
 #include <QString>
 #include <QStringList>
 #include <QUrl>
@@ -19,5 +20,13 @@ QStringList hostPaths(const QStringList& paths);
 
 // A local file URL as a path, through hostPath(); other URLs as text.
 QString localPath(const QUrl& url);
+
+// Opens a file chosen in a save dialog for writing (text, truncated). Not
+// through hostPath(): the real path is read-only from the Flatpak, the
+// document portal's one is not. Qt Quick adds the dialog's default suffix to
+// a name typed without one ("eq" -> "eq.txt") after the file chooser portal
+// granted that name, and a document folder holds only the name granted: when
+// the other is refused, the granted one is written.
+bool openForSave(QFile& file, const QUrl& url);
 
 } // namespace DocumentPortal

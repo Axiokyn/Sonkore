@@ -1,6 +1,7 @@
 #include "EqController.hpp"
 #include "SettingsLock.hpp"
 #include "AppPaths.hpp"
+#include "DocumentPortal.hpp"
 
 #include "Biquad.hpp"
 
@@ -550,8 +551,8 @@ bool EqController::importFile(const QUrl& file)
 
 bool EqController::exportFile(const QUrl& file) const
 {
-    QFile f(localPath(file));
-    if (!f.open(QIODevice::WriteOnly | QIODevice::Truncate | QIODevice::Text))
+    QFile f;
+    if (!DocumentPortal::openForSave(f, file))
         return false;
     QTextStream out(&f);
     out << "Preamp: " << QString::number(m_preamp, 'f', 1) << " dB\n";

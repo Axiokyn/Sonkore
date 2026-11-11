@@ -82,4 +82,19 @@ QString localPath(const QUrl& url)
     return url.isLocalFile() ? hostPath(url.toLocalFile()) : url.toString();
 }
 
+bool openForSave(QFile& file, const QUrl& url)
+{
+    constexpr auto mode = QIODevice::WriteOnly | QIODevice::Truncate | QIODevice::Text;
+    const QString path = url.isLocalFile() ? url.toLocalFile() : url.toString();
+    file.setFileName(path);
+    if (file.open(mode))
+        return true;
+    static const QRegularExpression suffixed(QStringLiteral("^(/run/(?:user/\\d+|flatpak)/doc/[^/]+/[^/]+)\\.[^./]+$"));
+    const QRegularExpressionMatch m = suffixed.match(path);
+    if (!m.hasMatch())
+        return false;
+    file.setFileName(m.captured(1));
+    return file.open(mode);
+}
+
 } // namespace DocumentPortal
