@@ -17,6 +17,9 @@ if command -v flatpak-builder >/dev/null; then
     builder=(flatpak-builder)
 elif flatpak info org.flatpak.Builder >/dev/null 2>&1; then
     builder=(flatpak run --command=flatpak-builder org.flatpak.Builder)
+    # The app has a user installation of its own, where it installs the SDK:
+    # Flathub has to be known there too.
+    flatpak run --command=flatpak org.flatpak.Builder remote-add --user --if-not-exists flathub "$flathub"
 else
     echo "flatpak-builder is required (a package, or: flatpak install flathub org.flatpak.Builder)" >&2
     exit 1
