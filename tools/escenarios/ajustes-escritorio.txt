@@ -1,0 +1,29 @@
+# Ajustes › General › Integración con el escritorio: cada interruptor se toca
+# con el mouse y queda guardado. MPRIS se aplica al momento (antes solo al
+# arrancar: apagarlo no hacía nada hasta reiniciar). El ícono de la bandeja
+# no aparece en la prueba (no hay bus de sesión ni bandeja): se prueba que
+# se guarde y que «Cerrar a la bandeja» se habilite con él.
+pantalla 2546 4200
+ajuste widgets/windows/settings=@Size(920 2700)
+ajuste appearance/language=es
+ventanas 1
+estado mpris=true
+clic 1074 795
+ventanas 2
+foco last
+esperar 0.8
+# Cerrar a la bandeja está deshabilitado sin el ícono: el clic no guarda nada.
+clic 851 646
+esperar 0.5
+guardado ui/closeToTray!=true
+clic 851 606
+guardado ui/trayIcon=true
+clic 851 646
+guardado ui/closeToTray=true
+# Controles multimedia del sistema (MPRIS): apagado y prendido, al momento.
+clic 851 686
+guardado system/mpris=false
+estado mpris=false
+clic 851 686
+guardado system/mpris=true
+estado mpris=true

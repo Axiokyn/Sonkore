@@ -1,0 +1,50 @@
+# Ajustes › Audio › Señales de prueba (sonkore_dsp::test_signals): el tono de
+# 1 kHz a −20 dBFS a la frecuencia elegida, los parlantes por turno y el tono
+# en DSD64. Al detenerse o terminar vuelve lo que sonaba (01-izquierda, donde
+# estaba). Combos de la fila: y + 43 + 32·i.
+pantalla 2546 4200
+ajuste widgets/windows/settings=@Size(920 2700)
+ajuste appearance/language=es
+preparar python3 {repo}/tools/tonos.py --biblioteca {rt}/p
+ajuste library/rescanOnStartup=true
+ajuste playback/repeat=2
+argumentos {repo}/target/ui-live/tonos/01-izquierda.flac
+estado playing=true 5
+tecla ctrl+comma
+ventanas 2
+foco last
+esperar 0.8
+clic 578 67
+esperar 0.8
+sonido nivel-i=-12±0.2 nivel-d<-100
+# 96 kHz, Reproducir y Detener.
+clic 684 1337
+esperar 0.4
+clic 684 1476
+clic 817 1337
+estado path~tone-1khz-96000
+sonido tasa=96000 frec-i=1000±1 nivel-i=-20±0.3 nivel-d=-20±0.3
+clic 817 1337
+estado path~01-izquierda
+estado playing=true
+sonido tasa=44100 nivel-i=-12±0.2 nivel-d<-100
+# Parlantes (estéreo): primero el izquierdo, después el derecho, y vuelve solo.
+clic 817 1391
+estado path~channels-48000-2ch
+sonido 0.3 nivel-i=-20±0.5 nivel-d<-100
+sonido 0.3 nivel-d=-20±0.5 nivel-i<-100
+estado path~01-izquierda 6
+estado playing=true
+sonido nivel-i=-12±0.2 nivel-d<-100
+# DSD64 (por PipeWire, convertido a PCM). El modulador toma la entrada × 0,45
+# (−6,9 dB, para quedar estable) y la conversión a PCM no lo compensa, como
+# con cualquier DSD: los −20 dBFS salen a −26,9.
+clic 684 1337
+esperar 0.4
+clic 684 1636
+clic 817 1337
+estado path~tone-1khz-dsd64
+sonido frec-i=1000±2 nivel-i=-26.9±0.5 nivel-d=-26.9±0.5
+clic 817 1337
+estado path~01-izquierda
+sonido nivel-i=-12±0.2

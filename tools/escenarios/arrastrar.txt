@@ -1,0 +1,15 @@
+# Las ventanas se mueven arrastrando donde corresponde: la barra de título y,
+# en el mini reproductor, su espacio vacío y la pantalla (no el reloj). Con la
+# cola abierta también.
+arrastrar 450 15
+tecla ctrl+m
+esperar 0.8
+captura mini
+arrastrar 240 5
+arrastrar 330 40
+arrastrar 60 50
+clic 253 132
+esperar 0.8
+captura mini-cola
+arrastrar 240 5
+arrastrar 330 40

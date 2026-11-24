@@ -1,0 +1,61 @@
+# Sonkore: a hi-fi music player for the desktop. Slint draws the interface.
+[workspace]
+resolver = "3"
+members = ["crates/core", "crates/engine", "crates/soundtouch", "crates/eq", "crates/dsp", "crates/dsd", "crates/hdcd", "crates/platform", "crates/library", "crates/ui", "crates/app"]
+
+[workspace.package]
+version = "1.0.7"
+edition = "2024"
+license = "GPL-3.0-or-later"
+rust-version = "1.88"
+
+# Clippy's correctness, suspicious and perf lints fail tools/check.sh; style
+# and complexity are opinions, not bugs. Every crate has [lints] workspace = true,
+# so a plain `cargo clippy` and rust-analyzer see the same as check.sh.
+[workspace.lints.clippy]
+style = { level = "allow", priority = -1 }
+complexity = { level = "allow", priority = -1 }
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+strip = true
+
+# Like release but built in seconds after a change (no fat LTO, parallel
+# codegen, incremental): for AppImages the user tries out while we work.
+# release (fat LTO, ~4 min per build) is only for publishing or measuring.
+[profile.diario]
+inherits = "release"
+lto = false
+codegen-units = 16
+incremental = true
+
+# Fast to build while working, still quick enough to play audio.
+# Line tables only: backtraces keep file and line, and each test binary is a
+# fraction of the size (full debug info made target/debug several GB bigger).
+[profile.dev]
+opt-level = 1
+debug = "line-tables-only"
+
+[profile.dev.package."*"]
+opt-level = 3
+# No debug info for the dependencies: it was most of target/debug (gigabytes)
+# and is almost never needed; Sonkore's own crates keep theirs.
+debug = false
+
+# Two dependencies patched for Sonkore (see the "Sonkore:" comments):
+# softbuffer hands Wayland ARGB buffers, so the rounded corners are see-through;
+# Slint's winit backend multiplies the screen's scale by SLINT_SCALE_FACTOR_MULTIPLIER
+# (Settings › Appearance › Interface scale) instead of replacing it;
+# the software renderer rounds border widths to whole device pixels, at least
+# one (stock Slint truncates: 1 px at 150 % drew 1 device pixel instead of 2,
+# 0.5 px vanished); parley lays text out with full-hinting vertical metrics
+# (ascent / descent rounded to whole logical pixels).
+[patch.crates-io]
+softbuffer = { path = "vendor/softbuffer" }
+i-slint-backend-winit = { path = "vendor/i-slint-backend-winit" }
+i-slint-renderer-software = { path = "vendor/i-slint-renderer-software" }
+parley = { path = "vendor/parley" }
+i-slint-core = { path = "vendor/i-slint-core" }

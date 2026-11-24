@@ -1,0 +1,15 @@
+# Un DAC que se desenchufa y se vuelve a enchufar: 1,5 s después de que cambie
+# /dev/snd la lista de salidas se lee de nuevo y la barra de estado lo dice.
+# /dev/snd y /proc/asound son carpetas de la prueba (las placas de tests/asound;
+# la 2 es la DX1).
+preparar mkdir -p {rt}/snd && cp -r {repo}/tests/asound {rt}/asound
+entorno SONKORE_DEV_SND={rt}/snd
+entorno SONKORE_ASOUND_ROOT={rt}/asound
+ventanas 1
+esperar 1
+sh head -4 {rt}/asound/cards > {rt}/cards && mv {rt}/cards {rt}/asound/cards && rm -r {rt}/asound/card2 && touch {rt}/snd/pcmC2D0p
+estado message~^Dispositivo de sonido desconectado: .*DX1 5
+captura desenchufado
+esperar 3.5
+sh cp -r {repo}/tests/asound/. {rt}/asound/ && touch {rt}/snd/controlC2
+estado message~^Dispositivo de sonido conectado: .*DX1 5

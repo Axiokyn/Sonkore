@@ -1,0 +1,18 @@
+# Los atajos siguen andando después de cerrar un menú (error encontrado el
+# 2026-11-22: la capa de menús se quedaba con el teclado y Espacio, Ctrl+M,
+# Ctrl+E… dejaban de responder hasta hacer clic en una fila).
+clic 973 795             # menú de salidas
+esperar 0.3
+tecla escape
+esperar 0.3
+tecla ctrl+e
+ventanas 2
+foco main
+rclic 600 230            # menú de una pista, cerrado con un clic afuera
+esperar 0.3
+clic 600 600
+esperar 0.3
+dclic 900 113
+estado playing=true
+tecla space
+estado playing=false

@@ -1,0 +1,328 @@
+// The window's own frame: the title bar with the
+// brand, the page's heading and the search; the window buttons in the
+// style chosen in Settings; the edges that resize it.
+
+import { Theme } from "theme.slint";
+import { Icons } from "icons.slint";
+import { SearchField } from "controls.slint";
+
+// What the frame asks of the window (handled in Rust through winit).
+export global WindowActions {
+    in property <bool> maximized: false;
+    // The buttons the desktop shows (minimize, maximize, close); none under a
+    // tiling window manager.
+    in property <bool> show-minimize: true;
+    in property <bool> show-maximize: true;
+    in property <bool> show-close: true;
+    callback minimize();
+    callback toggle-maximize();
+    callback close();
+    callback start-move();
+    // "n", "s", "e", "w", "ne", "nw", "se", "sw".
+    callback start-resize(string);
+}
+
+// One window button: each style its own shape.
+component TitleButton inherits Rectangle {
+    in property <string> kind;          // minimize | maximize | close
+    in property <length> corner: 0px;   // the window's corner, for the close button
+    callback clicked();
+    property <string> style: Theme.window-buttons;
+    property <bool> danger: kind == "close";
+    property <bool> hot: area.has-hover;
+    property <bool> down: area.pressed;
+    property <color> light: danger ? #ff5f57 : kind == "minimize" ? #febc2e : #28c840;
+    width: style == "windows" ? 39px : style == "mac" ? 20px : style == "cinnamon" ? 28px : 30px;
+    height: style == "windows" ? 27px : 30px;
+    // Windows: the whole cell, the close button's corner following the window's.
+    if style == "windows": Rectangle {
+        border-top-right-radius: root.kind == "close" ? root.corner : 0;
+        border-bottom-right-radius: 4px;
+        border-bottom-left-radius: 4px;
+        background: root.down ? (root.danger ? #e81123.darker(15%) : Theme.border)
+                  : root.hot ? (root.danger ? #e81123 : Theme.hover) : transparent;
+    }
+    if style == "cinnamon": Rectangle {
+        width: root.danger ? 18px : 22px;
+        height: self.width;
+        border-radius: self.width / 2;
+        background: root.danger ? (root.down ? #1883ba : root.hot ? #45b3ec : #1f9ede)
+                  : Theme.text.with-alpha(root.down ? 0.16 : root.hot ? 0.1 : 0);
+    }
+    if style == "mac": Rectangle {
+        width: 13px;
+        height: 13px;
+        border-radius: 6.5px;
+        background: root.down ? root.light.darker(20%) : root.light;
+        border-width: 1px;
+        border-color: #00000030;
+    }
+    if style == "gnome": Rectangle {
+        width: 24px;
+        height: 24px;
+        border-radius: 12px;
+        background: Theme.text.with-alpha(root.down ? 0.2 : root.hot ? 0.15 : 0.09);
+    }
+    if style == "breeze": Rectangle {
+        width: 26px;
+        height: 26px;
+        border-radius: 13px;
+        background: root.danger && root.hot ? (root.down ? #da4453.darker(15%) : #da4453) : Theme.text.with-alpha(root.down ? 0.18 : root.hot ? 0.12 : 0);
+    }
+    if !(style == "mac" && !root.hot): Image {
+        property <length> size: root.style == "mac" ? 8px : root.style == "windows" || root.style == "breeze" ? 14px
+                                 : root.style == "cinnamon" && root.danger ? 10px : 12px;
+        width: self.size;
+        height: self.size;
+        y: (parent.height - self.size) / 2 + (root.style == "cinnamon" && root.kind == "minimize" ? 4px : 0);
+        source: root.style == "breeze"
+            ? (root.kind == "close" ? Icons.breeze-close : root.kind == "minimize" ? Icons.breeze-min : WindowActions.maximized ? Icons.breeze-restore : Icons.breeze-max)
+            : (root.kind == "close" ? Icons.close : root.kind == "minimize" ? Icons.win-min : WindowActions.maximized ? Icons.win-restore : Icons.win-max);
+        colorize: root.style == "mac" ? #00000099
+                : root.style == "cinnamon" && root.danger ? white
+                : (root.style == "windows" || root.style == "breeze") && root.danger && root.hot ? white
+                : root.style == "minimal" && root.hot ? (root.danger ? #e81123 : Theme.accent)
+                : root.hot || root.style == "gnome" || root.style == "cinnamon" || root.style == "breeze" ? Theme.text : Theme.text-dim;
+    }
+    area := TouchArea {
+        clicked => { root.clicked(); }
+    }
+}
+
+// The window buttons (WindowButtons): flush in the corner for Windows'
+// style, a little inside for the others.
+export component WindowButtons inherits HorizontalLayout {
+    in property <length> corner: 0px;
+    spacing: Theme.window-buttons == "mac" ? 4px : Theme.window-buttons == "windows" ? 0 : 2px;
+    if WindowActions.show-minimize: TitleButton {
+        kind: "minimize";
+        clicked => { WindowActions.minimize(); }
+    }
+    if WindowActions.show-maximize: TitleButton {
+        kind: "maximize";
+        clicked => { WindowActions.toggle-maximize(); }
+    }
+    if WindowActions.show-close: TitleButton {
+        kind: "close";
+        corner: root.corner;
+        clicked => { WindowActions.close(); }
+    }
+}
+
+// The logo and the wordmark ("son" in the text colour, "kore" in the accent,
+// Sora bold), with a faint rim around the logo.
+export component Brand inherits Rectangle {
+    in property <length> logo: 30px;
+    width: logo + 5px + 8px + word.preferred-width;
+    height: logo + 5px;
+    for i in 3: Rectangle {
+        property <length> w: round(root.logo / 1px * 0.9375) * 1px + (i + 1) * 2px;
+        x: (root.logo + 5px - self.w) / 2;
+        y: (root.height - self.w) / 2;
+        width: self.w;
+        height: self.w;
+        border-radius: self.w * 0.32;
+        background: Theme.dark ? #0000001c : #0000000a;
+    }
+    Image {
+        x: 2.5px;
+        y: (root.height - root.logo) / 2;
+        width: root.logo;
+        height: root.logo;
+        source: Icons.logo;
+    }
+    // The baseline at height / 2 + (ascent - descent) / 2
+    // with whole-pixel ascent and descent (Sora: 0.97 / 0.29 em);
+    // Slint puts a top-aligned baseline at the top plus the rounded ascent.
+    property <length> word-px: round(root.logo / 1px * 0.62) * 1px;
+    property <length> baseline: root.height / 2 + (round(root.word-px * 0.97 / 1px) - round(root.word-px * 0.29 / 1px)) * 1px / 2;
+    word := HorizontalLayout {
+        x: root.logo + 13px;
+        y: root.baseline - round(root.word-px * 0.97 / 1px) * 1px;
+        width: self.preferred-width;
+        spacing: 0;
+        Text {
+            text: "son";
+            font-family: "Sora";
+            font-weight: 700;
+            font-size: root.word-px;
+            color: Theme.text;
+            vertical-alignment: top;
+        }
+        Text {
+            text: "kore";
+            font-family: "Sora";
+            font-weight: 700;
+            font-size: root.word-px;
+            color: Theme.accent;
+            vertical-alignment: top;
+        }
+    }
+}
+
+// The top bar (TopBar): the logo 13 px in; the page's heading over the pages
+// (28 px in) or centred; the search centred over the pages, never over the
+// heading or the buttons; the window buttons in the corner. Dragging it
+// moves the window, a double click maximizes it.
+export component TopBar inherits Rectangle {
+    in property <length> pages-left: 248px;
+    in property <string> title;
+    in property <string> subtitle;
+    in property <bool> centered: false;
+    in property <bool> searchable: true;
+    in property <bool> show-search: true;
+    in property <string> search-placeholder;
+    in-out property <string> search-text;
+    in property <int> focus-search;          // bumped by Ctrl+F
+    callback search-escaped();
+    in property <length> corner: 0px;
+    callback search-edited(string);
+    height: Theme.top-bar-height;
+
+    drag := TouchArea {
+        pointer-event(e) => {
+            if (e.kind == PointerEventKind.down && e.button == PointerEventButton.left) {
+                WindowActions.start-move();
+            }
+        }
+        double-clicked => { WindowActions.toggle-maximize(); }
+    }
+    brand := Brand {
+        logo: root.height - 18px;
+        x: 13px;
+        // 13 px in, (h - height) / 2 down: integer division.
+        y: floor((root.height - self.height) / 2 / 1px) * 1px;
+    }
+    property <length> title-width: min(max(title-text.preferred-width, subtitle-text.preferred-width), 300px, max(100px, root.width * 0.3));
+    property <length> heading-x: centered ? (root.width - title-width) / 2 : pages-left + 1px + 28px;
+    property <length> text-height: title-text.preferred-height + (subtitle != "" ? subtitle-text.preferred-height : 0);
+    title-text := Text {
+        x: root.heading-x;
+        y: (root.height - root.text-height) / 2;
+        width: root.title-width;
+        text: root.title;
+        font-size: 17px;
+        font-weight: 700;
+        color: Theme.text;
+        overflow: elide;
+    }
+    subtitle-text := Text {
+        x: root.heading-x;
+        y: title-text.y + title-text.preferred-height + 1px;
+        width: root.title-width;
+        text: root.subtitle;
+        visible: root.subtitle != "";
+        font-size: 11px;
+        color: Theme.text-dim;
+        overflow: elide;
+    }
+    buttons := WindowButtons {
+        corner: root.corner;
+        x: root.width - self.preferred-width - (Theme.window-buttons == "windows" ? 0 : 8px);
+        y: Theme.window-buttons == "windows" ? 0 : 4px;
+    }
+    property <length> min-x: (root.title == "" ? brand.x + brand.width : root.heading-x + root.title-width) + 24px;
+    property <length> max-x: buttons.x - 24px;
+    property <length> search-width: min(440px, max-x - min-x);
+    property <length> list-centre: pages-left + 1px + (root.width - pages-left - 1px) / 2;
+    if root.searchable && !root.centered && root.search-width >= 120px && (root.show-search || root.search-text != ""): SearchField {
+        x: max(root.min-x, min(round((root.list-centre - root.search-width / 2) / 1px) * 1px, root.max-x - root.search-width));
+        y: (root.height - self.height) / 2;
+        width: root.search-width;
+        placeholder: root.search-placeholder;
+        text <=> root.search-text;
+        edited(t) => { root.search-edited(t); }
+        focus-request: root.focus-search;
+        focus-on-create: root.focus-search > 0;
+        escaped => { root.search-escaped(); }
+    }
+}
+
+// Thin strips along the window's edges and corners that start a resize
+// (ResizeGrips): 5 px, the top stopping short of the window buttons.
+export component ResizeGrips inherits Rectangle {
+    in property <bool> enabled: true;
+    property <length> g: 5px;
+    if enabled: TouchArea {
+        x: 0; y: root.g; width: root.g; height: root.height - 2 * root.g;
+        mouse-cursor: ew-resize;
+        pointer-event(e) => { if (e.kind == PointerEventKind.down) { WindowActions.start-resize("w"); } }
+    }
+    if enabled: TouchArea {
+        x: root.width - root.g; y: root.g; width: root.g; height: root.height - 2 * root.g;
+        mouse-cursor: ew-resize;
+        pointer-event(e) => { if (e.kind == PointerEventKind.down) { WindowActions.start-resize("e"); } }
+    }
+    if enabled: TouchArea {
+        x: 2 * root.g; y: 0; width: root.width - 4 * root.g - 120px; height: root.g;
+        mouse-cursor: ns-resize;
+        pointer-event(e) => { if (e.kind == PointerEventKind.down) { WindowActions.start-resize("n"); } }
+    }
+    if enabled: TouchArea {
+        x: root.g; y: root.height - root.g; width: root.width - 2 * root.g; height: root.g;
+        mouse-cursor: ns-resize;
+        pointer-event(e) => { if (e.kind == PointerEventKind.down) { WindowActions.start-resize("s"); } }
+    }
+    if enabled: TouchArea {
+        x: 0; y: 0; width: 2 * root.g; height: 2 * root.g;
+        mouse-cursor: nwse-resize;
+        pointer-event(e) => { if (e.kind == PointerEventKind.down) { WindowActions.start-resize("nw"); } }
+    }
+    if enabled: TouchArea {
+        x: root.width - 2 * root.g; y: 0; width: 2 * root.g; height: 2 * root.g;
+        mouse-cursor: nesw-resize;
+        pointer-event(e) => { if (e.kind == PointerEventKind.down) { WindowActions.start-resize("ne"); } }
+    }
+    if enabled: TouchArea {
+        x: 0; y: root.height - 2 * root.g; width: 2 * root.g; height: 2 * root.g;
+        mouse-cursor: nesw-resize;
+        pointer-event(e) => { if (e.kind == PointerEventKind.down) { WindowActions.start-resize("sw"); } }
+    }
+    if enabled: TouchArea {
+        x: root.width - 2 * root.g; y: root.height - 2 * root.g; width: 2 * root.g; height: 2 * root.g;
+        mouse-cursor: nwse-resize;
+        pointer-event(e) => { if (e.kind == PointerEventKind.down) { WindowActions.start-resize("se"); } }
+    }
+}
+
+// The window's outline (Settings › Appearance › Window outline): rings from
+// the edge inwards, each a pixel wide.
+export component WindowOutline inherits Rectangle {
+    in property <length> radius: 0px;
+    // Nothing while maximized (the screen's edge
+    // is the window's).
+    property <string> style: WindowActions.maximized ? "off" : Theme.window-outline;
+    if style == "line" || style == "bold" || style == "accent": Rectangle {
+        border-radius: root.radius;
+        border-width: style == "bold" ? 2px : 1px;
+        border-color: style == "accent" ? Theme.accent : style == "bold" ? Theme.text-faint : Theme.border;
+    }
+    if style == "highlight": Rectangle {
+        border-radius: root.radius;
+        border-width: 1px;
+        border-color: Theme.dark ? #000000b3 : #00000047;
+    }
+    if style == "highlight": Rectangle {
+        x: 1px; y: 1px; width: parent.width - 2px; height: parent.height - 2px;
+        border-radius: max(0, root.radius - 1px);
+        border-width: 1px;
+        border-color: Theme.dark ? #ffffff21 : #ffffff8c;
+    }
+    if style == "glow": Rectangle {
+        border-radius: root.radius;
+        border-width: 1px;
+        border-color: Theme.accent;
+    }
+    if style == "glow": Rectangle {
+        x: 1px; y: 1px; width: parent.width - 2px; height: parent.height - 2px;
+        border-radius: max(0, root.radius - 1px);
+        border-width: 1px;
+        border-color: Theme.accent.with-alpha(0.45);
+    }
+    if style == "glow": Rectangle {
+        x: 2px; y: 2px; width: parent.width - 4px; height: parent.height - 4px;
+        border-radius: max(0, root.radius - 2px);
+        border-width: 1px;
+        border-color: Theme.accent.with-alpha(0.22);
+    }
+}

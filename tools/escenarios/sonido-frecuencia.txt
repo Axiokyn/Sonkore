@@ -1,0 +1,66 @@
+# Ajustes › Audio › Frecuencia de muestreo y salida, cambiadas mientras suena:
+# la pista sigue donde estaba con lo nuevo. «Seguir la frecuencia» fija
+# clock.force-rate en PipeWire (tools/pw-ajuste.py). 01-izquierda es de
+# 44,1 kHz y 04-tono-96k de 96 kHz (tools/tonos.py).
+pantalla 2546 4200
+ajuste widgets/windows/settings=@Size(920 2700)
+ajuste appearance/language=es
+preparar python3 {repo}/tools/tonos.py --biblioteca {rt}/p
+ajuste library/rescanOnStartup=true
+ajuste playback/repeat=2
+argumentos {repo}/target/ui-live/tonos/01-izquierda.flac {repo}/target/ui-live/tonos/04-tono-96k.flac
+estado playing=true 5
+tecla ctrl+comma
+ventanas 2
+foco last
+esperar 0.8
+clic 578 67
+esperar 0.8
+sonido tasa=44100 nivel-i=-12±0.2
+sh XDG_RUNTIME_DIR={rt} pw-dump | python3 {repo}/tools/pw-ajuste.py clock.force-rate 44100
+clic 851 784
+guardado playback/followTrackRate=false
+estado playing=true
+sonido salidas=2 nivel-i=-12±0.2
+sh XDG_RUNTIME_DIR={rt} pw-dump | python3 {repo}/tools/pw-ajuste.py clock.force-rate 0
+clic 851 784
+guardado playback/followTrackRate=true
+sonido salidas=3 nivel-i=-12±0.2
+sh XDG_RUNTIME_DIR={rt} pw-dump | python3 {repo}/tools/pw-ajuste.py clock.force-rate 44100
+# Búfer de 400 ms: la salida se abre de nuevo con él.
+clic 807 864
+esperar 0.4
+clic 807 1003
+guardado playback/bufferMs=400
+estado buffer-ms=400
+sonido salidas=4 nivel-i=-12±0.2
+# Frecuencia fija: 96 kHz, después 88,2 kHz.
+clic 693 992
+guardado playback/fixedRate=96000
+sonido tasa=96000 frec-i=1000±1 nivel-i=-12±0.2
+clic 807 1032
+esperar 0.4
+clic 807 1139
+guardado playback/fixedRate=88200
+sonido tasa=88200 frec-i=1000±1
+# Sobremuestreo ×2 y ×4.
+clic 816 992
+guardado playback/upsampling=1
+sonido tasa=88200 frec-i=1000±1
+clic 807 1032
+esperar 0.4
+clic 807 1107
+guardado playback/upsampling=2
+sonido tasa=176400 frec-i=1000±1
+# Original, y una pausa de 1000 ms cuando cambia la frecuencia (la pista de 96 kHz).
+clic 593 992
+guardado playback/upsampling=0
+sonido tasa=44100
+clic 807 1032
+esperar 0.4
+clic 807 1171
+guardado playback/resyncDelayMs=1000
+foco main
+tecla ctrl+right
+estado index=1
+sonido tasa=96000 silencio=1020±60 nivel-i=-12±0.2

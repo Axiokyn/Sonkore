@@ -1,0 +1,11 @@
+# Un clic fuera del buscador le quita el teclado (error del 2026-11-22: seguía
+# con el foco y las teclas iban al campo). Ventana 1320x840 lógica.
+esperar 1
+clic 660 25              # el buscador
+tecla a
+estado search=a
+clic 100 640             # espacio vacío de la barra lateral
+tecla b                  # ya no escribe en el campo
+esperar 0.3
+estado search=a
+captura sin-foco

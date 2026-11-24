@@ -1,9 +1,9 @@
 # English source -> (es, pt_BR, fr, de, it). Part 4: library browser, layouts, settings layout.
 T = {
 "1 album": ("1 álbum", "1 álbum", "1 album", "1 Album", "1 album"),
-"%1 artists": ("%1 artistas", "%1 artistas", "%1 artistes", "%1 Künstler", "%1 artisti"),
-"%1 genres": ("%1 géneros", "%1 gêneros", "%1 genres", "%1 Genres", "%1 generi"),
-"%1 items": ("%1 elementos", "%1 itens", "%1 éléments", "%1 Einträge", "%1 elementi"),
+"{0} artists": ("{0} artistas", "{0} artistas", "{0} artistes", "{0} Künstler", "{0} artisti"),
+"{0} genres": ("{0} géneros", "{0} gêneros", "{0} genres", "{0} Genres", "{0} generi"),
+"{0} items": ("{0} elementos", "{0} itens", "{0} éléments", "{0} Einträge", "{0} elementi"),
 "88.2 kHz suits a library of mostly CDs (44.1 kHz); 96 kHz suits one with mostly 48 / 96 kHz files. Either way the conversion is inaudible.": (
     "88.2 kHz conviene si tu biblioteca es sobre todo de CD (44.1 kHz); 96 kHz, si tiene sobre todo archivos de 48 / 96 kHz. En ambos casos la conversión es inaudible.",
     "88,2 kHz convém se sua biblioteca é principalmente de CDs (44,1 kHz); 96 kHz, se tem principalmente arquivos de 48 / 96 kHz. Em ambos os casos a conversão é inaudível.",
@@ -16,7 +16,7 @@ T = {
 "Add files to the playlist": ("Agregar archivos a la lista", "Adicionar arquivos à playlist", "Ajouter des fichiers à la liste", "Dateien zur Playlist hinzufügen", "Aggiungi file alla playlist"),
 "Rename…": ("Renombrar…", "Renomear…", "Renommer…", "Umbenennen…", "Rinomina…"),
 "Delete playlist…": ("Eliminar lista…", "Excluir playlist…", "Supprimer la liste…", "Playlist löschen…", "Elimina playlist…"),
-"Delete “%1”?": ("¿Eliminar «%1»?", "Excluir “%1”?", "Supprimer « %1 » ?", "„%1“ löschen?", "Eliminare “%1”?"),
+"Delete “{0}”?": ("¿Eliminar «{0}»?", "Excluir “{0}”?", "Supprimer « {0} » ?", "„{0}“ löschen?", "Eliminare “{0}”?"),
 "The playlist is removed; its tracks stay in the library and on disk.": ("Se elimina la lista; sus pistas siguen en la biblioteca y en el disco.", "A playlist é excluída; as faixas continuam na biblioteca e no disco.", "La liste est supprimée ; ses pistes restent dans la bibliothèque et sur le disque.", "Die Playlist wird gelöscht; ihre Titel bleiben in der Bibliothek und auf der Festplatte.", "La playlist viene eliminata; i brani restano nella libreria e sul disco."),
 "Add a music folder to browse your library": ("Agrega una carpeta de música para explorar tu biblioteca", "Adicione uma pasta de música para explorar sua biblioteca", "Ajoutez un dossier de musique pour parcourir votre bibliothèque", "Füge einen Musikordner hinzu, um deine Bibliothek zu durchsuchen", "Aggiungi una cartella musicale per esplorare la libreria"),
 "All albums": ("Todos los álbumes", "Todos os álbuns", "Tous les albums", "Alle Alben", "Tutti gli album"),
@@ -80,7 +80,7 @@ T = {
 "Skipped folders": ("Carpetas omitidas", "Pastas ignoradas", "Dossiers ignorés", "Übersprungene Ordner", "Cartelle saltate"),
 "Sound processing": ("Procesamiento de sonido", "Processamento de som", "Traitement du son", "Klangbearbeitung", "Elaborazione del suono"),
 "Start page": ("Página de inicio", "Página inicial", "Page d'accueil", "Startseite", "Pagina iniziale"),
-"Under %1 s": ("Menos de %1 s", "Menos de %1 s", "Moins de %1 s", "Unter %1 s", "Meno di %1 s"),
+"Under {0} s": ("Menos de {0} s", "Menos de {0} s", "Moins de {0} s", "Unter {0} s", "Meno di {0} s"),
 "Unknown artist": ("Artista desconocido", "Artista desconhecido", "Artiste inconnu", "Unbekannter Künstler", "Artista sconosciuto"),
 "Upsampling factor": ("Factor de upsampling", "Fator de upsampling", "Facteur de suréchantillonnage", "Upsampling-Faktor", "Fattore di sovracampionamento"),
 "What Sonkore shows when it opens. Last place: the folder you had open, or the playing track's.": (
@@ -89,7 +89,7 @@ T = {
     "Ce que Sonkore affiche à l'ouverture. Dernier emplacement : le dossier que vous aviez ouvert, ou celui de la piste en cours.",
     "Was Sonkore beim Öffnen zeigt. Letzter Ort: der zuletzt geöffnete Ordner oder der des laufenden Titels.",
     "Cosa mostra Sonkore all'apertura. Ultima posizione: la cartella che avevi aperto o quella del brano in riproduzione."),
-"With %1.": ("Con %1.", "Com %1.", "Avec %1.", "Mit %1.", "Con %1."),
+"With {0}.": ("Con {0}.", "Com {0}.", "Avec {0}.", "Mit {0}.", "Con {0}."),
 "Window": ("Ventana", "Janela", "Fenêtre", "Fenster", "Finestra"),
 "Audio": ("Audio", "Áudio", "Audio", "Audio", "Audio"),
 "Rendering": ("Renderizado", "Renderização", "Rendu", "Darstellung", "Rendering"),
@@ -125,7 +125,7 @@ T = {
 "Moves the DAC's own volume control: the audio stays bit-perfect.": ("Mueve el control de volumen del propio DAC: el audio sigue siendo bit-perfect.", "Move o controle de volume do próprio DAC: o áudio continua bit-perfect.", "Agit sur le volume du DAC lui-même : le son reste bit-perfect.", "Bewegt den eigenen Lautstärkeregler des DAC: der Ton bleibt bit-perfect.", "Agisce sul controllo di volume del DAC: l'audio resta bit-perfect."),
 "Audio settings…": ("Ajustes de audio…", "Ajustes de áudio…", "Réglages audio…", "Audio-Einstellungen…", "Impostazioni audio…"),
 "Mute · right-click: volume control": ("Silenciar · clic derecho: control de volumen", "Silenciar · clique direito: controle de volume", "Couper le son · clic droit : réglage du volume", "Stumm · Rechtsklick: Lautstärkeregelung", "Muto · clic destro: controllo del volume"),
-"DAC volume · %1 · bit-perfect": ("Volumen del DAC · %1 · bit-perfect", "Volume do DAC · %1 · bit-perfect", "Volume du DAC · %1 · bit-perfect", "DAC-Lautstärke · %1 · bit-perfect", "Volume del DAC · %1 · bit-perfect"),
+"DAC volume · {0} · bit-perfect": ("Volumen del DAC · {0} · bit-perfect", "Volume do DAC · {0} · bit-perfect", "Volume du DAC · {0} · bit-perfect", "DAC-Lautstärke · {0} · bit-perfect", "Volume del DAC · {0} · bit-perfect"),
 "Only for direct (hw:) outputs: with this one the volume stays fixed at 100 %. Choose Digital to set it from Sonkore.": ("Solo para salidas directas (hw:): con esta el volumen queda fijo al 100 %. Elige Digital para ajustarlo desde Sonkore.", "Só para saídas diretas (hw:): com esta o volume fica fixo em 100 %. Escolha Digital para ajustá-lo no Sonkore.", "Uniquement pour les sorties directes (hw:) : avec celle-ci, le volume reste fixé à 100 %. Choisissez Numérique pour le régler depuis Sonkore.", "Nur für direkte (hw:) Ausgaben: bei dieser bleibt die Lautstärke auf 100 % fixiert. Wähle Digital, um sie in Sonkore einzustellen.", "Solo per uscite dirette (hw:): con questa il volume resta fisso al 100 %. Scegli Digitale per regolarlo da Sonkore."),
 "This DAC has no volume control of its own: the volume stays fixed at 100 %, set it on the DAC or the amplifier. Choose Digital to set it from Sonkore.": ("Este DAC no tiene control de volumen propio: el volumen queda fijo al 100 %, ajústalo en el DAC o el amplificador. Elige Digital para ajustarlo desde Sonkore.", "Este DAC não tem controle de volume próprio: o volume fica fixo em 100 %, ajuste no DAC ou no amplificador. Escolha Digital para ajustá-lo no Sonkore.", "Ce DAC n'a pas de réglage de volume propre : le volume reste fixé à 100 %, réglez-le sur le DAC ou l'amplificateur. Choisissez Numérique pour le régler depuis Sonkore.", "Dieser DAC hat keinen eigenen Lautstärkeregler: die Lautstärke bleibt auf 100 % fixiert, stelle sie am DAC oder Verstärker ein. Wähle Digital, um sie in Sonkore einzustellen.", "Questo DAC non ha un controllo di volume proprio: il volume resta fisso al 100 %, regolalo sul DAC o sull'amplificatore. Scegli Digitale per regolarlo da Sonkore."),
 "Volume fixed at 100 %: set it on the DAC or the amplifier. Click to choose how the volume is set.": ("Volumen fijo al 100 %: ajústalo en el DAC o el amplificador. Haz clic para elegir cómo se controla el volumen.", "Volume fixo em 100 %: ajuste no DAC ou no amplificador. Clique para escolher como o volume é controlado.", "Volume fixé à 100 % : réglez-le sur le DAC ou l'amplificateur. Cliquez pour choisir comment le volume est réglé.", "Lautstärke auf 100 % fixiert: am DAC oder Verstärker einstellen. Klicken, um die Lautstärkeregelung zu wählen.", "Volume fisso al 100 %: regolalo sul DAC o sull'amplificatore. Clicca per scegliere come si regola il volume."),

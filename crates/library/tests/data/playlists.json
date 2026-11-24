@@ -1,0 +1,15 @@
+[
+    {
+        "name": "Mi lista ñ",
+        "tracks": [
+            "/m/a.flac",
+            "/m/disc.cue#2",
+            "/m/😀.mp3"
+        ]
+    },
+    {
+        "name": "Empty",
+        "tracks": [
+        ]
+    }
+]

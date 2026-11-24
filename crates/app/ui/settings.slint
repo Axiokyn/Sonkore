@@ -1,0 +1,1463 @@
+// The settings window: General, Appearance, Audio and Library, on the
+// stored settings earlier Sonkore versions wrote. Filled and answered from
+// src/settings_ui.rs.
+
+import "../../../fonts/inter/400.ttf";
+import "../../../fonts/inter/500.ttf";
+import "../../../fonts/inter/600.ttf";
+import "../../../fonts/inter/700.ttf";
+import "../../../fonts/inter/tnum-400.ttf";
+import "../../../fonts/inter/tnum-500.ttf";
+import "../../../fonts/inter/tnum-600.ttf";
+
+import { Theme } from "theme.slint";
+import { Icons } from "icons.slint";
+import { Badge } from "controls.slint";
+import { WindowButtons, WindowOutline, ResizeGrips, WindowActions } from "chrome.slint";
+import { Opt, SettingsOverlay, UiText, Label, Section, Pill, IconBtn, Toggle, Check, Combo, NumField, Segmented, InfoTip, Card, Row, Line } from "settings_controls.slint";
+import { Appearance, AppearanceTab, Picker, SkinTile } from "settings_appearance.slint";
+
+export { Opt, SettingsOverlay, Appearance, SkinTile }
+
+// An output, with its group's head on the
+// first of each backend.
+export struct OutputDevice {
+    key: string,
+    name: string,
+    detail: string,
+    backend: string,
+    hint: string,
+    first: bool,
+    direct: bool,
+    is-default: bool,
+    selected: bool,
+}
+
+// A column of the track lists: ticked when shown, its place.
+export struct ColumnLine {
+    key: string,
+    title: string,
+    position: int,      // 0-based, -1 when hidden
+    count: int,         // columns shown
+}
+
+// Every value the window shows; Rust fills it from the settings and the
+// player, and hears back through `set` and `action`.
+export global SettingsData {
+    in-out property <string> tab: "general";
+    in-out property <length> scroll: 0px;
+    // General.
+    in property <[Opt]> languages;
+    in property <string> language;
+    in property <[Opt]> fonts;
+    in property <string> font: "inter";
+    in property <string> scale: "1";
+    in property <bool> restart-required;
+    in property <bool> language-restart;   // the language chosen shows after a restart
+    in property <bool> scale-restart;      // so does the interface scale
+    in property <bool> resume: true;
+    in property <bool> live-seek: true;
+    in property <bool> stop-button: false;
+    in property <bool> search-bar: true;
+    in property <string> start-page: "last";
+    in property <string> track-browser: "false";
+    in property <string> wheel-step: "180";
+    in property <bool> tray-icon: false;
+    in property <bool> close-to-tray: false;
+    in property <bool> mpris-available: true;
+    in property <bool> mpris: true;
+    in property <string> version: "1.0.7";
+    in property <string> components;
+    // Audio.
+    in property <bool> loaded;
+    in property <string> output-description;
+    in property <bool> bit-perfect;
+    in property <[OutputDevice]> devices;
+    in property <bool> device-missing;
+    in property <bool> direct-output;
+    in property <bool> output-reserved;
+    in property <bool> release-when-idle: true;
+    in property <bool> sound-per-output: true;
+    in property <bool> hardware-volume-supported: true;
+    in property <string> hardware-volume-info;
+    in property <string> volume-mode: "2";
+    in property <bool> follow-rate: true;
+    // Windows: WASAPI exclusive mode instead of PipeWire's rate switching.
+    in property <bool> windows: false;
+    in property <bool> exclusive: true;
+    in property <bool> play-from-memory: true;
+    in property <string> buffer: "150";
+    in property <int> rate-mode: 0;         // 0 original, 1 fixed rate, 2 upsampling
+    in property <string> fixed-rate: "96000";
+    in property <string> upsampling: "1";
+    in property <string> resample-filter: "0";
+    in property <string> resync: "250";
+    in property <string> dsd-mode: "1";
+    in property <string> pcm-to-dsd: "0";
+    in-out property <string> test-rate: "0";
+    in-out property <string> test-channels: "2";
+    in property <string> test-running;      // "", "rate", "channels" or "dts"
+    in property <bool> dts-available;
+    in property <string> convolution-file;
+    in property <bool> convolution-enabled;
+    in property <string> crossfeed: "0";
+    in property <bool> headroom-auto: false;
+    in property <float> headroom-db: 0;
+    in property <string> effective-headroom: "0.0";
+    in property <bool> clipping;
+    in property <bool> limiter;
+    in property <string> limiter-ceiling: "-1";
+    in property <string> limiter-ceiling-text: "-1.0";
+    in property <string> dither: "1";
+    in property <bool> hdcd;
+    in property <string> replay-gain: "0";
+    in property <float> replay-gain-preamp: 0;
+    in property <bool> replay-gain-prevent-clipping: true;
+    in property <string> current-gain;      // "" when the track has no data
+    in property <string> loudness-status;
+    // Library.
+    in property <bool> online-covers;
+    in property <string> covers-status;
+    in property <[string]> folders;
+    in property <[string]> excluded;
+    in property <bool> scanning;
+    in property <string> count-text;
+    in property <int> hidden-count;
+    in property <string> min-duration: "0";
+    in property <bool> watch-folders: true;
+    in property <bool> rescan-on-startup: true;
+    in property <[ColumnLine]> columns;
+
+    // A setting changed: its id (the settings key) and the new value.
+    callback set(string, string);
+    // A button: its id and an argument.
+    callback action(string, string);
+}
+
+// --- Pieces of the page -----------------------------------------------------------
+
+// The tabs: a segmented track, the chosen one raised.
+component TabStrip inherits Rectangle {
+    border-radius: Theme.radius-small + 4px;
+    background: Theme.surface;
+    border-width: 1px;
+    border-color: Theme.border;
+    property <length> button-w: (self.width - 8px - 3 * 4px) / 4;
+    property <[string]> ids: ["general", "appearance", "audio", "library"];
+    property <[string]> texts: [@tr("SettingsPage" => "General"), @tr("SettingsPage" => "Appearance"), @tr("SettingsPage" => "Audio"), @tr("SettingsPage" => "Library")];
+    property <[image]> icons: [Icons.globe, Icons.palette, Icons.speaker, Icons.folder];
+    // Every tab shows its icon, or none: room for the longest label.
+    m0 := UiText { visible: false; text: root.texts[0]; font-size: 13px; font-weight: 600; }
+    m1 := UiText { visible: false; text: root.texts[1]; font-size: 13px; font-weight: 600; }
+    m2 := UiText { visible: false; text: root.texts[2]; font-size: 13px; font-weight: 600; }
+    m3 := UiText { visible: false; text: root.texts[3]; font-size: 13px; font-weight: 600; }
+    property <bool> show-icons: self.button-w >= max(max(m0.preferred-width, m1.preferred-width), max(m2.preferred-width, m3.preferred-width)) + 63px;
+    for id[i] in root.ids: Rectangle {
+        property <bool> active: SettingsData.tab == id;
+        x: 4px + i * (root.button-w + 4px);
+        y: 4px;
+        width: root.button-w;
+        height: 34px;
+        border-radius: Theme.radius-small + 1px;
+        background: self.active ? Theme.hover : tab-area.has-hover ? Theme.text.with-alpha(0.04) : transparent;
+        border-width: self.active ? 1px : 0;
+        border-color: Theme.text.with-alpha(Theme.dark ? 0.08 : 0.12);
+        property <length> text-w: min(label.preferred-width, self.width - 12px);
+        property <length> row-w: min((root.show-icons ? 23px : 0px) + self.text-w, self.width - 12px);
+        property <length> row-h: max(root.show-icons ? 16px : 0px, label.font-line);
+        property <length> x0: round((self.width - self.row-w) / 2px) * 1px;
+        property <length> y0: round((self.height - self.row-h) / 2px) * 1px;
+        if root.show-icons: Image {
+            x: parent.x0;
+            y: parent.y0 + round((parent.row-h - 16px) / 2px) * 1px;
+            width: 16px;
+            height: 16px;
+            source: root.icons[i];
+            colorize: parent.active ? Theme.accent : Theme.text-dim;
+        }
+        label := UiText {
+            x: parent.x0 + (root.show-icons ? 23px : 0px);
+            y: parent.y0 + round((parent.row-h - self.font-line) / 2px) * 1px;
+            width: parent.text-w + 1px;
+            text: root.texts[i];
+            font-size: 13px;
+            font-weight: parent.active ? 600 : 400;
+            color: parent.active ? Theme.text : Theme.text-dim;
+            overflow: elide;
+        }
+        tab-area := TouchArea {
+            mouse-cursor: pointer;
+            clicked => {
+                SettingsData.tab = id;
+                SettingsData.scroll = 0;
+                SettingsData.set("ui/settingsTab", id);
+            }
+        }
+    }
+}
+
+// A switch bound to a setting.
+component SetToggle inherits Toggle {
+    in property <string> key;
+    toggled(on) => { SettingsData.set(root.key, on ? "true" : "false"); }
+}
+
+// A combo box bound to a setting.
+component SetCombo inherits Combo {
+    in property <string> key;
+    activated(v) => { SettingsData.set(root.key, v); }
+}
+
+// RestartButton: shown while a restart is needed.
+component RestartButton inherits Pill {
+    has-icon: true;
+    icon: Icons.refresh;
+    text: @tr("SettingsPage" => "Restart");
+    primary: true;
+    clicked => { SettingsData.action("restart", ""); }
+}
+
+// The text of the About card's second line and the like: dim, 13 px.
+component Dim inherits Label {
+    font-size: 13px;
+    color: Theme.text-dim;
+}
+
+// The Sonkore logo, as the About card shows it.
+component Logo inherits Image {
+    width: 48px;
+    height: 48px;
+    source: Icons.logo;
+}
+
+// --- General ----------------------------------------------------------------------
+
+component GeneralTab inherits VerticalLayout {
+    spacing: 16px;
+    Card {
+        title: @tr("SettingsPage" => "General");
+        icon: Icons.globe;
+        Row {
+            title: @tr("SettingsPage" => "Interface language");
+            description: @tr("SettingsPage" => "Needs a restart.");
+            Line {
+                SetCombo {
+                    key: "appearance/language";
+                    preferred: 220px;
+                    options: SettingsData.languages;
+                    current: SettingsData.language;
+                }
+                if SettingsData.language-restart: RestartButton { }
+            }
+        }
+        Row {
+            title: @tr("SettingsPage" => "Font");
+            SetCombo {
+                key: "appearance/font";
+                preferred: 220px;
+                options: SettingsData.fonts;
+                current: SettingsData.font;
+            }
+        }
+        Row {
+            title: @tr("SettingsPage" => "Interface scale");
+            description: @tr("SettingsPage" => "Needs a restart.");
+            Line {
+                SetCombo {
+                    key: "appearance/uiScale";
+                    preferred: 140px;
+                    options: [
+                        { text: "75 %", value: "0.75" }, { text: "85 %", value: "0.85" }, { text: "90 %", value: "0.9" },
+                        { text: "100 %", value: "1" }, { text: "110 %", value: "1.1" }, { text: "125 %", value: "1.25" },
+                        { text: "150 %", value: "1.5" }, { text: "175 %", value: "1.75" }, { text: "200 %", value: "2" },
+                    ];
+                    current: SettingsData.scale;
+                }
+                if SettingsData.scale-restart: RestartButton { }
+            }
+        }
+        Row {
+            title: @tr("SettingsPage" => "Resume last session");
+            SetToggle { key: "playback/resume"; checked: SettingsData.resume; }
+        }
+        Row {
+            title: @tr("SettingsPage" => "Live seeking");
+            description: @tr("SettingsPage" => "Hear the audio while dragging the bar.");
+            SetToggle { key: "ui/liveSeek"; checked: SettingsData.live-seek; }
+        }
+        Row {
+            title: @tr("SettingsPage" => "Stop button");
+            description: @tr("SettingsPage" => "A stop button next to play in the player bars.");
+            SetToggle { key: "ui/stopButton"; checked: SettingsData.stop-button; }
+        }
+        Row {
+            title: @tr("SettingsPage" => "Search bar");
+            details: @tr("SettingsPage" => "Ctrl + F shows it even when it is off.");
+            SetToggle { key: "ui/searchBar"; checked: SettingsData.search-bar; }
+        }
+        Row {
+            title: @tr("SettingsPage" => "Start page");
+            details: @tr("SettingsPage" => "What Sonkore shows when it opens. Last place: the folder you had open, or the playing track's.");
+            SetCombo {
+                key: "ui/startPage";
+                preferred: 160px;
+                options: [
+                    { text: @tr("SettingsPage" => "Last place"), value: "last" },
+                    { text: @tr("SettingsPage" => "Now playing"), value: "playing" },
+                    { text: @tr("SettingsPage" => "Tracks"), value: "tracks" },
+                    { text: @tr("SettingsPage" => "Favorites"), value: "favorites" },
+                    { text: @tr("SettingsPage" => "Albums"), value: "albums" },
+                    { text: @tr("SettingsPage" => "Artists"), value: "artists" },
+                    { text: @tr("SettingsPage" => "Genres"), value: "genres" },
+                    { text: @tr("SettingsPage" => "Folders"), value: "folders" },
+                    { text: @tr("SettingsPage" => "Play queue"), value: "queue" },
+                ];
+                current: SettingsData.start-page;
+            }
+        }
+        // "Filters on the Tracks page" (ui/trackBrowser) comes back with the
+        // Genre → Artist → Album panes (PLAN.md): without them it did nothing.
+        if false: Picker {
+            title: @tr("SettingsPage" => "Filters on the Tracks page");
+            kind: "browser";
+            preview-w: 84px;
+            preview-h: 48px;
+            options: [
+                { text: @tr("SettingsPage" => "List only"), value: "false" },
+                { text: @tr("SettingsPage" => "With filters"), value: "true" },
+            ];
+            current: SettingsData.track-browser;
+            picked(v) => { SettingsData.set("ui/trackBrowser", v); }
+        }
+        Row {
+            title: @tr("SettingsPage" => "Mouse wheel speed");
+            Segmented {
+                options: [
+                    { text: @tr("SettingsPage" => "Normal"), value: "100" },
+                    { text: @tr("SettingsPage" => "Fast"), value: "180" },
+                    { text: @tr("SettingsPage" => "Very fast"), value: "300" },
+                ];
+                current: SettingsData.wheel-step;
+                picked(v) => { SettingsData.set("ui/wheelStep", v); }
+            }
+        }
+    }
+    Card {
+        title: @tr("SettingsPage" => "Desktop integration");
+        icon: Icons.chip;
+        Row {
+            title: @tr("SettingsPage" => "Tray icon");
+            details: @tr("SettingsPage" => "Play / pause, next and previous from the panel (some desktops need a tray extension).");
+            SetToggle { key: "ui/trayIcon"; checked: SettingsData.tray-icon; }
+        }
+        Row {
+            title: @tr("SettingsPage" => "Close to tray");
+            dimmed: !SettingsData.tray-icon;
+            SetToggle { key: "ui/closeToTray"; checked: SettingsData.close-to-tray; enabled: SettingsData.tray-icon; }
+        }
+        if SettingsData.mpris-available: Row {
+            title: @tr("SettingsPage" => "System media controls (MPRIS)");
+            details: @tr("SettingsPage" => "The desktop's media controls, the lock screen, the dock, media keys and playerctl control Sonkore. Off: they no longer see it, and opening a file while Sonkore is running starts a second window.");
+            SetToggle { key: "system/mpris"; checked: SettingsData.mpris; }
+        }
+    }
+    // Keyboard shortcuts: two columns when they fit.
+    Card {
+        title: @tr("SettingsPage" => "Keyboard shortcuts");
+        icon: Icons.info;
+        keys := Rectangle {
+            property <[string]> key-texts: ["Space", "Ctrl + → / ←", "Ctrl + ↑ / ↓", "Ctrl + F", "Ctrl + A", "Enter", "Delete", "Ctrl + E", "Ctrl + ,", "Ctrl + Q"];
+            property <[string]> what: [
+                @tr("SettingsPage" => "Play / pause"), @tr("SettingsPage" => "Next / previous track"), @tr("SettingsPage" => "Volume"),
+                @tr("SettingsPage" => "Search"), @tr("SettingsPage" => "Select all tracks in a list"), @tr("SettingsPage" => "Play the selected track"),
+                @tr("SettingsPage" => "Remove from playlist / queue"), @tr("SettingsPage" => "Equalizer"), @tr("SettingsPage" => "Settings"),
+                @tr("SettingsPage" => "Quit"),
+            ];
+            property <int> columns: self.width >= 640px ? 2 : 1;
+            property <length> cell-w: (self.width - (self.columns - 1) * 24px) / self.columns;
+            property <int> rows: ceil(10 / self.columns);
+            height: self.rows * 18px + (self.rows - 1) * 6px;
+            for k[i] in self.key-texts: Rectangle {
+                x: mod(i, keys.columns) * (keys.cell-w + 24px);
+                y: floor(i / keys.columns) * 24px;
+                width: keys.cell-w;
+                height: 18px;
+                Badge {
+                    x: 0;
+                    width: 110px;
+                    text: k;
+                    tone: Theme.accent;
+                }
+                UiText {
+                    x: 120px;
+                    width: parent.width - 120px;
+                    text: keys.what[i];
+                    font-size: 13px;
+                    color: Theme.text-dim;
+                    overflow: elide;
+                }
+            }
+        }
+    }
+    Card {
+        title: @tr("SettingsPage" => "About");
+        icon: Icons.info;
+        HorizontalLayout {
+            spacing: 14px;
+            VerticalLayout {
+                alignment: center;
+                Logo { }
+            }
+            VerticalLayout {
+                alignment: center;
+                horizontal-stretch: 1;
+                Dim {
+                    text: @tr("SettingsPage" => "Sonkore {0} — 32-bit integer bit-perfect path, 64-bit floating-point DSP.", SettingsData.version) + "\n" + SettingsData.components;
+                }
+            }
+        }
+    }
+    Card {
+        title: @tr("SettingsPage" => "Restore defaults");
+        icon: Icons.refresh;
+        Row {
+            title: @tr("SettingsPage" => "Restore all settings");
+            description: @tr("SettingsPage" => "Library, playlists and EQ profiles are kept.");
+            details: @tr("SettingsPage" => "Audio, equalizer, pitch, appearance and behaviour go back to how a new installation starts, which plays on any computer. The library, playlists, play queue and saved EQ profiles are kept. Sonkore restarts.");
+            Pill {
+                has-icon: true;
+                icon: Icons.refresh;
+                text: @tr("SettingsPage" => "Restore…");
+                clicked => {
+                    SettingsOverlay.confirm-title = @tr("SettingsPage" => "Restore all settings?");
+                    SettingsOverlay.confirm-text = @tr("SettingsPage" => "Every setting goes back to its default and Sonkore restarts. Your library, playlists, play queue and saved EQ profiles are kept. This cannot be undone.");
+                    SettingsOverlay.confirm-accept = @tr("SettingsPage" => "Restore and restart");
+                    SettingsOverlay.confirm-action = "restore-defaults";
+                    SettingsOverlay.confirm-arg = "";
+                    SettingsOverlay.confirm-shown = true;
+                }
+            }
+        }
+    }
+}
+
+// --- Audio ------------------------------------------------------------------------
+
+// One output: a radio dot, the name and detail, its badges.
+component DeviceLine inherits Rectangle {
+    in property <OutputDevice> device;
+    height: Theme.compact ? 32px : 44px;
+    border-radius: Theme.radius-small;
+    background: root.device.selected ? Theme.accent-soft : area.has-hover ? Theme.hover : transparent;
+    property <length> dot-y: round((self.height - 16px) / 2px) * 1px;
+    // The ring and the dot's inset in whole screen pixels: each edge is
+    // rounded on its own, so at 165 % a 26.4 px ring and a 13.2 px dot came
+    // out 26 and 13 wide and the dot could not sit in the middle.
+    property <length> ring: round(16px / 1phx) * 1phx;
+    property <length> inset: round(4px / 1phx) * 1phx;
+    Rectangle {
+        x: 10px;
+        y: root.dot-y;
+        width: root.ring;
+        height: root.ring;
+        border-radius: self.width / 2;
+        border-width: 2px;
+        border-color: root.device.selected ? Theme.accent : Theme.text-faint;
+        if root.device.selected: Rectangle {
+            x: root.inset;
+            y: root.inset;
+            width: root.ring - 2 * root.inset;
+            height: self.width;
+            border-radius: self.width / 2;
+            background: Theme.accent;
+        }
+    }
+    HorizontalLayout {
+        padding-left: 36px;
+        padding-right: 10px;
+        spacing: 10px;
+        VerticalLayout {
+            alignment: center;
+            horizontal-stretch: 1;
+            UiText {
+                text: root.device.name;
+                font-size: 13px;
+                font-weight: root.device.selected ? 600 : 400;
+                overflow: elide;
+                min-width: 0;
+            }
+            if root.device.detail != "" && !Theme.compact: UiText {
+                text: root.device.detail;
+                font-size: 11px;
+                color: Theme.text-faint;
+                overflow: elide;
+                min-width: 0;
+            }
+        }
+        if root.device.direct: VerticalLayout {
+            alignment: center;
+            Badge {
+                text: @tr("SettingsPage" => "DIRECT · BIT-PERFECT");
+                tone: Theme.good;
+            }
+        }
+        if root.device.is-default && root.device.key != "": VerticalLayout {
+            alignment: center;
+            Badge {
+                text: @tr("SettingsPage" => "DEFAULT");
+                tone: Theme.text-dim;
+            }
+        }
+    }
+    area := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { SettingsData.action("select-device", root.device.key); }
+    }
+}
+
+// Play, or Stop while its own signal plays.
+component TestButton inherits Pill {
+    in property <string> id;
+    property <bool> on: SettingsData.test-running == root.id;
+    has-icon: true;
+    icon: self.on ? Icons.stop : Icons.play;
+    text: self.on ? @tr("SettingsPage" => "Stop") : @tr("SettingsPage" => "Play");
+    primary: self.on;
+    clicked => { SettingsData.action("test-signal", root.id); }
+}
+
+component AudioTab inherits VerticalLayout {
+    spacing: 16px;
+    property <int> mode: SettingsData.rate-mode;
+    Card {
+        title: @tr("SettingsPage" => "Audio output");
+        icon: Icons.speaker;
+        HorizontalLayout {
+            spacing: 6px;
+            VerticalLayout {
+                alignment: center;
+                Rectangle {
+                    width: 8px;
+                    height: 8px;
+                    border-radius: 4px;
+                    background: !SettingsData.loaded ? Theme.text-faint : SettingsData.bit-perfect ? Theme.good : Theme.warn;
+                }
+            }
+            UiText {
+                horizontal-stretch: 1;
+                vertical-alignment: center;
+                text: SettingsData.loaded ? SettingsData.output-description : @tr("SettingsPage" => "Nothing playing — the output opens when playback starts");
+                font-size: 13px;
+                color: Theme.text-dim;
+                overflow: elide;
+                min-width: 0;
+            }
+            Pill {
+                has-icon: true;
+                icon: Icons.refresh;
+                text: @tr("SettingsPage" => "Rescan devices");
+                clicked => { SettingsData.action("rescan-devices", ""); }
+            }
+        }
+        if SettingsData.device-missing: HorizontalLayout {
+            spacing: 8px;
+            VerticalLayout {
+                alignment: start;
+                Image {
+                    width: 16px;
+                    height: 16px;
+                    source: Icons.info;
+                    colorize: Theme.warn;
+                }
+            }
+            Label {
+                font-size: 11px;
+                color: Theme.warn;
+                text: @tr("SettingsPage" => "The chosen output is not connected, so the system default is used. Reconnect it and it is used again the next time playback starts.");
+            }
+        }
+        // The devices, grouped by backend.
+        VerticalLayout {
+            spacing: 0;
+            for d in SettingsData.devices: VerticalLayout {
+                padding-top: d.first ? 6px : 2px;
+                spacing: 2px;
+                // The backend and its hint on one baseline (the label a pixel
+                // lower; 13 px tall without a hint).
+                if d.first: Rectangle {
+                    height: d.hint == "" ? 13px : max(13px, hint.height);
+                    sec := Section {
+                        x: 0;
+                        y: 1px;
+                        text: d.backend.to-uppercase();
+                    }
+                    hint := Label {
+                        x: sec.preferred-width + 6px;
+                        y: 0;
+                        width: parent.width - self.x;
+                        visible: d.hint != "";
+                        font-size: 11px;
+                        color: Theme.text-faint;
+                        text: d.hint;
+                    }
+                }
+                DeviceLine { device: d; }
+            }
+        }
+        if SettingsData.direct-output: Row {
+            title: @tr("SettingsPage" => "DAC control");
+            description: SettingsData.output-reserved ? @tr("SettingsPage" => "In use by Sonkore only.") : @tr("SettingsPage" => "Taken when playback starts.");
+            details: SettingsData.output-reserved
+                ? @tr("SettingsPage" => "Sonkore has the DAC to itself: other apps are silent or move to another output until it is released.")
+                : @tr("SettingsPage" => "Sonkore takes the DAC from the system when playback starts, even if other apps are using it.");
+            Pill {
+                text: @tr("SettingsPage" => "Release DAC");
+                enabled: SettingsData.output-reserved;
+                clicked => { SettingsData.action("release-dac", ""); }
+            }
+        }
+        if SettingsData.direct-output: Row {
+            title: @tr("SettingsPage" => "Give the DAC back when paused");
+            details: @tr("SettingsPage" => "After a minute paused or stopped, so other apps can play again. Pressing play takes it back.");
+            SetToggle { key: "playback/releaseDacWhenIdle"; checked: SettingsData.release-when-idle; }
+        }
+        Row {
+            title: @tr("SettingsPage" => "Sound settings per output");
+            description: @tr("SettingsPage" => "Headphones and speakers each keep their own equaliser and processing.");
+            details: @tr("SettingsPage" => "The equaliser, convolution, crossfeed, headroom, dither, upsampling and DSD settings are remembered for each output and come back when it is chosen again. An output used for the first time starts from the current settings.");
+            SetToggle { key: "playback/soundPerOutput"; checked: SettingsData.sound-per-output; }
+        }
+        if SettingsData.hardware-volume-supported: Row {
+            title: @tr("SettingsPage" => "Volume control");
+            description: SettingsData.volume-mode != "0" ? SettingsData.hardware-volume-info : @tr("SettingsPage" => "DAC keeps bit-perfect; Digital does not below 100 %.");
+            details: SettingsData.volume-mode != "0" ? "" : @tr("SettingsPage" => "Digital: Sonkore scales the samples, so any volume below 100% leaves bit-perfect. DAC: the volume moves the DAC's own control and the audio stays bit-perfect.");
+            SetCombo {
+                key: "playback/volumeMode";
+                preferred: 140px;
+                options: [
+                    { text: @tr("SettingsPage" => "Automatic"), value: "2" },
+                    { text: @tr("SettingsPage" => "Digital"), value: "0" },
+                    { text: @tr("SettingsPage" => "DAC"), value: "1" },
+                ];
+                current: SettingsData.volume-mode;
+            }
+        }
+        if !SettingsData.windows: Row {
+            title: @tr("SettingsPage" => "Follow the track's rate");
+            description: @tr("SettingsPage" => "PipeWire switches to each track's sample rate while Sonkore plays.");
+            details: @tr("SettingsPage" => "Without it, PipeWire runs at the desktop's rate (usually 48 kHz) and Sonkore converts every track to it with SoX VHQ. Other apps keep playing either way; PipeWire converts them instead. After a minute paused or stopped, PipeWire gets its own rate back.");
+            SetToggle { key: "playback/followTrackRate"; checked: SettingsData.follow-rate; }
+        }
+        if SettingsData.windows: Row {
+            title: @tr("SettingsPage" => "WASAPI exclusive mode");
+            description: @tr("SettingsPage" => "Bypasses the Windows mixer for bit-perfect output.");
+            SetToggle { key: "playback/exclusive"; checked: SettingsData.exclusive; }
+        }
+        Row {
+            title: @tr("SettingsPage" => "Play from memory");
+            details: @tr("SettingsPage" => "Each file is read into RAM before it plays (up to 2 GB), so playback never waits on the disk. Uses as much memory as the current and the next file.");
+            SetToggle { key: "playback/playFromMemory"; checked: SettingsData.play-from-memory; }
+        }
+        Row {
+            title: @tr("SettingsPage" => "Output buffer");
+            description: @tr("SettingsPage" => "Larger is safer; smaller reacts faster.");
+            SetCombo {
+                key: "playback/bufferMs";
+                preferred: 140px;
+                options: [
+                    { text: "100 ms", value: "100" }, { text: "150 ms", value: "150" }, { text: "250 ms", value: "250" },
+                    { text: "400 ms", value: "400" }, { text: "750 ms", value: "750" },
+                ];
+                current: SettingsData.buffer;
+            }
+        }
+    }
+    // Sample rate: 0 original, 1 fixed rate, 2 upsampling.
+    Card {
+        title: @tr("SettingsPage" => "Sample rate");
+        icon: Icons.wave;
+        subtitle: @tr("SettingsPage" => "Original keeps every sample untouched.");
+        Row {
+            title: @tr("SettingsPage" => "Mode");
+            description: root.mode == 0 ? @tr("SettingsPage" => "Bit-perfect; the DAC switches rate between files.")
+                       : root.mode == 1 ? @tr("SettingsPage" => "One rate for everything; the DAC never switches.") : @tr("SettingsPage" => "A multiple of each file's rate.");
+            details: root.mode == 0 ? @tr("SettingsPage" => "Every file at its own rate, bit for bit (bit-perfect). The DAC switches rate between files, and some DACs click or beep when they do.")
+                   : root.mode == 1 ? @tr("SettingsPage" => "Every file is converted to one rate, so the DAC never switches and never clicks. Files already at that rate stay bit-perfect; DSD files become PCM.")
+                   : @tr("SettingsPage" => "Every file goes out at a multiple of its own rate (44.1 → 88.2 / 176.4 kHz), so the DAC's own filter has less to do. The DAC still switches between the 44.1 and 48 kHz families.");
+            Segmented {
+                options: [
+                    { text: @tr("SettingsPage" => "Original"), value: "0" },
+                    { text: @tr("SettingsPage" => "Fixed rate"), value: "1" },
+                    { text: @tr("SettingsPage" => "Upsampling"), value: "2" },
+                ];
+                current: root.mode;
+                picked(v) => { SettingsData.set("rate-mode", v); }
+            }
+        }
+        if root.mode == 1: Row {
+            title: @tr("SettingsPage" => "Output rate");
+            description: @tr("SettingsPage" => "88.2 kHz for CDs, 96 kHz for 48 kHz files.");
+            details: @tr("SettingsPage" => "88.2 kHz suits a library of mostly CDs (44.1 kHz); 96 kHz suits one with mostly 48 / 96 kHz files. Either way the conversion is inaudible.");
+            SetCombo {
+                key: "playback/fixedRate";
+                preferred: 140px;
+                options: [
+                    { text: "44.1 kHz", value: "44100" }, { text: "48 kHz", value: "48000" }, { text: "88.2 kHz", value: "88200" },
+                    { text: "96 kHz", value: "96000" }, { text: "176.4 kHz", value: "176400" }, { text: "192 kHz", value: "192000" },
+                    { text: "352.8 kHz", value: "352800" }, { text: "384 kHz", value: "384000" },
+                ];
+                current: SettingsData.fixed-rate;
+            }
+        }
+        if root.mode == 2: Row {
+            title: @tr("SettingsPage" => "Upsampling factor");
+            SetCombo {
+                key: "playback/upsampling";
+                preferred: 160px;
+                options: [
+                    { text: "×2", value: "1" }, { text: "×4", value: "2" },
+                    { text: @tr("SettingsPage" => "Highest the DAC takes"), value: "3" },
+                ];
+                current: SettingsData.upsampling;
+            }
+        }
+        if root.mode != 0: Row {
+            title: @tr("SettingsPage" => "Conversion filter");
+            description: @tr("SettingsPage" => "Linear phase is the usual choice.");
+            details: @tr("SettingsPage" => "Linear phase: the most faithful timing, the usual choice. Minimum phase: no pre-ringing before attacks, which some prefer on percussion. Intermediate: halfway between. Linear, steep: keeps the treble right up to the top of the band. The differences are subtle.");
+            SetCombo {
+                key: "playback/resampleFilter";
+                preferred: 160px;
+                options: [
+                    { text: @tr("SettingsPage" => "Linear phase"), value: "0" },
+                    { text: @tr("SettingsPage" => "Intermediate phase"), value: "1" },
+                    { text: @tr("SettingsPage" => "Minimum phase"), value: "2" },
+                    { text: @tr("SettingsPage" => "Linear, steep"), value: "3" },
+                ];
+                current: SettingsData.resample-filter;
+            }
+        }
+        if root.mode != 1: Row {
+            title: @tr("SettingsPage" => "Pause on sample rate change");
+            details: @tr("SettingsPage" => "Silence sent while the DAC switches to a new rate, so the first notes are not cut. It cannot silence a DAC that beeps by itself while switching: use a fixed rate for that.");
+            SetCombo {
+                key: "playback/resyncDelayMs";
+                preferred: 140px;
+                options: [
+                    { text: @tr("SettingsPage" => "Off"), value: "0" }, { text: "250 ms", value: "250" }, { text: "500 ms", value: "500" },
+                    { text: "1000 ms", value: "1000" }, { text: "2000 ms", value: "2000" },
+                ];
+                current: SettingsData.resync;
+            }
+        }
+    }
+    Card {
+        title: @tr("SettingsPage" => "DSD");
+        icon: Icons.chip;
+        Row {
+            title: @tr("SettingsPage" => "DSD playback");
+            description: SettingsData.dsd-mode == "0" ? @tr("SettingsPage" => "DSD files are converted to PCM: works with every DAC.")
+                       : SettingsData.dsd-mode == "1" ? @tr("SettingsPage" => "Native DSD on direct (hw:) outputs.") : @tr("SettingsPage" => "Only for DACs with DoP: others play loud noise.");
+            details: SettingsData.dsd-mode == "1" ? @tr("SettingsPage" => "Native DSD to DACs that offer it on a direct (hw:) output; otherwise the file is converted to PCM. EQ, pitch, ReplayGain and digital volume do not apply to DSD: use the DAC's volume.")
+                   : SettingsData.dsd-mode == "2" ? @tr("SettingsPage" => "DoP (DSD over PCM) on a direct or exclusive output. Only for DACs that support DoP: others play loud noise. EQ, pitch, ReplayGain and digital volume do not apply to DSD.")
+                   : @tr("SettingsPage" => "Sonkore's own converter, in double precision: DSD64 becomes 88.2 kHz PCM flat to 30 kHz, DSD128 and up 176.4 kHz flat to 50-70 kHz. The ultrasonic noise DSD carries above that is filtered out (about 70 dB lower than with FFmpeg's converter), so it never reaches the amplifier. DST files too.");
+            SetCombo {
+                key: "playback/dsdOutput";
+                preferred: 140px;
+                options: [
+                    { text: @tr("SettingsPage" => "Convert to PCM"), value: "0" },
+                    { text: @tr("SettingsPage" => "Native"), value: "1" },
+                    { text: @tr("SettingsPage" => "DoP"), value: "2" },
+                ];
+                current: SettingsData.dsd-mode;
+            }
+        }
+        if SettingsData.dsd-mode != "0": Row {
+            title: @tr("SettingsPage" => "PCM to DSD");
+            details: @tr("SettingsPage" => "Converts PCM tracks to DSD with an 8th-order sigma-delta modulator and sends them through the DSD output above. EQ, convolution, ReplayGain and the digital volume are applied before the conversion. DSD512 runs the channels on separate cores.");
+            // Listed in rate order; stored as the PcmToDsd values (DSD512 came last).
+            SetCombo {
+                key: "playback/pcmToDsd";
+                preferred: 160px;
+                options: [
+                    { text: @tr("SettingsPage" => "Off"), value: "0" }, { text: "DSD64", value: "1" }, { text: "DSD128", value: "2" },
+                    { text: "DSD256", value: "3" }, { text: "DSD512", value: "5" },
+                    { text: @tr("SettingsPage" => "Highest the DAC takes (up to DSD256)"), value: "4" },
+                ];
+                current: SettingsData.pcm-to-dsd;
+            }
+        }
+    }
+    Card {
+        title: @tr("SettingsPage" => "Test signals");
+        icon: Icons.wave;
+        subtitle: @tr("SettingsPage" => "Tones made on the spot, played through the same path as the music to check the DAC and the speakers. What was playing resumes afterwards.");
+        Row {
+            title: @tr("SettingsPage" => "DAC sample rate");
+            description: @tr("SettingsPage" => "A 1 kHz tone at −20 dBFS at the chosen rate: a DAC with a display should show that rate.");
+            details: @tr("SettingsPage" => "If the display shows another rate, something between Sonkore and the DAC converts it: a fixed output rate above, a shared output (PipeWire or WASAPI shared) or the DAC's own limit. The signal path (▣ in the player bar) tells what Sonkore sends.");
+            Line {
+                Combo {
+                    preferred: 130px;
+                    options: [
+                        { text: "44.1 kHz", value: "0" }, { text: "48 kHz", value: "1" }, { text: "88.2 kHz", value: "2" },
+                        { text: "96 kHz", value: "3" }, { text: "176.4 kHz", value: "4" }, { text: "192 kHz", value: "5" },
+                        { text: "352.8 kHz", value: "6" }, { text: "384 kHz", value: "7" }, { text: "DSD64", value: "8" },
+                        { text: "DSD128", value: "9" }, { text: "DSD256", value: "10" },
+                    ];
+                    current: SettingsData.test-rate;
+                    activated(v) => { SettingsData.test-rate = v; }
+                }
+                TestButton { id: "rate"; }
+            }
+        }
+        Row {
+            title: @tr("SettingsPage" => "Speakers");
+            description: @tr("SettingsPage" => "The tone on each channel in turn: front left, front right, then centre, LFE, back left, back right, side left, side right.");
+            details: @tr("SettingsPage" => "Multichannel files reach the DAC in this order (the DAC or the receiver places them). A channel that sounds from the wrong speaker is wired or configured the other way round.");
+            Line {
+                Combo {
+                    preferred: 130px;
+                    options: [
+                        { text: @tr("SettingsPage" => "Stereo"), value: "2" }, { text: "5.1", value: "6" }, { text: "7.1", value: "8" },
+                    ];
+                    current: SettingsData.test-channels;
+                    activated(v) => { SettingsData.test-channels = v; }
+                }
+                TestButton { id: "channels"; }
+            }
+        }
+        if SettingsData.dts-available: Row {
+            title: @tr("SettingsPage" => "Bit-perfect (DTS)");
+            description: @tr("SettingsPage" => "A DTS stream inside a CD-quality WAV: a receiver that decodes DTS plays a tone only if every bit arrives untouched, and noise otherwise.");
+            details: @tr("SettingsPage" => "Turn the amplifier down first: anything that changes the samples on the way (a volume below 100 %, EQ, resampling, dither, a shared output) turns the stream into loud noise. For an AV receiver on S/PDIF or HDMI; a plain DAC plays noise either way.");
+            TestButton { id: "dts"; }
+        }
+    }
+    Card {
+        title: @tr("SettingsPage" => "Sound processing");
+        icon: Icons.eq;
+        subtitle: @tr("SettingsPage" => "Each one leaves bit-perfect while on.");
+        Row {
+            property <bool> has: SettingsData.convolution-file != "";
+            title: @tr("SettingsPage" => "Convolution (FIR)");
+            description: self.has ? SettingsData.convolution-file : @tr("SettingsPage" => "Room or headphone correction (WAV or FLAC).");
+            details: self.has ? "" : @tr("SettingsPage" => "Room or headphone correction with an impulse response from REW, Dirac, Acourate… (WAV or FLAC: mono, stereo or true stereo with 4 channels). It is resampled to each track's rate.");
+            Line {
+                if SettingsData.convolution-file != "": SetToggle { key: "playback/convolution"; checked: SettingsData.convolution-enabled; }
+                Pill {
+                    text: SettingsData.convolution-file != "" ? @tr("SettingsPage" => "Change…") : @tr("SettingsPage" => "Load…");
+                    clicked => { SettingsData.action("load-convolution", ""); }
+                }
+                if SettingsData.convolution-file != "": Pill {
+                    text: @tr("SettingsPage" => "Remove");
+                    clicked => { SettingsData.action("remove-convolution", ""); }
+                }
+            }
+        }
+        Row {
+            title: @tr("SettingsPage" => "Headphone crossfeed");
+            description: @tr("SettingsPage" => "Less fatigue on headphones. Stereo only.");
+            details: @tr("SettingsPage" => "Lets each ear hear a little of the other channel, low-passed, as with loudspeakers: less fatigue on long headphone sessions with hard-panned recordings. Stereo tracks only.");
+            SetCombo {
+                key: "playback/crossfeed";
+                preferred: 160px;
+                options: [
+                    { text: @tr("SettingsPage" => "Off"), value: "0" }, { text: @tr("SettingsPage" => "Default"), value: "1" },
+                    { text: "Chu Moy", value: "2" }, { text: "Jan Meier", value: "3" },
+                ];
+                current: SettingsData.crossfeed;
+            }
+        }
+        Row {
+            title: @tr("SettingsPage" => "DSP headroom");
+            description: SettingsData.clipping ? @tr("SettingsPage" => "This track is clipping: lower the headroom.")
+                       : SettingsData.headroom-auto ? @tr("SettingsPage" => "Automatic: now {0} dB.", SettingsData.effective-headroom) : @tr("SettingsPage" => "Keeps the DSP from clipping.");
+            details: SettingsData.headroom-auto
+                ? @tr("SettingsPage" => "Automatic: 3 dB for inter-sample peaks plus whatever the EQ boosts (now {0} dB). Applied only while some DSP runs; a bit-perfect path is never touched.", SettingsData.effective-headroom)
+                : @tr("SettingsPage" => "Lowers the level ahead of the DSP (EQ, pitch, resampling) so boosts and inter-sample peaks never clip. Not applied while the path is bit-perfect.");
+            Line {
+                SetCombo {
+                    key: "playback/headroomAuto";
+                    preferred: 140px;
+                    options: [
+                        { text: @tr("SettingsPage" => "Automatic"), value: "true" },
+                        { text: @tr("SettingsPage" => "Manual"), value: "false" },
+                    ];
+                    current: SettingsData.headroom-auto ? "true" : "false";
+                }
+                if !SettingsData.headroom-auto: NumField {
+                    from: -24;
+                    to: 0;
+                    value: SettingsData.headroom-db;
+                    edited(v) => { SettingsData.set("playback/headroomDb", v); }
+                }
+            }
+        }
+        Row {
+            title: @tr("SettingsPage" => "True-peak limiter");
+            description: SettingsData.limiter ? @tr("SettingsPage" => "Peaks above {0} dBTP are brought down to it.", SettingsData.limiter-ceiling-text)
+                       : @tr("SettingsPage" => "What the EQ pushes above full scale is clipped.");
+            details: @tr("SettingsPage" => "At the end of the processing: the true peak (4× oversampled, as a DAC reconstructs the waveform between the samples) is held under the ceiling with a 1.5 ms look-ahead and a 50 ms release, all channels together. Only while some DSP runs; a bit-perfect path is never touched. −1 dBTP is EBU R128's ceiling.");
+            Line {
+                if SettingsData.limiter: SetCombo {
+                    key: "playback/limiterCeilingDb";
+                    preferred: 120px;
+                    options: [
+                        { text: "−0.1 dBTP", value: "-0.1" }, { text: "−0.5 dBTP", value: "-0.5" }, { text: "−1 dBTP", value: "-1" },
+                        { text: "−2 dBTP", value: "-2" }, { text: "−3 dBTP", value: "-3" },
+                    ];
+                    current: SettingsData.limiter-ceiling;
+                }
+                SetToggle { key: "playback/limiter"; checked: SettingsData.limiter; }
+            }
+        }
+        Row {
+            title: @tr("SettingsPage" => "Dither");
+            description: @tr("SettingsPage" => "Only while DSP is active.");
+            details: @tr("SettingsPage" => "When DSP is active, or the track has more bits than the DAC takes, the result is requantised to the DAC's bit depth. TPDF adds inaudible noise so that step stays linear; noise shaping also moves that noise away from the frequencies the ear hears best, on 16-bit DACs (at 24 bits the noise is already far below any DAC's own, so TPDF is used).");
+            SetCombo {
+                key: "playback/ditherMode";
+                preferred: 160px;
+                options: [
+                    { text: @tr("SettingsPage" => "Off"), value: "0" }, { text: @tr("SettingsPage" => "TPDF"), value: "1" },
+                    { text: @tr("SettingsPage" => "Noise shaped"), value: "2" },
+                ];
+                current: SettingsData.dither;
+            }
+        }
+        Row {
+            title: @tr("SettingsPage" => "HDCD decoding");
+            details: @tr("SettingsPage" => "CDs mastered with HDCD carry hidden codes for 20-bit dynamics. They are detected in the first seconds of each 16-bit track and decoded; other tracks stay bit-perfect.");
+            SetToggle { key: "playback/hdcd"; checked: SettingsData.hdcd; }
+        }
+    }
+    Card {
+        title: @tr("SettingsPage" => "ReplayGain");
+        icon: Icons.volume;
+        Row {
+            title: @tr("SettingsPage" => "Volume levelling");
+            details: @tr("SettingsPage" => "Plays every track, or every album as a whole, at the same loudness (ReplayGain 2.0, EBU R128). Any gain other than 0 dB leaves the bit-perfect path.");
+            SetCombo {
+                key: "playback/replayGain";
+                preferred: 140px;
+                options: [
+                    { text: @tr("SettingsPage" => "Off"), value: "0" }, { text: @tr("SettingsPage" => "Track"), value: "1" },
+                    { text: @tr("SettingsPage" => "Album"), value: "2" },
+                ];
+                current: SettingsData.replay-gain;
+            }
+        }
+        if SettingsData.replay-gain != "0": Row {
+            title: @tr("SettingsPage" => "Pre-amplification");
+            NumField {
+                from: -15;
+                to: 15;
+                value: SettingsData.replay-gain-preamp;
+                edited(v) => { SettingsData.set("playback/replayGainPreamp", v); }
+            }
+        }
+        if SettingsData.replay-gain != "0": Row {
+            title: @tr("SettingsPage" => "Prevent clipping");
+            details: @tr("SettingsPage" => "Lowers the gain when it would push the track's true peak above -1 dBTP (the EBU R128 ceiling), so the resampler, the EQ and the DAC's own filter never clip it.");
+            SetToggle { key: "playback/replayGainPreventClipping"; checked: SettingsData.replay-gain-prevent-clipping; }
+        }
+        if SettingsData.replay-gain != "0": Row {
+            title: @tr("SettingsPage" => "Loudness analysis");
+            description: SettingsData.loudness-status;
+            UiText {
+                font-size: 13px;
+                color: Theme.text-dim;
+                text: SettingsData.current-gain == "" ? @tr("SettingsPage" => "Current track: no data") : @tr("SettingsPage" => "Current track: {0} dB", SettingsData.current-gain);
+            }
+        }
+    }
+}
+
+
+// --- Library ----------------------------------------------------------------------
+
+// A folder line: its icon, the path cut in the middle, a button at the end.
+component FolderLine inherits HorizontalLayout {
+    in property <string> path;
+    in property <bool> skipped;
+    callback act();
+    spacing: 10px;
+    VerticalLayout {
+        alignment: center;
+        Image {
+            width: 16px;
+            height: 16px;
+            source: Icons.folder;
+            colorize: root.skipped ? Theme.text-faint : Theme.text-dim;
+        }
+    }
+    UiText {
+        horizontal-stretch: 1;
+        vertical-alignment: center;
+        text: root.path;
+        font-size: 13px;
+        color: root.skipped ? Theme.text-dim : Theme.text;
+        overflow: elide;
+        min-width: 0;
+    }
+    IconBtn {
+        icon: root.skipped ? Icons.close : Icons.trash;
+        icon-size: root.skipped ? 14px : 15px;
+        clicked => { root.act(); }
+    }
+}
+
+component LibraryTab inherits VerticalLayout {
+    spacing: 16px;
+    Card {
+        title: @tr("SettingsPage" => "From the internet");
+        icon: Icons.globe;
+        Row {
+            title: @tr("SettingsPage" => "Missing covers");
+            description: SettingsData.covers-status;
+            details: @tr("SettingsPage" => "The artist and album names are sent to MusicBrainz to find the album; the picture comes from the Cover Art Archive and is kept in Sonkore's cache, never written into your music folders.");
+            SetToggle { key: "library/onlineCovers"; checked: SettingsData.online-covers; }
+        }
+        Line {
+            Pill {
+                has-icon: true;
+                icon: Icons.trash;
+                text: @tr("SettingsPage" => "Clear downloaded covers");
+                clicked => { SettingsData.action("clear-covers", ""); }
+            }
+        }
+    }
+    Card {
+        title: @tr("SettingsPage" => "Library folders");
+        icon: Icons.folder;
+        if SettingsData.folders.length > 0: VerticalLayout {
+            spacing: 6px;
+            for f in SettingsData.folders: FolderLine {
+                path: f;
+                act => { SettingsData.action("remove-folder", f); }
+            }
+        }
+        Line {
+            Pill {
+                has-icon: true;
+                icon: Icons.folder-plus;
+                text: @tr("SettingsPage" => "Add folder");
+                primary: true;
+                clicked => { SettingsData.action("add-folder", ""); }
+            }
+            Pill {
+                has-icon: true;
+                icon: Icons.refresh;
+                text: @tr("SettingsPage" => "Rescan");
+                enabled: !SettingsData.scanning;
+                clicked => { SettingsData.action("rescan", ""); }
+            }
+            UiText {
+                vertical-alignment: center;
+                font-size: 13px;
+                color: Theme.text-dim;
+                text: SettingsData.count-text;
+            }
+        }
+        if SettingsData.hidden-count > 0: Row {
+            title: @tr("SettingsPage" => "Removed tracks");
+            description: @tr("SettingsPage" => "{0} tracks removed by hand.", SettingsData.hidden-count);
+            details: @tr("SettingsPage" => "{0} tracks were removed from the library by hand (the files are still on disk). Adding their folder again with + also brings them back.", SettingsData.hidden-count);
+            Pill {
+                has-icon: true;
+                icon: Icons.refresh;
+                text: @tr("SettingsPage" => "Restore");
+                enabled: !SettingsData.scanning;
+                clicked => { SettingsData.action("restore-hidden", ""); }
+            }
+        }
+        VerticalLayout {
+            padding-top: 4px;
+            Section { text: @tr("SettingsPage" => "Skipped folders").to-uppercase(); }
+        }
+        if SettingsData.excluded.length == 0: Label {
+            font-size: 12px;
+            color: Theme.text-dim;
+            text: @tr("SettingsPage" => "None. Skip folders inside your music folders that are not music (audiobooks, samples, ringtones).");
+        }
+        if SettingsData.excluded.length > 0: VerticalLayout {
+            spacing: 6px;
+            for f in SettingsData.excluded: FolderLine {
+                path: f;
+                skipped: true;
+                act => { SettingsData.action("unskip-folder", f); }
+            }
+        }
+        Line {
+            Pill {
+                has-icon: true;
+                icon: Icons.plus;
+                text: @tr("SettingsPage" => "Skip a folder…");
+                clicked => { SettingsData.action("skip-folder", ""); }
+            }
+        }
+        Row {
+            title: @tr("SettingsPage" => "Skip short files");
+            SetCombo {
+                key: "library/minDuration";
+                preferred: 140px;
+                options: [
+                    { text: @tr("SettingsPage" => "Off"), value: "0" },
+                    { text: @tr("SettingsPage" => "Under {0} s", 5), value: "5" },
+                    { text: @tr("SettingsPage" => "Under {0} s", 10), value: "10" },
+                    { text: @tr("SettingsPage" => "Under {0} s", 30), value: "30" },
+                    { text: @tr("SettingsPage" => "Under {0} s", 60), value: "60" },
+                ];
+                current: SettingsData.min-duration;
+            }
+        }
+        Row {
+            title: @tr("SettingsPage" => "Watch folders for changes");
+            SetToggle { key: "library/watchFolders"; checked: SettingsData.watch-folders; }
+        }
+        Row {
+            title: @tr("SettingsPage" => "Rescan on startup");
+            SetToggle { key: "library/rescanOnStartup"; checked: SettingsData.rescan-on-startup; }
+        }
+    }
+    // Columns: tick to show, arrows to order.
+    Card {
+        title: @tr("SettingsPage" => "Track list columns");
+        icon: Icons.sort;
+        Dim {
+            text: @tr("SettingsPage" => "Tick the columns to show and use the arrows to order them. In any list you can also drag a header to move its column, drag the dividers to resize (double-click resets), click a header to sort and right-click it for this menu.");
+        }
+        grid := Rectangle {
+            property <int> n: max(1, floor(self.width / 300px));
+            property <length> cell-w: (self.width - (self.n - 1) * 16px) / self.n;
+            property <int> rows: ceil(SettingsData.columns.length / self.n);
+            height: self.rows * 30px + (self.rows - 1) * 2px;
+            for c[i] in SettingsData.columns: cell := Rectangle {
+                x: mod(i, grid.n) * (grid.cell-w + 16px);
+                y: floor(i / grid.n) * 32px;
+                width: grid.cell-w;
+                height: 30px;
+                property <bool> shown: c.position >= 0;
+                Check {
+                    x: 0;
+                    width: parent.width - (parent.shown ? 2 * (28px + 5px) : 0px);
+                    text: c.title + (parent.shown ? "  · " + (c.position + 1) : "");
+                    checked: parent.shown;
+                    enabled: !(parent.shown && c.count == 1);
+                    toggled(on) => { SettingsData.action(on ? "column-show" : "column-hide", c.key); }
+                }
+                if cell.shown: IconBtn {
+                    x: parent.width - 2 * 28px - 5px;
+                    y: 1px;
+                    // chevron-down turned over (the software renderer does not rotate).
+                    icon: Theme.solid-icons ? @image-url("settings-icons/chevron-up-solid.svg") : @image-url("settings-icons/chevron-up.svg");
+                    icon-size: 12px;
+                    enabled: c.position > 0;
+                    clicked => { SettingsData.action("column-left", c.key); }
+                }
+                if cell.shown: IconBtn {
+                    x: parent.width - 28px;
+                    y: 1px;
+                    icon: Icons.chevron-down;
+                    icon-size: 12px;
+                    enabled: c.position < c.count - 1;
+                    clicked => { SettingsData.action("column-right", c.key); }
+                }
+            }
+        }
+        Line {
+            Pill {
+                has-icon: true;
+                icon: Icons.refresh;
+                text: @tr("SettingsPage" => "Reset columns");
+                clicked => { SettingsData.action("reset-columns", ""); }
+            }
+        }
+    }
+}
+
+// --- The window -------------------------------------------------------------------
+
+// The restart banner over the tabs' content (scale changes).
+component RestartBanner inherits Rectangle {
+    border-radius: Theme.radius;
+    background: Theme.accent-soft;
+    border-width: 1px;
+    border-color: Theme.accent;
+    HorizontalLayout {
+        padding-left: 16px;
+        padding-right: 10px;
+        padding-top: 10px;
+        padding-bottom: 10px;
+        spacing: 6px;
+        Label {
+            horizontal-stretch: 1;
+            vertical-alignment: center;
+            text: SettingsData.language-restart && !SettingsData.scale-restart
+                ? @tr("SettingsPage" => "Restart Sonkore to show it in the new language.")
+                : @tr("SettingsPage" => "Restart Sonkore to apply the new interface scale / renderer.");
+        }
+        Pill {
+            has-icon: true;
+            icon: Icons.refresh;
+            text: @tr("SettingsPage" => "Restart now");
+            primary: true;
+            clicked => { SettingsData.action("restart", ""); }
+        }
+    }
+}
+
+// A thin thumb at the right edge, shown while the
+// page scrolls or under the pointer.
+component OverlayBar inherits Rectangle {
+    in property <length> viewport-height;
+    in property <length> visible-height;
+    in-out property <length> offset;    // 0 … viewport-height - visible-height
+    width: 10px;
+    property <length> range: max(0px, root.viewport-height - root.visible-height);
+    property <bool> lit: area.has-hover || area.pressed;
+    property <bool> recent: false;
+    property <length> track-h: self.height - 12px;
+    property <length> thumb-h: max(self.track-h * max(0.05, root.visible-height / max(1px, root.viewport-height)), 24px);
+    property <length> thumb-y: 6px + (root.range > 0 ? root.offset / root.range : 0) * (self.track-h - self.thumb-h);
+    visible: root.range > 0;
+    changed offset => { root.recent = true; hide.running = false; hide.running = true; }
+    hide := Timer {
+        interval: 900ms;
+        running: false;
+        triggered => { root.recent = false; self.running = false; }
+    }
+    if root.lit: Rectangle {
+        y: 4px;
+        height: root.height - 8px;
+        border-radius: 5px;
+        background: Theme.text.with-alpha(0.07);
+    }
+    if root.lit || root.recent: Rectangle {
+        property <length> w: root.lit ? 8px : 6px;
+        x: root.width - 2px - self.w;
+        y: root.thumb-y;
+        width: self.w;
+        height: root.thumb-h;
+        border-radius: self.w / 2;
+        background: area.pressed ? Theme.accent : root.lit ? Theme.text-dim : Theme.text-faint;
+    }
+    area := TouchArea {
+        property <length> grab;
+        pointer-event(e) => {
+            if (e.kind == PointerEventKind.down && e.button == PointerEventButton.left) {
+                if (self.mouse-y >= root.thumb-y && self.mouse-y <= root.thumb-y + root.thumb-h) {
+                    self.grab = self.mouse-y - root.thumb-y;
+                } else {
+                    self.grab = root.thumb-h / 2;
+                    root.offset = clamp((self.mouse-y < root.thumb-y ? root.offset - root.visible-height : root.offset + root.visible-height), 0px, root.range);
+                }
+            }
+        }
+        moved => {
+            if (self.pressed && root.track-h > root.thumb-h) {
+                root.offset = clamp((self.mouse-y - self.grab - 6px) / (root.track-h - root.thumb-h), 0, 1) * root.range;
+            }
+        }
+    }
+}
+
+export component SettingsWindow inherits Window {
+    title: @tr("Main" => "Settings") + "  ·  Sonkore";
+    icon: Icons.logo;
+    no-frame: true;
+    background: transparent;
+    default-font-family: Theme.font-family;
+    default-font-size: 13px;
+    min-width: 560px;
+    min-height: 420px;
+    preferred-width: 920px;
+    preferred-height: 760px;
+    property <length> corner: WindowActions.maximized ? 0 : Theme.window-radius;
+    changed height => { SettingsOverlay.window-height = self.height; }
+    init => { SettingsOverlay.window-height = self.height; }
+
+    ground := Rectangle {
+        background: Theme.bg;
+        border-radius: root.corner;
+        clip: true;
+        // Esc and Ctrl+, close the window, Ctrl+Q quits (the main window's
+        // shortcuts on the settings window).
+        keys := FocusScope {
+            width: 0;
+            height: 0;
+            init => { self.focus(); }
+            key-pressed(e) => {
+                if (e.text == Key.Escape || (e.modifiers.control && e.text == ",")) {
+                    WindowActions.close();
+                    return accept;
+                }
+                if (e.modifiers.control && (e.text == "q" || e.text == "Q")) {
+                    SettingsData.action("quit", "");
+                    return accept;
+                }
+                reject
+            }
+        }
+        // The bar: moves the window when dragged; the icon and the title 16 px in.
+        bar := Rectangle {
+            y: 0;
+            height: 38px;
+            TouchArea {
+                pointer-event(e) => {
+                    if (e.kind == PointerEventKind.down && e.button == PointerEventButton.left) {
+                        WindowActions.start-move();
+                    }
+                }
+                double-clicked => { WindowActions.toggle-maximize(); }
+            }
+            Image {
+                x: 16px;
+                y: 11px;
+                width: 16px;
+                height: 16px;
+                source: Icons.settings;
+                colorize: Theme.accent;
+            }
+            title := UiText {
+                x: 41px;
+                y: floor((38px - self.font-line) / 2px) * 1px;
+                width: max(0px, buttons.x - 12px - self.x);
+                text: root.title;
+                font-size: 14px;
+                font-weight: 600;
+                overflow: elide;
+            }
+            buttons := WindowButtons {
+                corner: root.corner;
+                x: parent.width - self.preferred-width - (Theme.window-buttons == "windows" ? 0 : 8px);
+                y: Theme.window-buttons == "windows" ? 0 : 4px;
+            }
+        }
+        // The page: a column centred at a reading width, the tabs over it.
+        page := Rectangle {
+            y: 38px;
+            height: parent.height - 38px;
+            property <length> column-w: min(self.width - 56px, 900px);
+            property <length> column-x: floor((self.width - self.column-w) / 2px) * 1px;
+            TabStrip {
+                x: page.column-x;
+                y: 8px;
+                width: page.column-w;
+                height: 42px;
+            }
+            Rectangle {
+                x: page.column-x;
+                y: 58px;
+                width: page.column-w;
+                height: 1px;
+                background: Theme.border;
+            }
+            flick := Flickable {
+                // Wheel and touch only: a mouse drag is for the sliders and
+                // the graph's points, never for scrolling (as Slint's desktop ScrollView).
+                mouse-drag-pan-enabled: false;
+                y: 59px;
+                height: page.height - 59px;
+                content-height: content.preferred-height;
+                content-y <=> SettingsData.scroll;
+                content := VerticalLayout {
+                    width: flick.width;
+                    padding-left: page.column-x;
+                    padding-right: page.width - page.column-x - page.column-w;
+                    padding-top: 14px;
+                    padding-bottom: 20px;
+                    spacing: 16px;
+                    alignment: start;
+                    if SettingsData.restart-required: RestartBanner { }
+                    if SettingsData.tab == "general": GeneralTab { }
+                    if SettingsData.tab == "appearance": AppearanceTab { }
+                    if SettingsData.tab == "audio": AudioTab { }
+                    if SettingsData.tab == "library": LibraryTab { }
+                }
+            }
+            OverlayBar {
+                x: page.width - 10px;
+                y: 59px;
+                height: page.height - 59px;
+                viewport-height: flick.content-height;
+                visible-height: flick.height;
+                offset: -flick.content-y;
+                changed offset => { flick.content-y = -self.offset; }
+            }
+        }
+        // The explanation of an "i": wraps at 380 px.
+        if SettingsOverlay.tip-owner >= 0: Rectangle {
+            x: min(SettingsOverlay.tip-x, root.width - self.width - 4px);
+            y: SettingsOverlay.tip-y;
+            width: min(tip.preferred-width + 2px, 368px) + 12px;
+            height: tip.preferred-height + 12px;
+            border-radius: Theme.radius-small;
+            background: Theme.surface-hi;
+            border-width: 1px;
+            border-color: Theme.border;
+            tip := Label {
+                x: 6px;
+                y: 6px;
+                width: parent.width - 12px;
+                font-size: 12px;
+                text: SettingsOverlay.tip-text;
+            }
+        }
+        // A confirmation card over the window, dimmed behind.
+        if SettingsOverlay.confirm-shown: Rectangle {
+            background: #00000073;
+            TouchArea {
+                clicked => { SettingsOverlay.confirm-shown = false; }
+            }
+            card := Rectangle {
+                property <length> w: min(420px, root.width - 24px);
+                x: (parent.width - self.w) / 2;
+                y: (parent.height - self.height) / 2;
+                width: self.w;
+                height: card-layout.preferred-height;
+                border-radius: Theme.radius + 2px;
+                background: Theme.surface;
+                border-width: 1px;
+                border-color: Theme.border;
+                TouchArea { }
+                card-layout := VerticalLayout {
+                    padding: 20px;
+                    spacing: 14px;
+                    Label {
+                        text: SettingsOverlay.confirm-title;
+                        font-size: 15px;
+                        font-weight: 600;
+                    }
+                    Label {
+                        text: SettingsOverlay.confirm-text;
+                        color: Theme.text-dim;
+                    }
+                    HorizontalLayout {
+                        spacing: 8px;
+                        alignment: end;
+                        Pill {
+                            text: @tr("ConfirmDialog" => "Cancel");
+                            clicked => { SettingsOverlay.confirm-shown = false; }
+                        }
+                        Pill {
+                            text: SettingsOverlay.confirm-accept;
+                            primary: true;
+                            clicked => {
+                                SettingsOverlay.confirm-shown = false;
+                                SettingsData.action(SettingsOverlay.confirm-action, SettingsOverlay.confirm-arg);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        WindowOutline {
+            radius: root.corner;
+        }
+        ResizeGrips {
+            enabled: !WindowActions.maximized;
+        }
+    }
+}

@@ -1,0 +1,64 @@
+# Ajustes › Audio › Procesamiento de sonido: cada opción se elige con el mouse,
+# tiene que quedar guardada y se mide en lo que la app le manda a la salida
+# (`sonido`, crates/app/src/tap.rs). 01-izquierda: 1 kHz a −12 dBFS solo a la
+# izquierda (tools/tonos.py). Coordenadas de la ventana de Ajustes de 2700 px
+# con la salida de PipeWire; los combos abren hacia abajo (y + 43 + 32·i).
+pantalla 2546 4200
+ajuste widgets/windows/settings=@Size(920 2700)
+ajuste appearance/language=es
+preparar python3 {repo}/tools/tonos.py --biblioteca {rt}/p
+ajuste library/rescanOnStartup=true
+ajuste playback/repeat=2
+argumentos {repo}/target/ui-live/tonos/01-izquierda.flac
+estado playing=true 5
+tecla ctrl+comma
+ventanas 2
+foco last
+esperar 0.8
+clic 578 67
+esperar 0.8
+sonido nivel-i=-12±0.2 nivel-d<-100 frec-i=1000±1
+# Crossfeed: el canal derecho recibe el izquierdo; cada tipo a su nivel.
+clic 796 1567
+esperar 0.4
+clic 796 1642
+guardado playback/crossfeed=1
+sonido nivel-i=-14.9±0.3 nivel-d=-25.4±0.5
+clic 796 1567
+esperar 0.4
+clic 796 1674
+guardado playback/crossfeed=2
+sonido nivel-i=-14.5±0.3 nivel-d=-26.4±0.5
+clic 796 1567
+esperar 0.4
+clic 796 1706
+guardado playback/crossfeed=3
+sonido nivel-i=-13.7±0.3 nivel-d=-29.3±0.5
+# Headroom manual de −3,5 dB, escrito con coma (con el crossfeed el DSP está activo).
+clic 833 1607
+tecla ctrl+a
+tecla minus
+tecla 3
+tecla comma
+tecla 5
+tecla enter
+guardado playback/headroomDb=-3.5
+sonido nivel-i=-17.2±0.3 nivel-d=-32.8±0.5
+# Automático: 3 dB más el refuerzo mayor del EQ (apagado: 3 dB).
+clic 714 1607
+esperar 0.4
+clic 714 1650
+guardado playback/headroomAuto=true
+sonido nivel-i=-16.7±0.3
+# (En automático el campo se esconde y el combo queda a la derecha.)
+clic 805 1607
+esperar 0.4
+clic 805 1682
+guardado playback/headroomAuto=false
+sonido nivel-i=-17.2±0.3
+# Sin crossfeed vuelve el bit-perfect: el headroom ya no se aplica.
+clic 796 1567
+esperar 0.4
+clic 796 1610
+guardado playback/crossfeed=0
+sonido nivel-i=-12±0.2 nivel-d<-100

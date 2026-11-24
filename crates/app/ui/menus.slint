@@ -1,0 +1,261 @@
+// Every menu: a rounded card with a dark outline and a faint light ring
+// inside it, 5 px of padding, rows 32 px tall (28 compact, 36 spacious) with
+// a rounded highlight, the check mark in the accent without a box in a 16 px
+// column (checkable rows only), the chosen row in the accent and semi-bold,
+// an arrow for a sub-menu, separator lines 8 px in. Rust lays it out
+// (src/menus.rs); here it is drawn over the window, a click outside closing
+// it. The signal path popup lives here too.
+
+import { Theme } from "theme.slint";
+import { Icons } from "icons.slint";
+import { Menus, MenuEntry, Pages } from "pagedata.slint";
+import { SignalPathList, TurnedIcons } from "pagekit.slint";
+
+export global MenuMetrics {
+    out property <length> row: Theme.compact ? 28px : Theme.spacious ? 36px : 32px;
+}
+
+component MenuRow inherits Rectangle {
+    in property <MenuEntry> entry;
+    in property <bool> sub-shown;     // its sub-menu is open
+    callback hovered();
+    callback picked();
+    height: root.entry.separator ? 9px : MenuMetrics.row;
+    property <bool> hot: (area.has-hover || root.sub-shown) && root.entry.enabled && !root.entry.separator && !root.entry.levels;
+    if root.entry.separator: Rectangle {
+        x: 8px;
+        y: 4px;
+        width: root.width - 16px;
+        height: 1px;
+        background: Theme.border;
+    }
+    if root.hot: Rectangle {
+        border-radius: Theme.radius-small;
+        background: Theme.hover;
+    }
+    property <length> text-x: 10px + (root.entry.checkable ? 16px + 8px : 0px);
+    // The subfolder levels: − N + (when shown and there is more than one
+    // level), then a small switch.
+    if root.entry.levels: Rectangle {
+        x: root.width - 10px - 30px;
+        y: (root.height - 18px) / 2;
+        width: 30px;
+        height: 18px;
+        border-radius: 9px;
+        background: root.entry.on ? Theme.accent : Theme.border;
+        Rectangle {
+            x: root.entry.on ? parent.width - self.width - 2px : 2px;
+            y: 2px;
+            width: 14px;
+            height: 14px;
+            border-radius: 7px;
+            background: white;
+        }
+        TouchArea {
+            mouse-cursor: pointer;
+            clicked => { Menus.kept(root.entry.id + "t"); }
+        }
+    }
+    if root.entry.levels && root.entry.on && root.entry.maximum > 1: HorizontalLayout {
+        x: root.width - 10px - 30px - 8px - self.width;
+        y: (root.height - 22px) / 2;
+        width: 62px;
+        height: 22px;
+        Rectangle {
+            width: 22px;
+            opacity: root.entry.value > 1 ? 1 : 0.35;
+            border-radius: 11px;
+            background: less.has-hover && root.entry.value > 1 ? Theme.hover : transparent;
+            Image { width: 10px; height: 10px; source: Icons.win-min; colorize: Theme.text-dim; }
+            less := TouchArea {
+                enabled: root.entry.value > 1;
+                mouse-cursor: pointer;
+                clicked => { Menus.kept(root.entry.id + "-"); }
+            }
+        }
+        Text {
+            width: 18px;
+            text: root.entry.value;
+            font-family: Theme.tnum-family;
+            font-size: 12px;
+            font-weight: 600;
+            color: Theme.text;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+        }
+        Rectangle {
+            width: 22px;
+            opacity: root.entry.value < root.entry.maximum ? 1 : 0.35;
+            border-radius: 11px;
+            background: more.has-hover && root.entry.value < root.entry.maximum ? Theme.hover : transparent;
+            Image { width: 10px; height: 10px; source: Icons.plus; colorize: Theme.text-dim; }
+            more := TouchArea {
+                enabled: root.entry.value < root.entry.maximum;
+                mouse-cursor: pointer;
+                clicked => { Menus.kept(root.entry.id + "+"); }
+            }
+        }
+    }
+    if !root.entry.separator && root.entry.checkable && root.entry.checked: Image {
+        x: 10px + 1px;
+        y: round((root.height - 16px) / 2 / 1px) * 1px + 1px;
+        width: 14px;
+        height: 14px;
+        source: Icons.check;
+        colorize: Theme.accent;
+    }
+    if !root.entry.separator && root.entry.submenu: Image {
+        x: root.width - 10px - 12px;
+        y: (root.height - 12px) / 2;
+        width: 12px;
+        height: 12px;
+        source: TurnedIcons.chevron-right;
+        colorize: Theme.text-dim;
+    }
+    if !root.entry.separator: Text {
+        x: root.text-x;
+        y: round((root.height - 16px) / 2 / 1px) * 1px;
+        width: root.width - 10px - (root.entry.submenu ? 20px : 0px) - (root.entry.levels ? 100px : 0px) - root.text-x;
+        height: 16px;
+        text: root.entry.text;
+        font-size: 13px;
+        font-weight: root.entry.checkable && root.entry.checked ? 600 : 400;
+        color: !root.entry.enabled ? Theme.text-faint : root.entry.levels ? Theme.text-dim : root.entry.checkable && root.entry.checked ? Theme.accent : Theme.text;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+    // Not over a levels row: its own buttons take the clicks.
+    area := TouchArea {
+        enabled: !root.entry.separator && !root.entry.levels;
+        moved => { root.hovered(); }
+        changed has-hover => {
+            if (self.has-hover) { root.hovered(); }
+        }
+        clicked => {
+            if (root.entry.enabled && !root.entry.levels) { root.picked(); }
+        }
+    }
+}
+
+// The card: the surface, a dark outline, a faint light ring inside it.
+component MenuCard inherits Rectangle {
+    in property <[MenuEntry]> entries;
+    in property <bool> is-sub;
+    border-radius: Theme.radius;
+    background: Theme.surface;
+    border-width: 1px;
+    border-color: Theme.dark ? #000000d9 : #0000004d;
+    Rectangle {
+        x: 1px;
+        y: 1px;
+        width: parent.width - 2px;
+        height: parent.height - 2px;
+        border-radius: max(0px, Theme.radius - 1px);
+        border-width: 1px;
+        border-color: Theme.dark ? #ffffff12 : #ffffff99;
+    }
+    // Clicks on the padding stay in the menu.
+    TouchArea { }
+    VerticalLayout {
+        padding: 5px;
+        spacing: 0;
+        for e in root.entries: MenuRow {
+            entry: e;
+            sub-shown: !root.is-sub && e.submenu && Menus.sub-open;
+            hovered => {
+                if (!root.is-sub) { Menus.sub-open = e.submenu && e.enabled; }
+            }
+            picked => {
+                if (e.submenu) {
+                    Menus.sub-open = true;
+                } else {
+                    Menus.activated(e.id);
+                }
+            }
+        }
+    }
+}
+
+export component MenuLayer inherits Rectangle {
+    if Menus.open: Rectangle {
+        // A click outside closes it (and does nothing else).
+        TouchArea {
+            pointer-event(e) => {
+                if (e.kind == PointerEventKind.down) { Menus.dismissed(); }
+            }
+        }
+        scope := FocusScope {
+            init => { self.focus(); }
+            key-pressed(e) => {
+                if (e.text == Key.Escape) {
+                    Menus.dismissed();
+                    return accept;
+                }
+                accept
+            }
+        }
+        MenuCard {
+            x: Menus.x;
+            y: Menus.y;
+            width: Menus.width;
+            height: self.preferred-height;
+            entries: Menus.items;
+        }
+        if Menus.sub-open && Menus.sub-items.length > 0: MenuCard {
+            x: Menus.sub-x;
+            y: Menus.sub-y;
+            width: Menus.sub-width;
+            height: self.preferred-height;
+            entries: Menus.sub-items;
+            is-sub: true;
+        }
+    }
+    // The signal path, above the pill (a popup: the surface, a
+    // hairline, the theme's radius; 16 / 14 px in, 360 px wide).
+    if Menus.path-open: Rectangle {
+        TouchArea {
+            pointer-event(e) => {
+                if (e.kind == PointerEventKind.down) { Menus.path-dismissed(); }
+            }
+        }
+        FocusScope {
+            init => { self.focus(); }
+            key-pressed(e) => {
+                if (e.text == Key.Escape) {
+                    Menus.path-dismissed();
+                    return accept;
+                }
+                accept
+            }
+        }
+        card := Rectangle {
+            x: Menus.path-x;
+            y: Menus.path-bottom - self.height;
+            width: 360px;
+            height: body.preferred-height;
+            border-radius: min(14px, Theme.radius);
+            background: Theme.surface;
+            border-width: 1px;
+            border-color: Theme.border;
+            TouchArea { }
+            body := VerticalLayout {
+                padding-left: 16px;
+                padding-right: 16px;
+                padding-top: 14px;
+                padding-bottom: 14px;
+                spacing: 10px;
+                Text {
+                    text: @tr("NowPlayingPage" => "Signal path");
+                    font-size: 15px;
+                    font-weight: 600;
+                    color: Theme.text;
+                }
+                SignalPathList {
+                    stages: Pages.stages;
+                    empty-text: @tr("SignalPathList" => "Nothing is playing.");
+                    action(a) => { Pages.stage-action(a); }
+                }
+            }
+        }
+    }
+}

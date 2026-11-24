@@ -1,0 +1,82 @@
+# Ajustes › Audio: cada opción se toca con el mouse y tiene que quedar
+# guardada. La pestaña entera entra en una ventana de 2700 px de alto
+# (pantalla alta), así que las coordenadas no dependen del desplazamiento.
+# Los combos abren hacia abajo: la opción i está en y + 43 + 32·i.
+pantalla 2546 4200
+ajuste widgets/windows/settings=@Size(920 2700)
+ajuste appearance/language=es
+ventanas 1
+clic 1074 795
+ventanas 2
+foco last
+esperar 0.8
+clic 578 67
+esperar 0.8
+# Ajustes de sonido por salida (su efecto: escenarios/sonido-por-salida.txt).
+clic 851 690
+guardado playback/soundPerOutput=false
+# Control de volumen: Digital.
+clic 807 736
+esperar 0.4
+clic 807 811
+guardado playback/volumeMode=0
+# Seguir la frecuencia de la pista.
+clic 851 784
+guardado playback/followTrackRate=false
+# Búfer de salida: 400 ms.
+clic 807 864
+esperar 0.4
+clic 807 1003
+guardado playback/bufferMs=400
+# Modo: frecuencia fija, sobremuestreo y de vuelta a original.
+clic 693 992
+guardado playback/fixedRate=96000
+clic 816 992
+guardado playback/fixedRate=0
+guardado playback/upsampling=1
+clic 593 992
+guardado playback/upsampling=0
+# Pausa al cambiar de frecuencia: 1000 ms.
+clic 807 1032
+esperar 0.4
+clic 807 1171
+guardado playback/resyncDelayMs=1000
+# Reproducción DSD: DoP. PCM a DSD: DSD128.
+clic 807 1145
+esperar 0.4
+clic 807 1252
+guardado playback/dsdOutput=2
+clic 796 1185
+esperar 0.4
+clic 796 1292
+guardado playback/pcmToDsd=2
+# Crossfeed: Chu Moy.
+clic 796 1567
+esperar 0.4
+clic 796 1674
+guardado playback/crossfeed=2
+estado crossfeed=2
+# Headroom manual: -3,5 dB escrito con coma (Slint lo manda así en español).
+clic 833 1607
+tecla ctrl+a
+tecla minus
+tecla 3
+tecla comma
+tecla 5
+tecla enter
+guardado playback/headroomDb=-3.5
+# Dither: con conformado de ruido. HDCD.
+clic 796 1687
+esperar 0.4
+clic 796 1794
+guardado playback/ditherMode=2
+clic 851 1727
+guardado playback/hdcd=true
+# Limitador.
+clic 851 1647
+guardado playback/limiter=true
+# ReplayGain: por álbum.
+clic 807 1840
+esperar 0.4
+clic 807 1947
+guardado playback/replayGain=2

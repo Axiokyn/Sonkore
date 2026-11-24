@@ -1,0 +1,25 @@
+# Cada salida guarda su sonido (playback/soundPerOutput): al cambiar de
+# salida, la que se deja guarda el suyo y la elegida recupera el propio.
+# Test Sink empieza con crossfeed 2 y el ecualizador apagado; «Predeterminado
+# del sistema» ya tiene un perfil con crossfeed 0 y el ecualizador encendido.
+# Menú de salidas: con Test Sink el botón está en (973, 795) y Predeterminado
+# en (960, 496); con Predeterminado no se muestra «Sistema», el botón pasa a
+# (1036, 795) y Test Sink a (967, 528).
+ajuste playback/crossfeed=2
+# (Entre comillas: el valor tiene comas, como lo escribe la app.)
+ajuste soundProfiles/default="@ByteArray({\"crossfeed\":0,\"equalizer\":{\"enabled\":true}})"
+ventanas 1
+estado crossfeed=2
+estado eq=false
+clic 973 795
+esperar 0.4
+clic 960 496
+estado device= 3
+estado crossfeed=0
+estado eq=true
+clic 1036 795
+esperar 0.4
+clic 967 528
+estado device=pipewire|test-sink 3
+estado crossfeed=2
+estado eq=false

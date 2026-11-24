@@ -1,0 +1,3600 @@
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+
+msgctxt "AlbumsPage"
+msgid "Albums"
+msgstr "Alben"
+
+msgctxt "AlbumsPage"
+msgid "{0} albums"
+msgstr "{0} Alben"
+
+msgctxt "AlbumsPage"
+msgid "Unknown artist"
+msgstr "Unbekannter Künstler"
+
+msgctxt "AlbumsPage"
+msgid "Back to albums"
+msgstr "Zurück zu den Alben"
+
+msgctxt "AlbumsPage"
+msgid "Album"
+msgstr "Album"
+
+msgctxt "AlbumsPage"
+msgid "{0} tracks"
+msgstr "{0} Titel"
+
+msgctxt "AlbumsPage"
+msgid "Play"
+msgstr "Abspielen"
+
+msgctxt "AlbumsPage"
+msgid "Shuffle"
+msgstr "Zufall"
+
+msgctxt "AlbumsPage"
+msgid "Add a music folder to see your albums"
+msgstr "Füge einen Musikordner hinzu, um deine Alben zu sehen"
+
+msgctxt "AlbumsPage"
+msgid "No albums match"
+msgstr "Keine passenden Alben"
+
+msgctxt "AppActions"
+msgid "1 track"
+msgstr "1 Titel"
+
+msgctxt "AppActions"
+msgid "{0} tracks"
+msgstr "{0} Titel"
+
+msgctxt "AppController"
+msgid "Software"
+msgstr "Software"
+
+msgctxt "AppController"
+msgid "Automatic"
+msgstr "Automatisch"
+
+msgctxt "AppController"
+msgid "Safe mode: Sonkore is using the software renderer for this session. Your graphics settings were not changed."
+msgstr "Abgesicherter Modus: Sonkore nutzt in dieser Sitzung den Software-Renderer. Deine Grafikeinstellungen wurden nicht geändert."
+
+msgctxt "AppController"
+msgid "Sonkore closed unexpectedly while starting, so the graphics settings were reset (renderer: {0}{1}). You can change them again in Settings › Performance."
+msgstr "Sonkore wurde beim Start unerwartet beendet, daher wurden die Grafikeinstellungen zurückgesetzt (Renderer: {0}{1}). Du kannst sie unter Einstellungen › Leistung wieder ändern."
+
+msgctxt "AppController"
+msgid ", without the render thread"
+msgstr ", ohne Render-Thread"
+
+msgctxt "BrowsePage"
+msgid "Genres"
+msgstr "Genres"
+
+msgctxt "BrowsePage"
+msgid "Artists"
+msgstr "Künstler"
+
+msgctxt "BrowsePage"
+msgid "{0} genres"
+msgstr "{0} Genres"
+
+msgctxt "BrowsePage"
+msgid "{0} artists"
+msgstr "{0} Künstler"
+
+msgctxt "BrowsePage"
+msgid "  ·  {0} selected"
+msgstr "  ·  {0} ausgewählt"
+
+msgctxt "BrowsePage"
+msgid "Play"
+msgstr "Abspielen"
+
+msgctxt "BrowsePage"
+msgid "Shuffle"
+msgstr "Zufall"
+
+msgctxt "BrowsePage"
+msgid "Add a music folder to browse your library"
+msgstr "Füge einen Musikordner hinzu, um deine Bibliothek zu durchsuchen"
+
+msgctxt "ColumnBrowser"
+msgid "All genres"
+msgstr "Alle Genres"
+
+msgctxt "ColumnBrowser"
+msgid "All albums"
+msgstr "Alle Alben"
+
+msgctxt "ColumnBrowser"
+msgid "All artists"
+msgstr "Alle Künstler"
+
+msgctxt "ColumnBrowser"
+msgid "No genre"
+msgstr "Kein Genre"
+
+msgctxt "ColumnBrowser"
+msgid "No album"
+msgstr "Kein Album"
+
+msgctxt "ColumnBrowser"
+msgid "Unknown artist"
+msgstr "Unbekannter Künstler"
+
+msgctxt "ColumnBrowser"
+msgid "{0} items"
+msgstr "{0} Einträge"
+
+msgctxt "ColumnBrowser"
+msgid "1 album"
+msgstr "1 Album"
+
+msgctxt "ColumnBrowser"
+msgid "{0} albums"
+msgstr "{0} Alben"
+
+msgctxt "ConfirmDialog"
+msgid "Remove"
+msgstr "Entfernen"
+
+msgctxt "ConfirmDialog"
+msgid "Cancel"
+msgstr "Abbrechen"
+
+msgctxt "DeviceReservation"
+msgid "another application"
+msgstr "eine andere Anwendung"
+
+msgctxt "DspController"
+msgid "Automatic, direct output: Sonkore sends the signal at 100 % and the volume is set on the DAC or the amplifier, with its own knob. The audio stays bit-perfect. Choose Digital to set it from Sonkore, or DAC to move the DAC's control from here."
+msgstr "Automatisch, direkte Ausgabe: Sonkore sendet das Signal mit 100 %, die Lautstärke wird am DAC oder Verstärker mit dessen Regler eingestellt. Der Klang bleibt bit-perfekt. Wähle Digital, um sie in Sonkore einzustellen, oder DAC, um den Regler des DACs von hier zu bewegen."
+
+msgctxt "DspController"
+msgid "This DAC has no volume control of its own: the volume stays fixed at 100 %, set it on the DAC or the amplifier. Choose Digital to set it from Sonkore."
+msgstr "Dieser DAC hat keinen eigenen Lautstärkeregler: die Lautstärke bleibt auf 100 % fixiert, stelle sie am DAC oder Verstärker ein. Wähle Digital, um sie in Sonkore einzustellen."
+
+msgctxt "DspController"
+msgid "Only in exclusive mode: with a shared output the volume stays fixed at 100 %. Choose Digital to set it from Sonkore."
+msgstr "Nur im Exklusivmodus: Bei einer geteilten Ausgabe bleibt die Lautstärke auf 100 %. Wähle Digital, um sie in Sonkore einzustellen."
+
+msgctxt "DspController"
+msgid "Only for direct (hw:) outputs: with this one the volume stays fixed at 100 %. Choose Digital to set it from Sonkore."
+msgstr "Nur für direkte (hw:) Ausgaben: bei dieser bleibt die Lautstärke auf 100 % fixiert. Wähle Digital, um sie in Sonkore einzustellen."
+
+msgctxt "DspController"
+msgid "Using the volume of \"{0}\", the DAC's own control through PipeWire: the desktop's volume keys and Sonkore's slider move the same control, and the audio stays bit-perfect at any volume."
+msgstr "Verwendet die Lautstärke von „{0}“, den eigenen Regler des DAC über PipeWire: Die Lautstärketasten des Desktops und Sonkores Regler bewegen denselben Regler, und das Audio bleibt bei jeder Lautstärke bit-perfect."
+
+msgctxt "DspController"
+msgid "Using the volume of \"{0}\" through PipeWire. It is a virtual output, so PipeWire scales the samples in software below 100 %."
+msgstr "Verwendet die Lautstärke von „{0}“ über PipeWire. Es ist eine virtuelle Ausgabe, daher skaliert PipeWire die Samples unter 100 % per Software."
+
+msgctxt "DspController"
+msgid "Automatic: {0}"
+msgstr "Automatisch: {0}"
+
+msgctxt "DspController"
+msgid "Using the DAC's \"{0}\" control."
+msgstr "Verwendet den Regler „{0}“ des DAC."
+
+msgctxt "DspController"
+msgid "Using the DAC's \"{0}\" control ({1} to {2} dB)."
+msgstr "Verwendet den Regler „{0}“ des DAC ({1} bis {2} dB)."
+
+msgctxt "DspController"
+msgid "Automatic, direct output: {0} The audio stays bit-perfect at any volume."
+msgstr "Automatisch, direkte Ausgabe: {0} Der Klang bleibt bei jeder Lautstärke bit-perfekt."
+
+msgctxt "DspController"
+msgid "Automatic, shared output: Sonkore's digital volume is used. In exclusive mode the volume is set on the DAC or the amplifier instead."
+msgstr "Automatisch, geteilte Ausgabe: Die digitale Lautstärke von Sonkore wird verwendet. Im Exklusivmodus wird die Lautstärke am DAC oder Verstärker eingestellt."
+
+msgctxt "DspController"
+msgid "Automatic, shared output: Sonkore's digital volume is used. With a direct (hw:) output, the DAC's own volume is used instead."
+msgstr "Automatisch, geteilte Ausgabe: Sonkores digitale Lautstärke wird verwendet. Bei einer direkten (hw:) Ausgabe wird die Lautstärke des DACs verwendet."
+
+msgctxt "DspController"
+msgid "Automatic: this DAC has no volume control of its own, so Sonkore's digital volume is used."
+msgstr "Automatisch: Dieser DAC hat keine eigene Lautstärkeregelung, daher wird Sonkores digitale Lautstärke verwendet."
+
+msgctxt "DspController"
+msgid "Automatic: Sonkore's digital volume is used with this output."
+msgstr "Automatisch: Mit dieser Ausgabe wird Sonkores digitale Lautstärke verwendet."
+
+msgctxt "DspController"
+msgid "Could not use this impulse response: {0}"
+msgstr "Diese Impulsantwort kann nicht verwendet werden: {0}"
+
+msgctxt "DspController"
+msgid "System"
+msgstr "System"
+
+msgctxt "DspController"
+msgid "System default"
+msgstr "Systemstandard"
+
+msgctxt "DspController"
+msgid "Follows the desktop's sound settings"
+msgstr "Folgt den Toneinstellungen des Desktops"
+
+msgctxt "DspController"
+msgid "Given back to PipeWire when chosen"
+msgstr "Wird bei Auswahl an PipeWire zurückgegeben"
+
+msgctxt "DspController"
+msgid "1 kHz tone · {0} kHz"
+msgstr "1-kHz-Ton · {0} kHz"
+
+msgctxt "DspController"
+msgid "1 kHz tone · DSD{0}"
+msgstr "1-kHz-Ton · DSD{0}"
+
+msgctxt "DspController"
+msgid "Channel check · {0} channels"
+msgstr "Kanaltest · {0} Kanäle"
+
+msgctxt "DspController"
+msgid "Bit-perfect check (DTS)"
+msgstr "Bit-perfect-Test (DTS)"
+
+msgctxt "DspController"
+msgid "Could not make the test signal: {0}"
+msgstr "Das Testsignal konnte nicht erzeugt werden: {0}"
+
+msgctxt "DspController"
+msgid "Test signals"
+msgstr "Testsignale"
+
+msgctxt "DspController"
+msgid "{0} kHz"
+msgstr "{0} kHz"
+
+msgctxt "DspController"
+msgid "Bit-perfect · {0}"
+msgstr "Bit-perfect · {0}"
+
+msgctxt "DspController"
+msgid "Upsampled · {0}"
+msgstr "Hochgetastet · {0}"
+
+msgctxt "DspController"
+msgid "Resampled · {0}"
+msgstr "Umgetastet · {0}"
+
+msgctxt "DspController"
+msgid "Processed · {0}"
+msgstr "Verarbeitet · {0}"
+
+msgctxt "DspController"
+msgid "Output idle"
+msgstr "Ausgabe inaktiv"
+
+msgctxt "DspController"
+msgid "{0} · {1} · {2} · {3} MHz"
+msgstr "{0} · {1} · {2} · {3} MHz"
+
+msgctxt "DspController"
+msgid "{0} · {1} · {2} kHz · {3}{4}{5}"
+msgstr "{0} · {1} · {2} kHz · {3}{4}{5}"
+
+msgctxt "DspController"
+msgid " · exclusive"
+msgstr " · exklusiv"
+
+msgctxt "DspController"
+msgid " · resampled from {0} kHz (SoX VHQ)"
+msgstr " · umgerechnet von {0} kHz (SoX VHQ)"
+
+msgctxt "DspController"
+msgid " · PipeWire converts it to {0} kHz"
+msgstr " · PipeWire wandelt es in {0} kHz um"
+
+msgctxt "DspController"
+msgid " · system volume below 100 %"
+msgstr " · Systemlautstärke unter 100 %"
+
+msgctxt "DspController"
+msgid "No permission to read {0}"
+msgstr "Keine Berechtigung, {0} zu lesen"
+
+msgctxt "DspController"
+msgid "The folder “{0}” is not available: connect its drive, or add it again if it moved."
+msgstr "Der Ordner „{0}“ ist nicht verfügbar: Schließe sein Laufwerk an oder füge ihn erneut hinzu, falls er verschoben wurde."
+
+msgctxt "DspController"
+msgid "File not found: {0}"
+msgstr "Datei nicht gefunden: {0}"
+
+msgctxt "DspController"
+msgid "Source"
+msgstr "Quelle"
+
+msgctxt "DspController"
+msgid "{0} · {1} MHz"
+msgstr "{0} · {1} MHz"
+
+msgctxt "DspController"
+msgid "Decoder"
+msgstr "Decoder"
+
+msgctxt "DspController"
+msgid "DSD → PCM"
+msgstr "DSD → PCM"
+
+msgctxt "DspController"
+msgid "Double precision · {0} MHz → 352.8 kHz ({1}-tap FIR, 160 dB) → {2} kHz (SoX VHQ, flat to {3} kHz): DSD's ultrasonic noise removed"
+msgstr "Doppelte Genauigkeit · {0} MHz → 352,8 kHz (FIR mit {1} Koeffizienten, 160 dB) → {2} kHz (SoX VHQ, linear bis {3} kHz): ohne das Ultraschallrauschen des DSD"
+
+msgctxt "DspController"
+msgid "Memory"
+msgstr "Speicher"
+
+msgctxt "DspController"
+msgid "Played from RAM (locked): no disk access"
+msgstr "Aus dem RAM abgespielt (gesperrt): kein Festplattenzugriff"
+
+msgctxt "DspController"
+msgid "Played from RAM: no disk access"
+msgstr "Aus dem RAM abgespielt: kein Festplattenzugriff"
+
+msgctxt "DspController"
+msgid "HDCD"
+msgstr "HDCD"
+
+msgctxt "DspController"
+msgid "Decoded to 20 bits (peak extend and gain control), at -6 dB to leave room for the extended peaks"
+msgstr "Auf 20 Bit dekodiert (Peak Extend und Gain-Steuerung), bei -6 dB, damit die erweiterten Spitzen Platz haben"
+
+msgctxt "DspController"
+msgid "DSD"
+msgstr "DSD"
+
+msgctxt "DspController"
+msgid "Sent as native DSD"
+msgstr "Als natives DSD gesendet"
+
+msgctxt "DspController"
+msgid "Sent as DoP (DSD over PCM)"
+msgstr "Als DoP gesendet (DSD über PCM)"
+
+msgctxt "DspController"
+msgid "true stereo"
+msgstr "True Stereo"
+
+msgctxt "DspController"
+msgid "stereo"
+msgstr "Stereo"
+
+msgctxt "DspController"
+msgid "mono"
+msgstr "Mono"
+
+msgctxt "DspController"
+msgid "{0} · {1} taps · {2}"
+msgstr "{0} · {1} Taps · {2}"
+
+msgctxt "DspController"
+msgid " · resampled from {0} kHz"
+msgstr " · von {0} kHz umgerechnet"
+
+msgctxt "DspController"
+msgid "Convolution"
+msgstr "Faltung"
+
+msgctxt "DspController"
+msgid "Not applied to this track: {0}"
+msgstr "Auf diesen Titel nicht angewendet: {0}"
+
+msgctxt "DspController"
+msgid "Headroom"
+msgstr "Headroom"
+
+msgctxt "DspController"
+msgid "{0} dB ahead of the DSP"
+msgstr "{0} dB vor dem DSP"
+
+msgctxt "DspController"
+msgid "{0} dB ahead of the DSP (automatic)"
+msgstr "{0} dB vor dem DSP (automatisch)"
+
+msgctxt "DspController"
+msgid "Pitch / tempo"
+msgstr "Tonhöhe / Tempo"
+
+msgctxt "DspController"
+msgid "{0} · pitch {1} st · tempo {2}%"
+msgstr "{0} · Tonhöhe {1} HT · Tempo {2}%"
+
+msgctxt "DspController"
+msgid "Equalizer"
+msgstr "Equalizer"
+
+msgctxt "DspController"
+msgid "{0} bands · preamp {1} dB"
+msgstr "{0} Bänder · Vorverstärkung {1} dB"
+
+msgctxt "DspController"
+msgid " · linear phase, {0} taps"
+msgstr " · linearphasig, {0} Koeffizienten"
+
+msgctxt "DspController"
+msgid "Default"
+msgstr "Standard"
+
+msgctxt "DspController"
+msgid "Crossfeed"
+msgstr "Crossfeed"
+
+msgctxt "DspController"
+msgid "{0} · {1} Hz · {2} dB"
+msgstr "{0} · {1} Hz · {2} dB"
+
+msgctxt "DspController"
+msgid "ReplayGain"
+msgstr "ReplayGain"
+
+msgctxt "DspController"
+msgid "{0} · {1} dB"
+msgstr "{0} · {1} dB"
+
+msgctxt "DspController"
+msgid "Album"
+msgstr "Album"
+
+msgctxt "DspController"
+msgid "Track"
+msgstr "Titel"
+
+msgctxt "DspController"
+msgid "Volume"
+msgstr "Lautstärke"
+
+msgctxt "DspController"
+msgid "Digital · {0} dB"
+msgstr "Digital · {0} dB"
+
+msgctxt "DspController"
+msgid "Digital · muted"
+msgstr "Digital · stumm"
+
+msgctxt "DspController"
+msgid "Limiter"
+msgstr "Limiter"
+
+msgctxt "DspController"
+msgid "True peak, ceiling {0} dBTP · reducing {1} dB"
+msgstr "True Peak, Grenze {0} dBTP · senkt um {1} dB"
+
+msgctxt "DspController"
+msgid "True peak, ceiling {0} dBTP · not reducing"
+msgstr "True Peak, Grenze {0} dBTP · keine Absenkung"
+
+msgctxt "DspController"
+msgid "linear phase"
+msgstr "linearphasig"
+
+msgctxt "DspController"
+msgid "intermediate phase"
+msgstr "intermediärphasig"
+
+msgctxt "DspController"
+msgid "minimum phase"
+msgstr "minimalphasig"
+
+msgctxt "DspController"
+msgid "linear phase, steep"
+msgstr "linearphasig, steil"
+
+msgctxt "DspController"
+msgid "PCM → DSD"
+msgstr "PCM → DSD"
+
+msgctxt "DspController"
+msgid "SoX VHQ, {0} · {1} kHz → {2} MHz · 8th-order sigma-delta modulator"
+msgstr "SoX VHQ, {0} · {1} kHz → {2} MHz · Sigma-Delta-Modulator 8. Ordnung"
+
+msgctxt "DspController"
+msgid "Modulator"
+msgstr "Modulator"
+
+msgctxt "DspController"
+msgid "{0} overloads: lower the headroom"
+msgstr "{0} Überlastungen: senke den Headroom"
+
+msgctxt "DspController"
+msgid "Sample rate conversion"
+msgstr "Abtastratenwandlung"
+
+msgctxt "DspController"
+msgid "Upsampling"
+msgstr "Upsampling"
+
+msgctxt "DspController"
+msgid "SoX VHQ, {0} · {1} → {2} kHz"
+msgstr "SoX VHQ, {0} · {1} → {2} kHz"
+
+msgctxt "DspController"
+msgid " · fixed output rate"
+msgstr " · feste Ausgabe-Abtastrate"
+
+msgctxt "DspController"
+msgid "Requantisation"
+msgstr "Requantisierung"
+
+msgctxt "DspController"
+msgid "{0}-bit with noise-shaped dither"
+msgstr "{0} Bit mit Noise-Shaping-Dither"
+
+msgctxt "DspController"
+msgid "{0}-bit with TPDF dither"
+msgstr "{0} Bit mit TPDF-Dither"
+
+msgctxt "DspController"
+msgid "{0}-bit"
+msgstr "{0} Bit"
+
+msgctxt "DspController"
+msgid "Fixed at 100 %: set on the DAC or the amplifier"
+msgstr "Fest auf 100 %: am DAC oder Verstärker eingestellt"
+
+msgctxt "DspController"
+msgid "System volume on the DAC's control · {0} dB"
+msgstr "Systemlautstärke am DAC-Regler · {0} dB"
+
+msgctxt "DspController"
+msgid "System volume, in PipeWire's software · {0} dB"
+msgstr "Systemlautstärke, in PipeWire per Software · {0} dB"
+
+msgctxt "DspController"
+msgid "System volume · muted"
+msgstr "Systemlautstärke · stumm"
+
+msgctxt "DspController"
+msgid "DAC control \"{0}\" · {1} dB"
+msgstr "DAC-Regler „{0}“ · {1} dB"
+
+msgctxt "DspController"
+msgid "DAC control \"{0}\" · muted"
+msgstr "DAC-Regler „{0}“ · stumm"
+
+msgctxt "DspController"
+msgid "Channels"
+msgstr "Kanäle"
+
+msgctxt "DspController"
+msgid "Mono copied to both channels, sample for sample"
+msgstr "Mono auf beide Kanäle kopiert, Sample für Sample"
+
+msgctxt "DspController"
+msgid "{0} channels mixed down to {1}: this output takes no more"
+msgstr "{0} Kanäle auf {1} heruntergemischt: Diese Ausgabe nimmt nicht mehr an"
+
+msgctxt "DspController"
+msgid "Clipping"
+msgstr "Übersteuerung"
+
+msgctxt "DspController"
+msgid "This track is clipping even with the automatic headroom: set a lower one by hand."
+msgstr "Dieser Titel übersteuert selbst mit automatischem Headroom: stelle von Hand einen niedrigeren ein."
+
+msgctxt "DspController"
+msgid "This track is clipping: lower the headroom."
+msgstr "Dieser Titel übersteuert: Headroom verringern."
+
+msgctxt "DspController"
+msgid " · real-time audio thread (priority {0})"
+msgstr " · Echtzeit-Audiothread (Priorität {0})"
+
+msgctxt "DspController"
+msgid "Output"
+msgstr "Ausgabe"
+
+msgctxt "DspController"
+msgid " · through the system mixer"
+msgstr " · über den Systemmixer"
+
+msgctxt "EditSoundtouch"
+msgid "auto"
+msgstr "auto"
+
+msgctxt "EditSoundtouch"
+msgid "No track loaded"
+msgstr "Kein Titel geladen"
+
+msgctxt "EditSoundtouch"
+msgid "Pitch · Tempo · Rate"
+msgstr "Tonhöhe · Tempo · Rate"
+
+msgctxt "EditSoundtouch"
+msgid "Pitch"
+msgstr "Tonhöhe"
+
+msgctxt "EditSoundtouch"
+msgid "st"
+msgstr "HT"
+
+msgctxt "EditSoundtouch"
+msgid "Tempo"
+msgstr "Tempo"
+
+msgctxt "EditSoundtouch"
+msgid "{0} % speed, pitch preserved"
+msgstr "{0} % Tempo, Tonhöhe bleibt"
+
+msgctxt "EditSoundtouch"
+msgid "Rate"
+msgstr "Rate"
+
+msgctxt "EditSoundtouch"
+msgid "{0} % speed and pitch (resampling)"
+msgstr "{0} % Tempo und Tonhöhe (Resampling)"
+
+msgctxt "EditSoundtouch"
+msgid "A = {0} Hz · ratio {1} · {2} cents"
+msgstr "A = {0} Hz · Verhältnis {1} · {2} Cent"
+
+msgctxt "EditSoundtouch"
+msgid "Pitch & tempo"
+msgstr "Tonhöhe & Tempo"
+
+msgctxt "EditSoundtouch"
+msgid "Turn pitch & tempo off (the values are kept)"
+msgstr "Tonhöhe & Tempo ausschalten (Werte bleiben erhalten)"
+
+msgctxt "EditSoundtouch"
+msgid "Turn pitch & tempo on"
+msgstr "Tonhöhe & Tempo einschalten"
+
+msgctxt "EditSoundtouch"
+msgid "± step"
+msgstr "± Schritt"
+
+msgctxt "EditSoundtouch"
+msgid "Advanced SoundTouch"
+msgstr "SoundTouch – erweitert"
+
+msgctxt "EditSoundtouch"
+msgid "Use AA Filter (anti-aliasing)"
+msgstr "AA-Filter verwenden (Anti-Aliasing)"
+
+msgctxt "EditSoundtouch"
+msgid "AA Filter Length"
+msgstr "AA-Filterlänge"
+
+msgctxt "EditSoundtouch"
+msgid "taps"
+msgstr "Taps"
+
+msgctxt "EditSoundtouch"
+msgid "Use Quickseek (faster, slightly lower quality)"
+msgstr "Quickseek verwenden (schneller, etwas geringere Qualität)"
+
+msgctxt "EditSoundtouch"
+msgid "Sequence Length"
+msgstr "Sequenzlänge"
+
+msgctxt "EditSoundtouch"
+msgid "Seek Window Length"
+msgstr "Länge des Suchfensters"
+
+msgctxt "EditSoundtouch"
+msgid "Overlap Length"
+msgstr "Überlappungslänge"
+
+msgctxt "EditSoundtouch"
+msgid "Reset to neutral"
+msgstr "Auf neutral zurücksetzen"
+
+msgctxt "EditSoundtouch"
+msgid "Done"
+msgstr "Fertig"
+
+msgctxt "EqController"
+msgid "Low shelf"
+msgstr "Low-Shelf"
+
+msgctxt "EqController"
+msgid "High shelf"
+msgstr "High-Shelf"
+
+msgctxt "EqController"
+msgid "Low pass"
+msgstr "Tiefpass"
+
+msgctxt "EqController"
+msgid "High pass"
+msgstr "Hochpass"
+
+msgctxt "EqController"
+msgid "Band pass"
+msgstr "Bandpass"
+
+msgctxt "EqController"
+msgid "Notch"
+msgstr "Kerbfilter"
+
+msgctxt "EqController"
+msgid "Peak"
+msgstr "Peak"
+
+msgctxt "EqController"
+msgid "My profile"
+msgstr "Mein Profil"
+
+msgctxt "EqController"
+msgid " (custom)"
+msgstr " (eigenes)"
+
+msgctxt "EqController"
+msgid "No parametric EQ filters found in that file"
+msgstr "Keine parametrischen EQ-Filter in dieser Datei gefunden"
+
+msgctxt "EqController"
+msgid "Imported {0} filters"
+msgstr "{0} Filter importiert"
+
+msgctxt "EqController"
+msgid "Downloading AutoEQ database…"
+msgstr "Lade AutoEQ-Datenbank herunter…"
+
+msgctxt "EqController"
+msgid "Could not reach AutoEQ: {0}"
+msgstr "AutoEQ nicht erreichbar: {0}"
+
+msgctxt "EqController"
+msgid "{0} headphone profiles available"
+msgstr "{0} Kopfhörerprofile verfügbar"
+
+msgctxt "EqController"
+msgid "Downloading {0}…"
+msgstr "Lade {0} herunter…"
+
+msgctxt "EqController"
+msgid "Download failed: {0}"
+msgstr "Download fehlgeschlagen: {0}"
+
+msgctxt "EqController"
+msgid "No parametric profile published for {0}"
+msgstr "Für {0} ist kein parametrisches Profil veröffentlicht"
+
+msgctxt "EqController"
+msgid "Applied and saved as “{0}”"
+msgstr "Angewendet und als „{0}“ gespeichert"
+
+msgctxt "EqualizerDialogs"
+msgid "Import parametric EQ profile"
+msgstr "Parametrisches EQ-Profil importieren"
+
+msgctxt "EqualizerDialogs"
+msgid "Parametric EQ (*.txt)"
+msgstr "Parametrischer EQ (*.txt)"
+
+msgctxt "EqualizerDialogs"
+msgid "All files (*)"
+msgstr "Alle Dateien (*)"
+
+msgctxt "EqualizerDialogs"
+msgid "Export EQ profile"
+msgstr "EQ-Profil exportieren"
+
+msgctxt "EqualizerPage"
+msgid "Save EQ profile"
+msgstr "EQ-Profil speichern"
+
+msgctxt "EqualizerPage"
+msgid "e.g. My headphones — warm"
+msgstr "z. B. Mein Kopfhörer — warm"
+
+msgctxt "EqualizerPage"
+msgid "Saved “{0}”"
+msgstr "„{0}“ gespeichert"
+
+msgctxt "EqualizerPage"
+msgid "Profile exported"
+msgstr "Profil exportiert"
+
+msgctxt "EqualizerPage"
+msgid "Export failed"
+msgstr "Export fehlgeschlagen"
+
+msgctxt "EqualizerPage"
+msgid "Built-in"
+msgstr "Integriert"
+
+msgctxt "EqualizerPage"
+msgid "My profiles"
+msgstr "Meine Profile"
+
+msgctxt "EqualizerPage"
+msgid "My profiles — none saved yet"
+msgstr "Meine Profile — noch keine gespeichert"
+
+msgctxt "EqualizerPage"
+msgid "Custom"
+msgstr "Eigene"
+
+msgctxt "EqualizerPage"
+msgid "10-band graphic"
+msgstr "Grafisch, 10 Bänder"
+
+msgctxt "EqualizerPage"
+msgid "{0}-band parametric"
+msgstr "Parametrisch, {0} Bänder"
+
+msgctxt "EqualizerPage"
+msgid "64-bit biquads"
+msgstr "64-Bit-Biquads"
+
+msgctxt "EqualizerPage"
+msgid "Turn the equalizer off (the settings are kept)"
+msgstr "Equalizer ausschalten (die Einstellungen bleiben erhalten)"
+
+msgctxt "EqualizerPage"
+msgid "Turn the equalizer on"
+msgstr "Equalizer einschalten"
+
+msgctxt "EqualizerPage"
+msgid "Drag points · double click = standard frequency · right click = reset"
+msgstr "Punkte ziehen · Doppelklick = Standardfrequenz · Rechtsklick = zurücksetzen"
+
+msgctxt "EqualizerPage"
+msgid "Drag points · wheel = Q · right click = reset"
+msgstr "Punkte ziehen · Mausrad = Q · Rechtsklick = zurücksetzen"
+
+msgctxt "EqualizerPage"
+msgid "On"
+msgstr "An"
+
+msgctxt "EqualizerPage"
+msgid "Save as…"
+msgstr "Speichern unter…"
+
+msgctxt "EqualizerPage"
+msgid "linear phase (FIR)"
+msgstr "linearphasig (FIR)"
+
+msgctxt "EqualizerPage"
+msgid "Delete this profile"
+msgstr "Dieses Profil löschen"
+
+msgctxt "EqualizerPage"
+msgid "Import"
+msgstr "Importieren"
+
+msgctxt "EqualizerPage"
+msgid "Export"
+msgstr "Exportieren"
+
+msgctxt "EqualizerPage"
+msgid "Reset"
+msgstr "Zurücksetzen"
+
+msgctxt "EqualizerPage"
+msgid "Preamp"
+msgstr "Vorverstärker"
+
+msgctxt "EqualizerPage"
+msgid "Auto"
+msgstr "Auto"
+
+msgctxt "EqualizerPage"
+msgid "Linear phase"
+msgstr "Linearphasig"
+
+msgctxt "EqualizerPage"
+msgid "The same curve as a linear-phase FIR: every frequency is delayed alike, so transients and the stereo image keep their timing. Changes are heard about half a second later."
+msgstr "Dieselbe Kurve als linearphasiges FIR: Alle Frequenzen werden gleich verzögert, sodass Transienten und Stereobild ihr Timing behalten. Änderungen sind etwa eine halbe Sekunde später zu hören."
+
+msgctxt "EqualizerPage"
+msgid "CLIP RISK +{0} dB"
+msgstr "CLIPPING-GEFAHR +{0} dB"
+
+msgctxt "EqualizerPage"
+msgid "NO CLIPPING"
+msgstr "KEIN CLIPPING"
+
+msgctxt "EqualizerPage"
+msgid "Graphic"
+msgstr "Grafisch"
+
+msgctxt "EqualizerPage"
+msgid "Parametric"
+msgstr "Parametrisch"
+
+msgctxt "EqualizerPage"
+msgid "Add band"
+msgstr "Band hinzufügen"
+
+msgctxt "EqualizerPage"
+msgid "Type"
+msgstr "Typ"
+
+msgctxt "EqualizerPage"
+msgid "Frequency"
+msgstr "Frequenz"
+
+msgctxt "EqualizerPage"
+msgid "Gain"
+msgstr "Verstärkung"
+
+msgctxt "EqualizerPage"
+msgid "Q"
+msgstr "Q"
+
+msgctxt "EqualizerPage"
+msgid "Remove band"
+msgstr "Band entfernen"
+
+msgctxt "EqualizerPage"
+msgid "No bands. Add one, import a profile or pick an AutoEQ correction below."
+msgstr "Keine Bänder. Füge eines hinzu, importiere ein Profil oder wähle unten eine AutoEQ-Korrektur."
+
+msgctxt "EqualizerPage"
+msgid "AutoEQ headphone correction"
+msgstr "AutoEQ-Kopfhörerkorrektur"
+
+msgctxt "EqualizerPage"
+msgid "Measurements of thousands of headphones and in-ear monitors. Find yours and apply its parametric correction to a neutral target — it is saved to “My profiles”."
+msgstr "Messungen tausender Kopfhörer und In-Ear-Monitore. Finde deinen und wende seine parametrische Korrektur auf ein neutrales Ziel an — sie wird unter „Meine Profile“ gespeichert."
+
+msgctxt "EqualizerPage"
+msgid "Search your headphones by brand or model"
+msgstr "Suche deinen Kopfhörer nach Marke oder Modell"
+
+msgctxt "EqualizerPage"
+msgid "Update database"
+msgstr "Datenbank aktualisieren"
+
+msgctxt "EqualizerPage"
+msgid "by {0}"
+msgstr "von {0}"
+
+msgctxt "EqualizerPage"
+msgid "Apply"
+msgstr "Anwenden"
+
+msgctxt "EqualizerPage"
+msgid "No headphones match “{0}”"
+msgstr "Keine Kopfhörer passen zu „{0}“"
+
+msgctxt "FolderTree"
+msgid "No music folders yet — add one with +."
+msgstr "Noch keine Musikordner — füge einen mit + hinzu."
+
+msgctxt "FoldersPage"
+msgid "All folders"
+msgstr "Alle Ordner"
+
+msgctxt "FoldersPage"
+msgid "Up"
+msgstr "Nach oben"
+
+msgctxt "FoldersPage"
+msgid "Your library is empty"
+msgstr "Deine Mediathek ist leer"
+
+msgctxt "FoldersPage"
+msgid "Add music folder"
+msgstr "Musikordner hinzufügen"
+
+msgctxt "FoldersPage"
+msgid "No tracks match “{0}”"
+msgstr "Keine Titel passen zu „{0}“"
+
+msgctxt "LockedVolume"
+msgid "Fixed · 100 %"
+msgstr "Fest · 100 %"
+
+msgctxt "LockedVolume"
+msgid "Volume fixed at 100 %: set it on the DAC or the amplifier. Click to choose how the volume is set."
+msgstr "Lautstärke auf 100 % fixiert: am DAC oder Verstärker einstellen. Klicken, um die Lautstärkeregelung zu wählen."
+
+msgctxt "Main"
+msgid "Another app asked for the DAC — playback paused"
+msgstr "Eine andere App hat den DAC angefordert — Wiedergabe pausiert"
+
+msgctxt "Main"
+msgid "Sound device connected: {0}"
+msgstr "Audiogerät verbunden: {0}"
+
+msgctxt "Main"
+msgid "Sound device disconnected: {0}"
+msgstr "Audiogerät getrennt: {0}"
+
+msgctxt "Main"
+msgid "Remove “{0}” from the library?"
+msgstr "„{0}“ aus der Mediathek entfernen?"
+
+msgctxt "Main"
+msgid "Its {0} tracks disappear from Sonkore; the files stay on disk. You can add the folder again with +."
+msgstr "Seine {0} Titel verschwinden aus Sonkore; die Dateien bleiben auf der Festplatte. Mit + kannst du den Ordner wieder hinzufügen."
+
+msgctxt "Main"
+msgid "Its {0} tracks disappear from Sonkore; the files stay on disk. You can bring it back in Settings › Library › Skipped folders."
+msgstr "Ihre {0} Titel verschwinden aus Sonkore; die Dateien bleiben auf der Festplatte. Du kannst ihn unter Einstellungen › Mediathek › Übersprungene Ordner zurückholen."
+
+msgctxt "Main"
+msgid "Remove folder"
+msgstr "Ordner entfernen"
+
+msgctxt "Main"
+msgid "“{0}” removed from the library (the files stay on disk)"
+msgstr "„{0}“ aus der Mediathek entfernt (die Dateien bleiben auf der Festplatte)"
+
+msgctxt "Main"
+msgid "Scanning folder…"
+msgstr "Ordner wird durchsucht…"
+
+msgctxt "Main"
+msgid "New playlist"
+msgstr "Neue Playlist"
+
+msgctxt "Main"
+msgid "Playlist name"
+msgstr "Name der Playlist"
+
+msgctxt "Main"
+msgid "Create"
+msgstr "Erstellen"
+
+msgctxt "Main"
+msgid "With {0}."
+msgstr "Mit {0}."
+
+msgctxt "Main"
+msgid "Added {0} to “{1}”"
+msgstr "{0} zu „{1}“ hinzugefügt"
+
+msgctxt "Main"
+msgid "No audio files in that folder"
+msgstr "Keine Audiodateien in diesem Ordner"
+
+msgctxt "Main"
+msgid "{0} has the DAC and will not let go of it"
+msgstr "{0} belegt den DAC und gibt ihn nicht frei"
+
+msgctxt "Main"
+msgid "Retry"
+msgstr "Erneut versuchen"
+
+msgctxt "Main"
+msgid "Use the system output"
+msgstr "Systemausgabe verwenden"
+
+msgctxt "Main"
+msgid "Nothing playing"
+msgstr "Nichts wird abgespielt"
+
+msgctxt "Main"
+msgid "Pause"
+msgstr "Pause"
+
+msgctxt "Main"
+msgid "Play"
+msgstr "Abspielen"
+
+msgctxt "Main"
+msgid "Next"
+msgstr "Weiter"
+
+msgctxt "Main"
+msgid "Previous"
+msgstr "Zurück"
+
+msgctxt "Main"
+msgid "Shuffle"
+msgstr "Zufall"
+
+msgctxt "Main"
+msgid "Equalizer"
+msgstr "Equalizer"
+
+msgctxt "Main"
+msgid "Show Sonkore"
+msgstr "Sonkore anzeigen"
+
+msgctxt "Main"
+msgid "Quit"
+msgstr "Beenden"
+
+msgctxt "Main"
+msgid "Folder added — scanning…"
+msgstr "Ordner hinzugefügt — wird durchsucht…"
+
+msgctxt "Main"
+msgid "Expand sidebar"
+msgstr "Seitenleiste ausklappen"
+
+msgctxt "Main"
+msgid "Search albums or artists…"
+msgstr "Alben oder Interpreten suchen…"
+
+msgctxt "Main"
+msgid "Search in folder…"
+msgstr "Im Ordner suchen…"
+
+msgctxt "Main"
+msgid "Search artists…"
+msgstr "Künstler suchen…"
+
+msgctxt "Main"
+msgid "Search genres…"
+msgstr "Genres suchen…"
+
+msgctxt "Main"
+msgid "Search title, artist, album, genre…"
+msgstr "Titel, Interpret, Album, Genre suchen…"
+
+msgctxt "Main"
+msgid "Drop music to add it to your library and play it"
+msgstr "Musik ablegen, um sie der Mediathek hinzuzufügen und abzuspielen"
+
+msgctxt "Main"
+msgid "Settings"
+msgstr "Einstellungen"
+
+msgctxt "Main"
+msgid "Dismiss"
+msgstr "Schließen"
+
+msgctxt "MainDialogs"
+msgid "Add music folder"
+msgstr "Musikordner hinzufügen"
+
+msgctxt "MainDialogs"
+msgid "Add audio files"
+msgstr "Audiodateien hinzufügen"
+
+msgctxt "MainDialogs"
+msgid "Audio files ({0})"
+msgstr "Audiodateien ({0})"
+
+msgctxt "MainDialogs"
+msgid "All files (*)"
+msgstr "Alle Dateien (*)"
+
+msgctxt "MainDialogs"
+msgid "Import playlist"
+msgstr "Playlist importieren"
+
+msgctxt "MainDialogs"
+msgid "M3U playlist (*.m3u *.m3u8)"
+msgstr "M3U-Playlist (*.m3u *.m3u8)"
+
+msgctxt "MainDialogs"
+msgid "Folder for the playlist"
+msgstr "Ordner für die Playlist"
+
+msgctxt "MiniPlayer"
+msgid "Nothing playing"
+msgstr "Nichts wird abgespielt"
+
+msgctxt "MiniPlayer"
+msgid "Pick something from your library"
+msgstr "Wähle etwas aus deiner Mediathek"
+
+msgctxt "MiniPlayer"
+msgid "Full view (Ctrl+M)"
+msgstr "Vollansicht (Strg+M)"
+
+msgctxt "MiniPlayer"
+msgid "Shuffle"
+msgstr "Zufall"
+
+msgctxt "MiniPlayer"
+msgid "Previous"
+msgstr "Zurück"
+
+msgctxt "MiniPlayer"
+msgid "Next"
+msgstr "Weiter"
+
+msgctxt "MiniPlayer"
+msgid "Repeat off"
+msgstr "Wiederholung aus"
+
+msgctxt "MiniPlayer"
+msgid "Repeat all"
+msgstr "Alle wiederholen"
+
+msgctxt "MiniPlayer"
+msgid "Repeat one"
+msgstr "Einen wiederholen"
+
+msgctxt "MiniPlayer"
+msgid "Pitch / tempo (SoundTouch)"
+msgstr "Tonhöhe & Tempo (SoundTouch)"
+
+msgctxt "MiniPlayer"
+msgid "Volume fixed at 100 %: set it on the DAC or the amplifier. Click to choose how the volume is set."
+msgstr "Lautstärke auf 100 % fixiert: am DAC oder Verstärker einstellen. Klicken, um die Lautstärkeregelung zu wählen."
+
+msgctxt "MiniPlayer"
+msgid "Mute · right-click: volume control"
+msgstr "Stumm · Rechtsklick: Lautstärkeregelung"
+
+msgctxt "MiniPlayer"
+msgid "DAC volume · {0} · bit-perfect"
+msgstr "DAC-Lautstärke · {0} · bit-perfect"
+
+msgctxt "MiniPlayer"
+msgid "Equalizer on — click to open"
+msgstr "Equalizer an — klicken zum Öffnen"
+
+msgctxt "MiniPlayer"
+msgid "As in the folder"
+msgstr "Wie im Ordner"
+
+msgctxt "MiniPlayer"
+msgid "Stop"
+msgstr "Stopp"
+
+msgctxt "MiniPlayer"
+msgid "Equalizer off — click to open"
+msgstr "Equalizer aus — klicken zum Öffnen"
+
+msgctxt "MiniPlayer"
+msgid "Hide play queue"
+msgstr "Warteschlange ausblenden"
+
+msgctxt "MiniPlayer"
+msgid "Show play queue"
+msgstr "Warteschlange einblenden"
+
+msgctxt "MiniPlayer"
+msgid "Options"
+msgstr "Optionen"
+
+msgctxt "MiniPlayer"
+msgid "Always on top"
+msgstr "Immer im Vordergrund"
+
+msgctxt "MiniPlayer"
+msgid "Clear queue"
+msgstr "Warteschlange leeren"
+
+msgctxt "MiniPlayer"
+msgid "Equalizer"
+msgstr "Equalizer"
+
+msgctxt "MiniPlayer"
+msgid "Pitch / tempo"
+msgstr "Tonhöhe / Tempo"
+
+msgctxt "MiniPlayer"
+msgid "Unknown artist"
+msgstr "Unbekannter Künstler"
+
+msgctxt "MiniPlayer"
+msgid "Volume · {0}"
+msgstr "Lautstärke · {0}"
+
+msgctxt "MiniPlayer"
+msgid "Settings"
+msgstr "Einstellungen"
+
+msgctxt "MiniPlayer"
+msgid "Play queue"
+msgstr "Warteschlange"
+
+msgctxt "MiniPlayer"
+msgid "Remove from library"
+msgstr "Aus der Mediathek entfernen"
+
+msgctxt "MiniPlayer"
+msgid "Add music folder…"
+msgstr "Musikordner hinzufügen…"
+
+msgctxt "MiniPlayer"
+msgid "Search the queue…"
+msgstr "In der Warteschlange suchen…"
+
+msgctxt "MiniPlayer"
+msgid "Search in this folder…"
+msgstr "In diesem Ordner suchen…"
+
+msgctxt "MiniPlayer"
+msgid "Go to the playing track"
+msgstr "Zum laufenden Titel springen"
+
+msgctxt "MiniPlayer"
+msgid "Close the search"
+msgstr "Suche schließen"
+
+msgctxt "MiniPlayer"
+msgid "Search in the list (Ctrl+F)"
+msgstr "In der Liste suchen (Strg+F)"
+
+msgctxt "MiniPlayer"
+msgid "Sort by"
+msgstr "Sortieren nach"
+
+msgctxt "MiniPlayer"
+msgid "Reverse order"
+msgstr "Umgekehrte Reihenfolge"
+
+msgctxt "MiniPlayer"
+msgid "Columns…"
+msgstr "Spalten…"
+
+msgctxt "MiniPlayer"
+msgid "Reset columns"
+msgstr "Spalten zurücksetzen"
+
+msgctxt "MiniPlayer"
+msgid "Remove from favorites"
+msgstr "Aus Favoriten entfernen"
+
+msgctxt "MiniPlayer"
+msgid "Add to favorites"
+msgstr "Zu Favoriten hinzufügen"
+
+msgctxt "MiniPlayer"
+msgid "Your library is empty"
+msgstr "Deine Mediathek ist leer"
+
+msgctxt "MiniPlayer"
+msgid "Add music folder"
+msgstr "Musikordner hinzufügen"
+
+msgctxt "MiniPlayer"
+msgid "No tracks match “{0}”"
+msgstr "Keine Titel passen zu „{0}“"
+
+msgctxt "MiniPlayer"
+msgid "The queue is empty."
+msgstr "Die Warteschlange ist leer."
+
+msgctxt "MiniPlayer"
+msgid "No tracks in this folder."
+msgstr "Keine Titel in diesem Ordner."
+
+msgctxt "MiniPlayer"
+msgid "Play"
+msgstr "Abspielen"
+
+msgctxt "MiniPlayer"
+msgid "Remove from queue"
+msgstr "Aus der Warteschlange entfernen"
+
+msgctxt "MiniPlayer"
+msgid "Add to queue"
+msgstr "Zur Warteschlange hinzufügen"
+
+msgctxt "NameDialog"
+msgid "Save"
+msgstr "Speichern"
+
+msgctxt "NameDialog"
+msgid "Cancel"
+msgstr "Abbrechen"
+
+msgctxt "NowPlayingBar"
+msgid "Now playing: the track, the signal path and the queue"
+msgstr "Aktuelle Wiedergabe: der Titel, der Signalpfad und die Warteschlange"
+
+msgctxt "NowPlayingBar"
+msgid "Nothing playing"
+msgstr "Nichts wird abgespielt"
+
+msgctxt "NowPlayingBar"
+msgid "Go to the playing track"
+msgstr "Zum laufenden Titel springen"
+
+msgctxt "NowPlayingBar"
+msgid "Pick something from your library"
+msgstr "Wähle etwas aus deiner Mediathek"
+
+msgctxt "NowPlayingBar"
+msgid "Unknown artist"
+msgstr "Unbekannter Künstler"
+
+msgctxt "NowPlayingBar"
+msgid "Shuffle"
+msgstr "Zufall"
+
+msgctxt "NowPlayingBar"
+msgid "Previous"
+msgstr "Zurück"
+
+msgctxt "NowPlayingBar"
+msgid "Stop"
+msgstr "Stopp"
+
+msgctxt "NowPlayingBar"
+msgid "Next"
+msgstr "Weiter"
+
+msgctxt "NowPlayingBar"
+msgid "Repeat off"
+msgstr "Wiederholung aus"
+
+msgctxt "NowPlayingBar"
+msgid "Repeat all"
+msgstr "Alle wiederholen"
+
+msgctxt "NowPlayingBar"
+msgid "Repeat one"
+msgstr "Einen wiederholen"
+
+msgctxt "NowPlayingBar"
+msgid "Pitch / tempo (SoundTouch)"
+msgstr "Tonhöhe & Tempo (SoundTouch)"
+
+msgctxt "NowPlayingBar"
+msgid "Equalizer on — click to open"
+msgstr "Equalizer an — klicken zum Öffnen"
+
+msgctxt "NowPlayingBar"
+msgid "Equalizer off — click to open"
+msgstr "Equalizer aus — klicken zum Öffnen"
+
+msgctxt "NowPlayingBar"
+msgid "Signal path: every stage from the file to the DAC"
+msgstr "Signal path: jede Stufe von der Datei bis zum DAC"
+
+msgctxt "NowPlayingBar"
+msgid "Release DAC to the system"
+msgstr "DAC an das System zurückgeben"
+
+msgctxt "NowPlayingBar"
+msgid "Compact mode (Ctrl+M)"
+msgstr "Kompaktmodus (Strg+M)"
+
+msgctxt "NowPlayingBar"
+msgid "Settings"
+msgstr "Einstellungen"
+
+msgctxt "NowPlayingBar"
+msgid "Volume fixed at 100 %: set it on the DAC or the amplifier. Click to choose how the volume is set."
+msgstr "Lautstärke auf 100 % fixiert: am DAC oder Verstärker einstellen. Klicken, um die Lautstärkeregelung zu wählen."
+
+msgctxt "NowPlayingBar"
+msgid "Mute · right-click: volume control"
+msgstr "Stumm · Rechtsklick: Lautstärkeregelung"
+
+msgctxt "NowPlayingBar"
+msgid "System"
+msgstr "System"
+
+msgctxt "NowPlayingBar"
+msgid "DAC volume · {0} · bit-perfect"
+msgstr "DAC-Lautstärke · {0} · bit-perfect"
+
+msgctxt "NowPlayingBar"
+msgid "System volume · {0}"
+msgstr "Systemlautstärke · {0}"
+
+msgctxt "NowPlayingBar"
+msgid "Volume · {0}"
+msgstr "Lautstärke · {0}"
+
+msgctxt "NowPlayingPage"
+msgid "Now playing"
+msgstr "Aktuelle Wiedergabe"
+
+msgctxt "NowPlayingPage"
+msgid " in the queue"
+msgstr " in der Warteschlange"
+
+msgctxt "NowPlayingPage"
+msgid " · shuffle on"
+msgstr " · Zufallswiedergabe an"
+
+msgctxt "NowPlayingPage"
+msgid "Nothing playing"
+msgstr "Nichts wird abgespielt"
+
+msgctxt "NowPlayingPage"
+msgid "Unknown artist"
+msgstr "Unbekannter Künstler"
+
+msgctxt "NowPlayingPage"
+msgid "Pick something from your library: double-click a track, an album or a playlist."
+msgstr "Wähle etwas aus deiner Mediathek: Doppelklick auf einen Titel, ein Album oder eine Wiedergabeliste."
+
+msgctxt "NowPlayingPage"
+msgid "Show in library"
+msgstr "In der Mediathek zeigen"
+
+msgctxt "NowPlayingPage"
+msgid "Signal path"
+msgstr "Signalweg"
+
+msgctxt "NowPlayingPage"
+msgid "BIT-PERFECT"
+msgstr "BIT-PERFECT"
+
+msgctxt "NowPlayingPage"
+msgid "Play queue"
+msgstr "Warteschlange"
+
+msgctxt "NowPlayingPage"
+msgid "Save as playlist"
+msgstr "Als Playlist speichern"
+
+msgctxt "NowPlayingPage"
+msgid "Clear"
+msgstr "Leeren"
+
+msgctxt "NowPlayingPage"
+msgid "The queue is empty.\nDouble-click any track, album or playlist — or drag tracks here."
+msgstr "Die Warteschlange ist leer.\nDoppelklicke auf einen Titel, ein Album oder eine Playlist — oder ziehe Titel hierher."
+
+msgctxt "OnlineArt"
+msgid "MusicBrainz did not answer: {0}"
+msgstr "MusicBrainz hat nicht geantwortet: {0}"
+
+msgctxt "OnlineArt"
+msgid "Cover Art Archive did not answer: {0}"
+msgstr "Cover Art Archive hat nicht geantwortet: {0}"
+
+msgctxt "OnlineArt"
+msgid "no connection"
+msgstr "keine Verbindung"
+
+msgctxt "PlaylistDialogs"
+msgid "Export playlist"
+msgstr "Playlist exportieren"
+
+msgctxt "PlaylistDialogs"
+msgid "M3U playlist (*.m3u8 *.m3u)"
+msgstr "M3U-Playlist (*.m3u8 *.m3u)"
+
+msgctxt "PlaylistDialogs"
+msgid "Add a folder to the playlist"
+msgstr "Ordner zur Playlist hinzufügen"
+
+msgctxt "PlaylistDialogs"
+msgid "Add files to the playlist"
+msgstr "Dateien zur Playlist hinzufügen"
+
+msgctxt "PlaylistDialogs"
+msgid "Audio files ({0})"
+msgstr "Audiodateien ({0})"
+
+msgctxt "PlaylistDialogs"
+msgid "All files (*)"
+msgstr "Alle Dateien (*)"
+
+msgctxt "PlaylistManager"
+msgid "New playlist"
+msgstr "Neue Playlist"
+
+msgctxt "PlaylistPage"
+msgid "Rename playlist"
+msgstr "Playlist umbenennen"
+
+msgctxt "PlaylistPage"
+msgid "Rename"
+msgstr "Umbenennen"
+
+msgctxt "PlaylistPage"
+msgid "Playlist exported"
+msgstr "Playlist exportiert"
+
+msgctxt "PlaylistPage"
+msgid "Export failed"
+msgstr "Export fehlgeschlagen"
+
+msgctxt "PlaylistPage"
+msgid "No audio files in that folder"
+msgstr "Keine Audiodateien in diesem Ordner"
+
+msgctxt "PlaylistPage"
+msgid "Playlist"
+msgstr "Playlist"
+
+msgctxt "PlaylistPage"
+msgid "Play"
+msgstr "Abspielen"
+
+msgctxt "PlaylistPage"
+msgid "Shuffle"
+msgstr "Zufall"
+
+msgctxt "PlaylistPage"
+msgid "Add a folder…"
+msgstr "Ordner hinzufügen…"
+
+msgctxt "PlaylistPage"
+msgid "Add files…"
+msgstr "Dateien hinzufügen…"
+
+msgctxt "PlaylistPage"
+msgid "Export as M3U"
+msgstr "Als M3U exportieren"
+
+msgctxt "PlaylistPage"
+msgid "Delete playlist"
+msgstr "Playlist löschen"
+
+msgctxt "PlaylistPage"
+msgid "This playlist is empty.\nDrag tracks here from your library, or drop files and folders."
+msgstr "Diese Playlist ist leer.\nZiehe Titel aus deiner Mediathek hierher oder lege Dateien und Ordner ab."
+
+msgctxt "PlaylistPage"
+msgid "Added {0} to “{1}”"
+msgstr "{0} zu „{1}“ hinzugefügt"
+
+msgctxt "PrecisionField"
+msgid "−{0}"
+msgstr "−{0}"
+
+msgctxt "PrecisionField"
+msgid "+{0}"
+msgstr "+{0}"
+
+msgctxt "Library"
+msgid "Track {0}"
+msgstr "Titel {0}"
+
+msgctxt "QueuePage"
+msgid "Play queue"
+msgstr "Warteschlange"
+
+msgctxt "QueuePage"
+msgid " · shuffle on"
+msgstr " · Zufallswiedergabe an"
+
+msgctxt "QueuePage"
+msgid "Save as playlist"
+msgstr "Als Playlist speichern"
+
+msgctxt "QueuePage"
+msgid "Clear"
+msgstr "Leeren"
+
+msgctxt "QueuePage"
+msgid "The queue is empty.\nDouble-click any track, album or playlist — or drag tracks here."
+msgstr "Die Warteschlange ist leer.\nDoppelklicke auf einen Titel, ein Album oder eine Playlist — oder ziehe Titel hierher."
+
+msgctxt "QueuePage"
+msgid "Added {0} to the queue"
+msgstr "{0} zur Warteschlange hinzugefügt"
+
+msgctxt "SettingsDialogs"
+msgid "Impulse response"
+msgstr "Impulsantwort"
+
+msgctxt "SettingsDialogs"
+msgid "Impulse responses (*.wav *.flac *.aif *.aiff)"
+msgstr "Impulsantworten (*.wav *.flac *.aif *.aiff)"
+
+msgctxt "SettingsDialogs"
+msgid "All files (*)"
+msgstr "Alle Dateien (*)"
+
+msgctxt "SettingsDialogs"
+msgid "Folder to skip"
+msgstr "Zu überspringender Ordner"
+
+msgctxt "SettingsPage"
+msgid "Direct hardware (hw:) — exclusive, no mixer, bit-perfect capable. PipeWire must not be using the device."
+msgstr "Direkte Hardware (hw:) — exklusiv, ohne Mixer, Bit-perfect-fähig. PipeWire darf das Gerät nicht verwenden."
+
+msgctxt "SettingsPage"
+msgid "Desktop sound server — shared with other apps; sample rate follows PipeWire's clock settings."
+msgstr "Sound-Server des Desktops — mit anderen Apps geteilt; die Abtastrate folgt dem Takt von PipeWire."
+
+msgctxt "SettingsPage"
+msgid "Windows audio — exclusive mode bypasses the system mixer."
+msgstr "Windows-Audio — der Exklusivmodus umgeht den Systemmixer."
+
+msgctxt "SettingsPage"
+msgid "macOS — the device switches to the track's sample rate."
+msgstr "macOS — das Gerät wechselt auf die Abtastrate des Titels."
+
+msgctxt "SettingsPage"
+msgid "Restart"
+msgstr "Neu starten"
+
+msgctxt "SettingsPage"
+msgid "Settings"
+msgstr "Einstellungen"
+
+msgctxt "SettingsPage"
+msgid "Restart Sonkore to apply the new interface scale / renderer."
+msgstr "Starte Sonkore neu, um die neue Skalierung / den Renderer anzuwenden."
+
+msgctxt "SettingsPage"
+msgid "Restart now"
+msgstr "Jetzt neu starten"
+
+msgctxt "SettingsPage"
+msgid "General"
+msgstr "Allgemein"
+
+msgctxt "SettingsPage"
+msgid "Interface language"
+msgstr "Sprache der Oberfläche"
+
+msgctxt "SettingsPage"
+msgid "Stop button"
+msgstr "Stopp-Taste"
+
+msgctxt "SettingsPage"
+msgid "A stop button next to play in the player bars."
+msgstr "Eine Stopp-Taste neben Wiedergabe in den Player-Leisten."
+
+msgctxt "SettingsPage"
+msgid "Fewer frames use less CPU."
+msgstr "Weniger Bilder belasten die CPU weniger."
+
+msgctxt "SettingsPage"
+msgid "Round"
+msgstr "Rund"
+
+msgctxt "SettingsPage"
+msgid "Outline"
+msgstr "Kontur"
+
+msgctxt "SettingsPage"
+msgid "Window"
+msgstr "Fenster"
+
+msgctxt "SettingsPage"
+msgid "Extra large"
+msgstr "Sehr groß"
+
+msgctxt "SettingsPage"
+msgid "Bold"
+msgstr "Kräftig"
+
+msgctxt "SettingsPage"
+msgid "Accent"
+msgstr "Akzent"
+
+msgctxt "SettingsPage"
+msgid "Background and visualizer"
+msgstr "Hintergrund und Visualizer"
+
+msgctxt "SettingsPage"
+msgid "Layout"
+msgstr "Anordnung"
+
+msgctxt "SettingsPage"
+msgid "Audio output"
+msgstr "Audioausgabe"
+
+msgctxt "SettingsPage"
+msgid "Nothing playing — the output opens when playback starts"
+msgstr "Keine Wiedergabe — die Ausgabe öffnet sich beim Abspielen"
+
+msgctxt "SettingsPage"
+msgid "Rescan devices"
+msgstr "Geräte neu suchen"
+
+msgctxt "SettingsPage"
+msgid "DIRECT · BIT-PERFECT"
+msgstr "DIREKT · BIT-PERFECT"
+
+msgctxt "SettingsPage"
+msgid "DEFAULT"
+msgstr "STANDARD"
+
+msgctxt "SettingsPage"
+msgid "DAC control"
+msgstr "DAC-Steuerung"
+
+msgctxt "SettingsPage"
+msgid "In use by Sonkore only."
+msgstr "Nur von Sonkore belegt."
+
+msgctxt "SettingsPage"
+msgid "Taken when playback starts."
+msgstr "Wird beim Start der Wiedergabe übernommen."
+
+msgctxt "SettingsPage"
+msgid "Sonkore has the DAC to itself: other apps are silent or move to another output until it is released."
+msgstr "Sonkore hat den DAC für sich: Andere Apps sind stumm oder wechseln zu einer anderen Ausgabe, bis er freigegeben wird."
+
+msgctxt "SettingsPage"
+msgid "Sonkore takes the DAC from the system when playback starts, even if other apps are using it."
+msgstr "Sonkore übernimmt den DAC vom System, sobald die Wiedergabe beginnt, auch wenn andere Apps ihn nutzen."
+
+msgctxt "SettingsPage"
+msgid "Release DAC"
+msgstr "DAC freigeben"
+
+msgctxt "SettingsPage"
+msgid "Give the DAC back when paused"
+msgstr "DAC bei Pause freigeben"
+
+msgctxt "SettingsPage"
+msgid "After a minute paused or stopped, so other apps can play again. Pressing play takes it back."
+msgstr "Nach einer Minute Pause oder Stopp, damit andere Apps wieder abspielen können. Wiedergabe holt ihn zurück."
+
+msgctxt "SettingsPage"
+msgid "Volume control"
+msgstr "Lautstärkeregelung"
+
+msgctxt "SettingsPage"
+msgid "DAC keeps bit-perfect; Digital does not below 100 %."
+msgstr "DAC bleibt bit-perfect; Digital unter 100 % nicht."
+
+msgctxt "SettingsPage"
+msgid "Digital: Sonkore scales the samples, so any volume below 100% leaves bit-perfect. DAC: the volume moves the DAC's own control and the audio stays bit-perfect."
+msgstr "Digital: Sonkore skaliert die Samples, daher verlässt jede Lautstärke unter 100 % den Bit-perfect-Pfad. DAC: Die Lautstärke bewegt den eigenen Regler des DAC und das Audio bleibt bit-perfect."
+
+msgctxt "SettingsPage"
+msgid "Digital"
+msgstr "Digital"
+
+msgctxt "SettingsPage"
+msgid "DAC"
+msgstr "DAC"
+
+msgctxt "SettingsPage"
+msgid "Larger is safer; smaller reacts faster."
+msgstr "Größer ist sicherer; kleiner reagiert schneller."
+
+msgctxt "SettingsPage"
+msgid "Original keeps every sample untouched."
+msgstr "Original lässt jedes Sample unverändert."
+
+msgctxt "SettingsPage"
+msgid "Bit-perfect; the DAC switches rate between files."
+msgstr "Bit-perfect; der DAC wechselt die Rate zwischen Dateien."
+
+msgctxt "SettingsPage"
+msgid "One rate for everything; the DAC never switches."
+msgstr "Eine Rate für alles; der DAC wechselt nie."
+
+msgctxt "SettingsPage"
+msgid "A multiple of each file's rate."
+msgstr "Ein Vielfaches der Rate jeder Datei."
+
+msgctxt "SettingsPage"
+msgid "88.2 kHz for CDs, 96 kHz for 48 kHz files."
+msgstr "88,2 kHz für CDs, 96 kHz für 48-kHz-Dateien."
+
+msgctxt "SettingsPage"
+msgid "Linear phase is the usual choice."
+msgstr "Linearphasig ist die übliche Wahl."
+
+msgctxt "SettingsPage"
+msgid "DSD playback"
+msgstr "DSD-Wiedergabe"
+
+msgctxt "SettingsPage"
+msgid "DSD files are converted to PCM: works with every DAC."
+msgstr "DSD-Dateien werden in PCM umgewandelt: funktioniert mit jedem DAC."
+
+msgctxt "SettingsPage"
+msgid "Native DSD on direct (hw:) outputs."
+msgstr "Natives DSD auf direkten (hw:) Ausgängen."
+
+msgctxt "SettingsPage"
+msgid "Only for DACs with DoP: others play loud noise."
+msgstr "Nur für DACs mit DoP: andere geben lautes Rauschen aus."
+
+msgctxt "SettingsPage"
+msgid "Native DSD to DACs that offer it on a direct (hw:) output; otherwise the file is converted to PCM. EQ, pitch, ReplayGain and digital volume do not apply to DSD: use the DAC's volume."
+msgstr "Natives DSD an DACs, die es auf einem direkten (hw:)-Ausgang anbieten; sonst wird die Datei in PCM umgewandelt. Equalizer, Tonhöhe, ReplayGain und digitale Lautstärke gelten nicht für DSD: nutze die Lautstärke des DAC."
+
+msgctxt "SettingsPage"
+msgid "DoP (DSD over PCM) on a direct or exclusive output. Only for DACs that support DoP: others play loud noise. EQ, pitch, ReplayGain and digital volume do not apply to DSD."
+msgstr "DoP (DSD über PCM) auf einem direkten oder exklusiven Ausgang. Nur für DACs mit DoP-Unterstützung: andere spielen lautes Rauschen. Equalizer, Tonhöhe, ReplayGain und digitale Lautstärke gelten nicht für DSD."
+
+msgctxt "SettingsPage"
+msgid "Convert to PCM"
+msgstr "In PCM umwandeln"
+
+msgctxt "SettingsPage"
+msgid "Native"
+msgstr "Nativ"
+
+msgctxt "SettingsPage"
+msgid "DoP"
+msgstr "DoP"
+
+msgctxt "SettingsPage"
+msgid "Each one leaves bit-perfect while on."
+msgstr "Jeder verlässt den Bit-perfect-Pfad, solange er aktiv ist."
+
+msgctxt "SettingsPage"
+msgid "Room or headphone correction (WAV or FLAC)."
+msgstr "Raum- oder Kopfhörerkorrektur (WAV oder FLAC)."
+
+msgctxt "SettingsPage"
+msgid "Less fatigue on headphones. Stereo only."
+msgstr "Weniger Ermüdung mit Kopfhörern. Nur Stereo."
+
+msgctxt "SettingsPage"
+msgid "Automatic: now {0} dB."
+msgstr "Automatisch: derzeit {0} dB."
+
+msgctxt "SettingsPage"
+msgid "Keeps the DSP from clipping."
+msgstr "Verhindert Clipping im DSP."
+
+msgctxt "SettingsPage"
+msgid "Only while DSP is active."
+msgstr "Nur bei aktivem DSP."
+
+msgctxt "SettingsPage"
+msgid "HDCD decoding"
+msgstr "HDCD-Dekodierung"
+
+msgctxt "SettingsPage"
+msgid "CDs mastered with HDCD carry hidden codes for 20-bit dynamics. They are detected in the first seconds of each 16-bit track and decoded; other tracks stay bit-perfect."
+msgstr "Mit HDCD gemasterte CDs tragen versteckte Codes für 20-Bit-Dynamik. Sie werden in den ersten Sekunden jedes 16-Bit-Titels erkannt und dekodiert; andere Titel bleiben bit-perfect."
+
+msgctxt "SettingsPage"
+msgid "Play from memory"
+msgstr "Aus dem Speicher abspielen"
+
+msgctxt "SettingsPage"
+msgid "Hear the audio while dragging the bar."
+msgstr "Der Ton folgt der Leiste beim Ziehen."
+
+msgctxt "SettingsPage"
+msgid "Each file is read into RAM before it plays (up to 2 GB), so playback never waits on the disk. Uses as much memory as the current and the next file."
+msgstr "Jede Datei wird vor der Wiedergabe in den RAM gelesen (bis 2 GB), sodass die Wiedergabe nie auf die Festplatte wartet. Belegt so viel Speicher wie die aktuelle und die nächste Datei."
+
+msgctxt "SettingsPage"
+msgid "Convolution (FIR)"
+msgstr "Faltung (FIR)"
+
+msgctxt "SettingsPage"
+msgid "Room or headphone correction with an impulse response from REW, Dirac, Acourate… (WAV or FLAC: mono, stereo or true stereo with 4 channels). It is resampled to each track's rate."
+msgstr "Raum- oder Kopfhörerkorrektur mit einer Impulsantwort aus REW, Dirac, Acourate… (WAV oder FLAC: Mono, Stereo oder True Stereo mit 4 Kanälen). Sie wird auf die Rate jedes Titels umgerechnet."
+
+msgctxt "SettingsPage"
+msgid "Change…"
+msgstr "Ändern…"
+
+msgctxt "SettingsPage"
+msgid "Load…"
+msgstr "Laden…"
+
+msgctxt "SettingsPage"
+msgid "Remove"
+msgstr "Entfernen"
+
+msgctxt "SettingsPage"
+msgid "Upsampling"
+msgstr "Upsampling"
+
+msgctxt "SettingsPage"
+msgid "Highest the DAC takes"
+msgstr "Das Höchste, das der DAC annimmt"
+
+msgctxt "SettingsPage"
+msgid "PCM to DSD"
+msgstr "PCM zu DSD"
+
+msgctxt "SettingsPage"
+msgid "Linear phase"
+msgstr "Linearphasig"
+
+msgctxt "SettingsPage"
+msgid "Intermediate phase"
+msgstr "Intermediärphasig"
+
+msgctxt "SettingsPage"
+msgid "Minimum phase"
+msgstr "Minimalphasig"
+
+msgctxt "SettingsPage"
+msgid "Linear, steep"
+msgstr "Linear, steil"
+
+msgctxt "SettingsPage"
+msgid "Headphone crossfeed"
+msgstr "Kopfhörer-Crossfeed"
+
+msgctxt "SettingsPage"
+msgid "Lets each ear hear a little of the other channel, low-passed, as with loudspeakers: less fatigue on long headphone sessions with hard-panned recordings. Stereo tracks only."
+msgstr "Jedes Ohr hört etwas vom anderen Kanal, tiefpassgefiltert, wie bei Lautsprechern: weniger Ermüdung bei langen Kopfhörersitzungen mit stark getrennten Aufnahmen. Nur Stereotitel."
+
+msgctxt "SettingsPage"
+msgid "Default"
+msgstr "Standard"
+
+msgctxt "SettingsPage"
+msgid "Automatic: 3 dB for inter-sample peaks plus whatever the EQ boosts (now {0} dB). Applied only while some DSP runs; a bit-perfect path is never touched."
+msgstr "Automatisch: 3 dB für Inter-Sample-Spitzen plus das, was der EQ anhebt (jetzt {0} dB). Nur aktiv, solange ein DSP läuft; ein bit-perfekter Pfad bleibt unberührt."
+
+msgctxt "SettingsPage"
+msgid "Manual"
+msgstr "Manuell"
+
+msgctxt "SettingsPage"
+msgid "WASAPI exclusive mode"
+msgstr "WASAPI-Exklusivmodus"
+
+msgctxt "SettingsPage"
+msgid "Bypasses the Windows mixer for bit-perfect output."
+msgstr "Umgeht den Windows-Mixer für Bit-perfect-Ausgabe."
+
+msgctxt "SettingsPage"
+msgid "Output buffer"
+msgstr "Ausgabepuffer"
+
+msgctxt "SettingsPage"
+msgid "Original"
+msgstr "Original"
+
+msgctxt "SettingsPage"
+msgid "Pause on sample rate change"
+msgstr "Pause beim Wechsel der Abtastrate"
+
+msgctxt "SettingsPage"
+msgid "Resume last session"
+msgstr "Letzte Sitzung fortsetzen"
+
+msgctxt "SettingsPage"
+msgid "Use the full view's"
+msgstr "Wie in der Vollansicht verwenden"
+
+msgctxt "SettingsPage"
+msgid "Same as the full view"
+msgstr "Wie in der Vollansicht"
+
+msgctxt "SettingsPage"
+msgid "Full view"
+msgstr "Vollansicht"
+
+msgctxt "SettingsPage"
+msgid "Mini player"
+msgstr "Mini-Player"
+
+msgctxt "SettingsPage"
+msgid "Changes here apply to the full view, and to the mini player where it has no setting of its own."
+msgstr "Änderungen hier gelten für die Vollansicht und für den Mini-Player, wo er keine eigene Einstellung hat."
+
+msgctxt "SettingsPage"
+msgid "Audio"
+msgstr "Audio"
+
+msgctxt "SettingsPage"
+msgid "Library"
+msgstr "Mediathek"
+
+msgctxt "SettingsPage"
+msgid "Live seeking"
+msgstr "Live-Spulen"
+
+msgctxt "SettingsPage"
+msgid "Search bar"
+msgstr "Suchleiste"
+
+msgctxt "SettingsPage"
+msgid "Ctrl + F shows it even when it is off."
+msgstr "Strg + F zeigt sie auch ausgeschaltet."
+
+msgctxt "SettingsPage"
+msgid "Start page"
+msgstr "Startseite"
+
+msgctxt "SettingsPage"
+msgid "What Sonkore shows when it opens. Last place: the folder you had open, or the playing track's."
+msgstr "Was Sonkore beim Öffnen zeigt. Letzter Ort: der zuletzt geöffnete Ordner oder der des laufenden Titels."
+
+msgctxt "SettingsPage"
+msgid "Last place"
+msgstr "Letzter Ort"
+
+msgctxt "SettingsPage"
+msgid "Tracks"
+msgstr "Titel"
+
+msgctxt "SettingsPage"
+msgid "Albums"
+msgstr "Alben"
+
+msgctxt "SettingsPage"
+msgid "Artists"
+msgstr "Künstler"
+
+msgctxt "SettingsPage"
+msgid "Genres"
+msgstr "Genres"
+
+msgctxt "SettingsPage"
+msgid "Folders"
+msgstr "Ordner"
+
+msgctxt "SettingsPage"
+msgid "Play queue"
+msgstr "Warteschlange"
+
+msgctxt "SettingsPage"
+msgid "Favorites"
+msgstr "Favoriten"
+
+msgctxt "SettingsPage"
+msgid "Rendering"
+msgstr "Darstellung"
+
+msgctxt "SettingsPage"
+msgid "Currently: {0}."
+msgstr "Aktuell: {0}."
+
+msgctxt "SettingsPage"
+msgid "Smoother animations. Recommended."
+msgstr "Flüssigere Animationen. Empfohlen."
+
+msgctxt "SettingsPage"
+msgid "Library, playlists and EQ profiles are kept."
+msgstr "Mediathek, Playlists und EQ-Profile bleiben erhalten."
+
+msgctxt "SettingsPage"
+msgid "Needs a restart."
+msgstr "Erfordert einen Neustart."
+
+msgctxt "SettingsPage"
+msgid "Icon style"
+msgstr "Symbolstil"
+
+msgctxt "SettingsPage"
+msgid "Solid"
+msgstr "Gefüllt"
+
+msgctxt "SettingsPage"
+msgid "Tile"
+msgstr "Kachel"
+
+msgctxt "SettingsPage"
+msgid "Pill"
+msgstr "Pille"
+
+msgctxt "SettingsPage"
+msgid "Thick"
+msgstr "Dick"
+
+msgctxt "SettingsPage"
+msgid "Classic"
+msgstr "Klassisch"
+
+msgctxt "SettingsPage"
+msgid "Ring"
+msgstr "Ring"
+
+msgctxt "SettingsPage"
+msgid "Window buttons"
+msgstr "Fensterknöpfe"
+
+msgctxt "SettingsPage"
+msgid "Minimal"
+msgstr "Minimal"
+
+msgctxt "SettingsPage"
+msgid "Spacious"
+msgstr "Großzügig"
+
+msgctxt "SettingsPage"
+msgid "Only with the Spacious or Comfortable list density."
+msgstr "Nur mit der Listendichte Großzügig oder Bequem."
+
+msgctxt "SettingsPage"
+msgid "Without covers"
+msgstr "Ohne Cover"
+
+msgctxt "SettingsPage"
+msgid "With covers"
+msgstr "Mit Covern"
+
+msgctxt "SettingsPage"
+msgid "Alternating"
+msgstr "Abwechselnd"
+
+msgctxt "SettingsPage"
+msgid "Uniform"
+msgstr "Einheitlich"
+
+msgctxt "SettingsPage"
+msgid "Filters on the Tracks page"
+msgstr "Filter auf der Seite Titel"
+
+msgctxt "SettingsPage"
+msgid "The desktop's sound server, spoken to directly — shared with other apps; it switches to each track's sample rate (Follow the track's rate)."
+msgstr "Der Soundserver des Desktops, direkt angesprochen — mit anderen Apps geteilt; er wechselt auf die Abtastrate jedes Titels (Abtastrate des Titels folgen)."
+
+msgctxt "SettingsPage"
+msgid "The DAC's own ASIO driver — direct, bit-perfect capable, and native DSD where the driver offers it."
+msgstr "Der eigene ASIO-Treiber des DAC — direkt, bit-perfect-fähig und mit nativem DSD, wenn der Treiber es anbietet."
+
+msgctxt "SettingsPage"
+msgid "The mini player uses the full view's appearance, except what you change here for it."
+msgstr "Der Mini-Player übernimmt das Aussehen der Vollansicht, außer dem, was du hier für ihn änderst."
+
+msgctxt "SettingsPage"
+msgid "Stop"
+msgstr "Stopp"
+
+msgctxt "SettingsPage"
+msgid "Play"
+msgstr "Abspielen"
+
+msgctxt "SettingsPage"
+msgid "Now playing"
+msgstr "Aktuelle Wiedergabe"
+
+msgctxt "SettingsPage"
+msgid "List only"
+msgstr "Nur die Liste"
+
+msgctxt "SettingsPage"
+msgid "With filters"
+msgstr "Mit Filtern"
+
+msgctxt "SettingsPage"
+msgid "Software draws on the CPU and uses the least power; Vulkan or OpenGL use the graphics card and reach high refresh rates. If Sonkore fails to start with a renderer, it switches back on its own (or start it with --safe-mode)."
+msgstr "Software zeichnet mit der CPU und verbraucht am wenigsten; Vulkan und OpenGL nutzen die Grafikkarte und erreichen hohe Bildwiederholraten. Startet Sonkore mit einem Renderer nicht, wechselt er von selbst zurück (oder starte ihn mit --safe-mode)."
+
+msgctxt "SettingsPage"
+msgid "Frame rate limit"
+msgstr "Bildratenbegrenzung"
+
+msgctxt "SettingsPage"
+msgid "No limit"
+msgstr "Keine Begrenzung"
+
+msgctxt "SettingsPage"
+msgid "Invert panel colours"
+msgstr "Panelfarben umkehren"
+
+msgctxt "SettingsPage"
+msgid "Player buttons"
+msgstr "Wiedergabetasten"
+
+msgctxt "SettingsPage"
+msgid "Progress bar"
+msgstr "Fortschrittsleiste"
+
+msgctxt "SettingsPage"
+msgid "Waveform"
+msgstr "Wellenform"
+
+msgctxt "SettingsPage"
+msgid "Volume bar"
+msgstr "Lautstärkeleiste"
+
+msgctxt "SettingsPage"
+msgid "The chosen output is not connected, so the system default is used. Reconnect it and it is used again the next time playback starts."
+msgstr "Die gewählte Ausgabe ist nicht verbunden, daher wird die Systemvorgabe verwendet. Nach dem erneuten Verbinden wird sie beim nächsten Start der Wiedergabe wieder verwendet."
+
+msgctxt "SettingsPage"
+msgid "Sound settings per output"
+msgstr "Klangeinstellungen je Ausgabe"
+
+msgctxt "SettingsPage"
+msgid "Headphones and speakers each keep their own equaliser and processing."
+msgstr "Kopfhörer und Lautsprecher behalten jeweils ihren eigenen Equalizer und ihre Verarbeitung."
+
+msgctxt "SettingsPage"
+msgid "The equaliser, convolution, crossfeed, headroom, dither, upsampling and DSD settings are remembered for each output and come back when it is chosen again. An output used for the first time starts from the current settings."
+msgstr "Equalizer, Faltung, Crossfeed, Headroom, Dither, Upsampling und DSD-Einstellungen werden je Ausgabe gemerkt und kehren zurück, wenn sie wieder gewählt wird. Eine erstmals genutzte Ausgabe beginnt mit den aktuellen Einstellungen."
+
+msgctxt "SettingsPage"
+msgid "Follow the track's rate"
+msgstr "Abtastrate des Titels folgen"
+
+msgctxt "SettingsPage"
+msgid "PipeWire switches to each track's sample rate while Sonkore plays."
+msgstr "PipeWire wechselt auf die Abtastrate jedes Titels, solange Sonkore spielt."
+
+msgctxt "SettingsPage"
+msgid "Without it, PipeWire runs at the desktop's rate (usually 48 kHz) and Sonkore converts every track to it with SoX VHQ. Other apps keep playing either way; PipeWire converts them instead. After a minute paused or stopped, PipeWire gets its own rate back."
+msgstr "Ohne diese Option läuft PipeWire mit der Rate des Desktops (meist 48 kHz) und Sonkore wandelt jeden Titel mit SoX VHQ um. Andere Apps spielen in jedem Fall weiter; PipeWire wandelt stattdessen sie um. Nach einer Minute Pause oder Stopp erhält PipeWire seine Rate zurück."
+
+msgctxt "SettingsPage"
+msgid "Sample rate"
+msgstr "Abtastrate"
+
+msgctxt "SettingsPage"
+msgid "Mode"
+msgstr "Modus"
+
+msgctxt "SettingsPage"
+msgid "Every file at its own rate, bit for bit (bit-perfect). The DAC switches rate between files, and some DACs click or beep when they do."
+msgstr "Jede Datei mit ihrer eigenen Rate, Bit für Bit (bit-perfect). Der DAC wechselt zwischen Dateien die Rate, und manche DACs klicken oder piepen dabei."
+
+msgctxt "SettingsPage"
+msgid "Every file is converted to one rate, so the DAC never switches and never clicks. Files already at that rate stay bit-perfect; DSD files become PCM."
+msgstr "Alle Dateien werden auf eine Rate umgerechnet, sodass der DAC nie wechselt und nie klickt. Dateien, die schon diese Rate haben, bleiben bit-perfect; DSD wird zu PCM."
+
+msgctxt "SettingsPage"
+msgid "Every file goes out at a multiple of its own rate (44.1 → 88.2 / 176.4 kHz), so the DAC's own filter has less to do. The DAC still switches between the 44.1 and 48 kHz families."
+msgstr "Jede Datei geht mit einem Vielfachen ihrer eigenen Rate hinaus (44,1 → 88,2 / 176,4 kHz), sodass der Filter des DACs weniger zu tun hat. Der DAC wechselt weiterhin zwischen der 44,1- und der 48-kHz-Familie."
+
+msgctxt "SettingsPage"
+msgid "Fixed rate"
+msgstr "Feste Rate"
+
+msgctxt "SettingsPage"
+msgid "Output rate"
+msgstr "Ausgaberate"
+
+msgctxt "SettingsPage"
+msgid "88.2 kHz suits a library of mostly CDs (44.1 kHz); 96 kHz suits one with mostly 48 / 96 kHz files. Either way the conversion is inaudible."
+msgstr "88,2 kHz passt zu einer Bibliothek aus überwiegend CDs (44,1 kHz), 96 kHz zu einer mit überwiegend 48-/96-kHz-Dateien. So oder so ist die Umrechnung unhörbar."
+
+msgctxt "SettingsPage"
+msgid "Upsampling factor"
+msgstr "Upsampling-Faktor"
+
+msgctxt "SettingsPage"
+msgid "Conversion filter"
+msgstr "Umrechnungsfilter"
+
+msgctxt "SettingsPage"
+msgid "Linear phase: the most faithful timing, the usual choice. Minimum phase: no pre-ringing before attacks, which some prefer on percussion. Intermediate: halfway between. Linear, steep: keeps the treble right up to the top of the band. The differences are subtle."
+msgstr "Linearphasig: das genaueste Zeitverhalten, die übliche Wahl. Minimalphasig: kein Vorschwingen vor Anschlägen, was manche bei Schlagzeug bevorzugen. Mittel: dazwischen. Linear, steil: behält die Höhen bis zum Bandende. Die Unterschiede sind gering."
+
+msgctxt "SettingsPage"
+msgid "Silence sent while the DAC switches to a new rate, so the first notes are not cut. It cannot silence a DAC that beeps by itself while switching: use a fixed rate for that."
+msgstr "Stille, die gesendet wird, während der DAC auf eine neue Rate wechselt, damit die ersten Töne nicht fehlen. Einen DAC, der beim Wechsel von sich aus piept, kann sie nicht stummschalten: Nutze dafür eine feste Rate."
+
+msgctxt "SettingsPage"
+msgid "DSD"
+msgstr "DSD"
+
+msgctxt "SettingsPage"
+msgid "Sonkore's own converter, in double precision: DSD64 becomes 88.2 kHz PCM flat to 30 kHz, DSD128 and up 176.4 kHz flat to 50-70 kHz. The ultrasonic noise DSD carries above that is filtered out (about 70 dB lower than with FFmpeg's converter), so it never reaches the amplifier. DST files too."
+msgstr "Sonkores eigener Wandler in doppelter Genauigkeit: DSD64 wird zu 88,2-kHz-PCM, linear bis 30 kHz, DSD128 und höher zu 176,4 kHz, linear bis 50-70 kHz. Das Ultraschallrauschen darüber wird herausgefiltert (rund 70 dB weniger als mit dem Wandler von FFmpeg) und erreicht den Verstärker nie. Auch DST-Dateien."
+
+msgctxt "SettingsPage"
+msgid "Converts PCM tracks to DSD with an 8th-order sigma-delta modulator and sends them through the DSD output above. EQ, convolution, ReplayGain and the digital volume are applied before the conversion. DSD512 runs the channels on separate cores."
+msgstr "Wandelt PCM-Titel mit einem Sigma-Delta-Modulator 8. Ordnung in DSD um und gibt sie über den DSD-Ausgang oben aus. EQ, Faltung, ReplayGain und die digitale Lautstärke werden vor der Umwandlung angewendet. DSD512 verteilt die Kanäle auf mehrere Kerne."
+
+msgctxt "SettingsPage"
+msgid "Highest the DAC takes (up to DSD256)"
+msgstr "Das Höchste, das der DAC annimmt (bis DSD256)"
+
+msgctxt "SettingsPage"
+msgid "Test signals"
+msgstr "Testsignale"
+
+msgctxt "SettingsPage"
+msgid "Tones made on the spot, played through the same path as the music to check the DAC and the speakers. What was playing resumes afterwards."
+msgstr "Auf der Stelle erzeugte Töne, über denselben Weg wie die Musik abgespielt, um DAC und Lautsprecher zu prüfen. Was gerade lief, geht danach weiter."
+
+msgctxt "SettingsPage"
+msgid "DAC sample rate"
+msgstr "Abtastrate des DACs"
+
+msgctxt "SettingsPage"
+msgid "A 1 kHz tone at −20 dBFS at the chosen rate: a DAC with a display should show that rate."
+msgstr "Ein 1-kHz-Ton mit −20 dBFS bei der gewählten Rate: ein DAC mit Anzeige sollte diese Rate zeigen."
+
+msgctxt "SettingsPage"
+msgid "If the display shows another rate, something between Sonkore and the DAC converts it: a fixed output rate above, a shared output (PipeWire or WASAPI shared) or the DAC's own limit. The signal path (▣ in the player bar) tells what Sonkore sends."
+msgstr "Zeigt die Anzeige eine andere Rate, wandelt etwas zwischen Sonkore und dem DAC um: eine feste Ausgaberate (oben), ein geteilter Ausgang (PipeWire oder WASAPI geteilt) oder die Grenze des DACs selbst. Der Signalpfad (▣ in der Player-Leiste) zeigt, was Sonkore sendet."
+
+msgctxt "SettingsPage"
+msgid "Speakers"
+msgstr "Lautsprecher"
+
+msgctxt "SettingsPage"
+msgid "The tone on each channel in turn: front left, front right, then centre, LFE, back left, back right, side left, side right."
+msgstr "Der Ton nacheinander auf jedem Kanal: vorne links, vorne rechts, dann Center, LFE, hinten links, hinten rechts, seitlich links, seitlich rechts."
+
+msgctxt "SettingsPage"
+msgid "Multichannel files reach the DAC in this order (the DAC or the receiver places them). A channel that sounds from the wrong speaker is wired or configured the other way round."
+msgstr "Mehrkanaldateien erreichen den DAC in dieser Reihenfolge (der DAC oder der Receiver ordnet sie zu). Ein Kanal aus dem falschen Lautsprecher ist vertauscht verkabelt oder eingestellt."
+
+msgctxt "SettingsPage"
+msgid "Stereo"
+msgstr "Stereo"
+
+msgctxt "SettingsPage"
+msgid "Bit-perfect (DTS)"
+msgstr "Bit-perfect (DTS)"
+
+msgctxt "SettingsPage"
+msgid "A DTS stream inside a CD-quality WAV: a receiver that decodes DTS plays a tone only if every bit arrives untouched, and noise otherwise."
+msgstr "Ein DTS-Strom in einer WAV mit CD-Qualität: ein Receiver, der DTS dekodiert, spielt nur dann einen Ton, wenn jedes Bit unverändert ankommt, sonst Rauschen."
+
+msgctxt "SettingsPage"
+msgid "Turn the amplifier down first: anything that changes the samples on the way (a volume below 100 %, EQ, resampling, dither, a shared output) turns the stream into loud noise. For an AV receiver on S/PDIF or HDMI; a plain DAC plays noise either way."
+msgstr "Zuerst den Verstärker leiser stellen: alles, was die Samples unterwegs verändert (Lautstärke unter 100 %, EQ, Resampling, Dither, ein geteilter Ausgang), macht aus dem Strom lautes Rauschen. Für einen AV-Receiver an S/PDIF oder HDMI; ein einfacher DAC spielt in jedem Fall Rauschen."
+
+msgctxt "SettingsPage"
+msgid "Sound processing"
+msgstr "Klangbearbeitung"
+
+msgctxt "SettingsPage"
+msgid "This track is clipping: lower the headroom."
+msgstr "Dieser Titel übersteuert: Headroom verringern."
+
+msgctxt "SettingsPage"
+msgid "True-peak limiter"
+msgstr "True-Peak-Limiter"
+
+msgctxt "SettingsPage"
+msgid "Peaks above {0} dBTP are brought down to it."
+msgstr "Spitzen über {0} dBTP werden darauf abgesenkt."
+
+msgctxt "SettingsPage"
+msgid "What the EQ pushes above full scale is clipped."
+msgstr "Was der EQ über Vollaussteuerung hebt, wird abgeschnitten."
+
+msgctxt "SettingsPage"
+msgid "At the end of the processing: the true peak (4× oversampled, as a DAC reconstructs the waveform between the samples) is held under the ceiling with a 1.5 ms look-ahead and a 50 ms release, all channels together. Only while some DSP runs; a bit-perfect path is never touched. −1 dBTP is EBU R128's ceiling."
+msgstr "Am Ende der Verarbeitung: Der True Peak (4× überabgetastet, wie ein DAC die Wellenform zwischen den Samples rekonstruiert) wird mit 1,5 ms Vorausschau und 50 ms Release unter der Grenze gehalten, alle Kanäle gemeinsam. Nur während ein DSP läuft; ein bit-perfekter Pfad wird nie angetastet. −1 dBTP ist die Grenze der EBU R128."
+
+msgctxt "SettingsPage"
+msgid "When DSP is active, or the track has more bits than the DAC takes, the result is requantised to the DAC's bit depth. TPDF adds inaudible noise so that step stays linear; noise shaping also moves that noise away from the frequencies the ear hears best, on 16-bit DACs (at 24 bits the noise is already far below any DAC's own, so TPDF is used)."
+msgstr "Bei aktivem DSP, oder wenn der Titel mehr Bits hat, als der DAC annimmt, wird das Ergebnis auf die Bittiefe des DAC requantisiert. TPDF fügt unhörbares Rauschen hinzu, damit dieser Schritt linear bleibt; Noise Shaping verschiebt dieses Rauschen zudem weg von den Frequenzen, die das Ohr am besten hört, bei 16-Bit-DACs (bei 24 Bit liegt das Rauschen schon weit unter dem jedes DAC, daher wird TPDF verwendet)."
+
+msgctxt "SettingsPage"
+msgid "ReplayGain"
+msgstr "ReplayGain"
+
+msgctxt "SettingsPage"
+msgid "Volume levelling"
+msgstr "Lautstärkeangleichung"
+
+msgctxt "SettingsPage"
+msgid "Plays every track, or every album as a whole, at the same loudness (ReplayGain 2.0, EBU R128). Any gain other than 0 dB leaves the bit-perfect path."
+msgstr "Spielt jeden Titel oder jedes Album als Ganzes mit gleicher Lautheit ab (ReplayGain 2.0, EBU R128). Jede Verstärkung außer 0 dB verlässt den Bit-perfect-Pfad."
+
+msgctxt "SettingsPage"
+msgid "Track"
+msgstr "Titel"
+
+msgctxt "SettingsPage"
+msgid "Album"
+msgstr "Album"
+
+msgctxt "SettingsPage"
+msgid "Pre-amplification"
+msgstr "Vorverstärkung"
+
+msgctxt "SettingsPage"
+msgid "Prevent clipping"
+msgstr "Clipping verhindern"
+
+msgctxt "SettingsPage"
+msgid "Loudness analysis"
+msgstr "Lautheitsanalyse"
+
+msgctxt "SettingsPage"
+msgid "Measuring tracks without ReplayGain tags… {0} of {1}. Files are never modified."
+msgstr "Titel ohne ReplayGain-Tags werden gemessen … {0} von {1}. Dateien werden nie verändert."
+
+msgctxt "SettingsPage"
+msgid "{0} tracks have no loudness data yet. They are measured in the background; files are never modified."
+msgstr "{0} Titel haben noch keine Lautheitsdaten. Sie werden im Hintergrund gemessen; Dateien werden nie verändert."
+
+msgctxt "SettingsPage"
+msgid "Every track in the library has loudness data, from its tags or measured by Sonkore."
+msgstr "Alle Titel der Bibliothek haben Lautheitsdaten, aus ihren Tags oder von Sonkore gemessen."
+
+msgctxt "SettingsPage"
+msgid "Current track: no data"
+msgstr "Aktueller Titel: keine Daten"
+
+msgctxt "SettingsPage"
+msgid "Current track: {0} dB"
+msgstr "Aktueller Titel: {0} dB"
+
+msgctxt "SettingsPage"
+msgid "From the internet"
+msgstr "Aus dem Internet"
+
+msgctxt "SettingsPage"
+msgid "Missing covers"
+msgstr "Fehlende Cover"
+
+msgctxt "SettingsPage"
+msgid "Looking up {0} albums… {1} covers fetched so far."
+msgstr "{0} Alben werden gesucht… bisher {1} Cover geladen."
+
+msgctxt "SettingsPage"
+msgid "Albums without a picture get one from the Cover Art Archive as they are shown."
+msgstr "Alben ohne Bild bekommen eines aus dem Cover Art Archive, sobald sie angezeigt werden."
+
+msgctxt "SettingsPage"
+msgid "Only the pictures in your files and folders are shown."
+msgstr "Nur die Bilder aus deinen Dateien und Ordnern werden gezeigt."
+
+msgctxt "SettingsPage"
+msgid "The artist and album names are sent to MusicBrainz to find the album; the picture comes from the Cover Art Archive and is kept in Sonkore's cache, never written into your music folders."
+msgstr "Künstler- und Albumname werden an MusicBrainz gesendet, um das Album zu finden; das Bild kommt aus dem Cover Art Archive und bleibt im Cache von Sonkore, nie in deinen Musikordnern."
+
+msgctxt "SettingsPage"
+msgid "Library folders"
+msgstr "Mediathek-Ordner"
+
+msgctxt "SettingsPage"
+msgid "Stop watching this folder"
+msgstr "Diesen Ordner nicht mehr überwachen"
+
+msgctxt "SettingsPage"
+msgid "Add folder"
+msgstr "Ordner hinzufügen"
+
+msgctxt "SettingsPage"
+msgid "Rescan"
+msgstr "Neu einlesen"
+
+msgctxt "SettingsPage"
+msgid "Scanning… {0} files"
+msgstr "Durchsuche… {0} Dateien"
+
+msgctxt "SettingsPage"
+msgid "{0} tracks indexed"
+msgstr "{0} Titel indiziert"
+
+msgctxt "SettingsPage"
+msgid "Removed tracks"
+msgstr "Entfernte Titel"
+
+msgctxt "SettingsPage"
+msgid "{0} tracks removed by hand."
+msgstr "{0} Titel von Hand entfernt."
+
+msgctxt "SettingsPage"
+msgid "{0} tracks were removed from the library by hand (the files are still on disk). Adding their folder again with + also brings them back."
+msgstr "{0} Titel wurden von Hand aus der Mediathek entfernt (die Dateien sind noch auf der Festplatte). Ihren Ordner erneut mit + hinzuzufügen holt sie ebenfalls zurück."
+
+msgctxt "SettingsPage"
+msgid "Restore"
+msgstr "Wiederherstellen"
+
+msgctxt "SettingsPage"
+msgid "Skipped folders"
+msgstr "Übersprungene Ordner"
+
+msgctxt "SettingsPage"
+msgid "None. Skip folders inside your music folders that are not music (audiobooks, samples, ringtones)."
+msgstr "Keine. Überspringe Ordner in deinen Musikordnern, die keine Musik enthalten (Hörbücher, Samples, Klingeltöne)."
+
+msgctxt "SettingsPage"
+msgid "Scan this folder again"
+msgstr "Diesen Ordner wieder einlesen"
+
+msgctxt "SettingsPage"
+msgid "Skip a folder…"
+msgstr "Ordner überspringen…"
+
+msgctxt "SettingsPage"
+msgid "Skip short files"
+msgstr "Kurze Dateien überspringen"
+
+msgctxt "SettingsPage"
+msgid "Under {0} s"
+msgstr "Unter {0} s"
+
+msgctxt "SettingsPage"
+msgid "Watch folders for changes"
+msgstr "Ordner auf Änderungen überwachen"
+
+msgctxt "SettingsPage"
+msgid "Rescan on startup"
+msgstr "Beim Start neu einlesen"
+
+msgctxt "SettingsPage"
+msgid "Appearance"
+msgstr "Darstellung"
+
+msgctxt "SettingsPage"
+msgid "Theme"
+msgstr "Design"
+
+msgctxt "SettingsPage"
+msgid "Theme default"
+msgstr "Design-Standard"
+
+msgctxt "SettingsPage"
+msgid "Restore defaults"
+msgstr "Standardwerte wiederherstellen"
+
+msgctxt "SettingsPage"
+msgid "Restore all settings"
+msgstr "Alle Einstellungen zurücksetzen"
+
+msgctxt "SettingsPage"
+msgid "Audio, equalizer, pitch, appearance and behaviour go back to how a new installation starts, which plays on any computer. The library, playlists, play queue and saved EQ profiles are kept. Sonkore restarts."
+msgstr "Audio, Equalizer, Tonhöhe, Design und Verhalten kehren zum Zustand einer Neuinstallation zurück, die auf jedem Computer spielt. Bibliothek, Playlists, Warteschlange und gespeicherte EQ-Profile bleiben erhalten. Sonkore startet neu."
+
+msgctxt "SettingsPage"
+msgid "Restore…"
+msgstr "Zurücksetzen…"
+
+msgctxt "SettingsPage"
+msgid "Restore all settings?"
+msgstr "Alle Einstellungen zurücksetzen?"
+
+msgctxt "SettingsPage"
+msgid "Every setting goes back to its default and Sonkore restarts. Your library, playlists, play queue and saved EQ profiles are kept. This cannot be undone."
+msgstr "Alle Einstellungen kehren zum Standard zurück und Sonkore startet neu. Bibliothek, Playlists, Warteschlange und gespeicherte EQ-Profile bleiben erhalten. Dies kann nicht rückgängig gemacht werden."
+
+msgctxt "SettingsPage"
+msgid "Restore and restart"
+msgstr "Zurücksetzen und neu starten"
+
+msgctxt "SettingsPage"
+msgid "Sonkore {0} — 32-bit integer bit-perfect path, 64-bit floating-point DSP."
+msgstr "Sonkore {0} — Bit-perfect-Pfad mit 32-Bit-Ganzzahlen, DSP mit 64-Bit-Gleitkomma."
+
+msgctxt "SettingsPage"
+msgid "Automatic (system)"
+msgstr "Automatisch (System)"
+
+msgctxt "SettingsPage"
+msgid "Accent colour"
+msgstr "Akzentfarbe"
+
+msgctxt "SettingsPage"
+msgid "Interface scale"
+msgstr "Oberflächenskalierung"
+
+msgctxt "SettingsPage"
+msgid "Off"
+msgstr "Aus"
+
+msgctxt "SettingsPage"
+msgid "Mouse wheel speed"
+msgstr "Mausrad-Geschwindigkeit"
+
+msgctxt "SettingsPage"
+msgid "Normal"
+msgstr "Normal"
+
+msgctxt "SettingsPage"
+msgid "Fast"
+msgstr "Schnell"
+
+msgctxt "SettingsPage"
+msgid "Very fast"
+msgstr "Sehr schnell"
+
+msgctxt "SettingsPage"
+msgid "Visualizer"
+msgstr "Visualisierung"
+
+msgctxt "SettingsPage"
+msgid "Bars"
+msgstr "Balken"
+
+msgctxt "SettingsPage"
+msgid "Mirror"
+msgstr "Spiegel"
+
+msgctxt "SettingsPage"
+msgid "Line"
+msgstr "Linie"
+
+msgctxt "SettingsPage"
+msgid "Dots"
+msgstr "Punkte"
+
+msgctxt "SettingsPage"
+msgid "System"
+msgstr "System"
+
+msgctxt "SettingsPage"
+msgid "Window corners"
+msgstr "Fensterecken"
+
+msgctxt "SettingsPage"
+msgid "Square"
+msgstr "Eckig"
+
+msgctxt "SettingsPage"
+msgid "Small"
+msgstr "Klein"
+
+msgctxt "SettingsPage"
+msgid "Rounded"
+msgstr "Abgerundet"
+
+msgctxt "SettingsPage"
+msgid "Large"
+msgstr "Groß"
+
+msgctxt "SettingsPage"
+msgid "Window outline"
+msgstr "Fensterrand"
+
+msgctxt "SettingsPage"
+msgid "Highlight"
+msgstr "Glanz"
+
+msgctxt "SettingsPage"
+msgid "Interface density"
+msgstr "Dichte der Oberfläche"
+
+msgctxt "SettingsPage"
+msgid "Automatic"
+msgstr "Automatisch"
+
+msgctxt "SettingsPage"
+msgid "List density"
+msgstr "Listendichte"
+
+msgctxt "SettingsPage"
+msgid "Dither"
+msgstr "Dither"
+
+msgctxt "SettingsPage"
+msgid "TPDF"
+msgstr "TPDF"
+
+msgctxt "SettingsPage"
+msgid "Noise shaped"
+msgstr "Noise Shaping"
+
+msgctxt "SettingsPage"
+msgid "DSP headroom"
+msgstr "DSP-Headroom"
+
+msgctxt "SettingsPage"
+msgid "Lowers the level ahead of the DSP (EQ, pitch, resampling) so boosts and inter-sample peaks never clip. Not applied while the path is bit-perfect."
+msgstr "Senkt den Pegel vor dem DSP (EQ, Tonhöhe, Resampling), damit Anhebungen und Inter-Sample-Spitzen nie übersteuern. Wird nicht angewendet, solange der Pfad bit-perfect ist."
+
+msgctxt "SettingsPage"
+msgid "Font"
+msgstr "Schriftart"
+
+msgctxt "SettingsPage"
+msgid "Background"
+msgstr "Hintergrund"
+
+msgctxt "SettingsPage"
+msgid "Plain"
+msgstr "Einfarbig"
+
+msgctxt "SettingsPage"
+msgid "Aurora"
+msgstr "Aurora"
+
+msgctxt "SettingsPage"
+msgid "Gradient"
+msgstr "Verlauf"
+
+msgctxt "SettingsPage"
+msgid "Glow"
+msgstr "Schein"
+
+msgctxt "SettingsPage"
+msgid "Comfortable"
+msgstr "Komfortabel"
+
+msgctxt "SettingsPage"
+msgid "Compact"
+msgstr "Kompakt"
+
+msgctxt "SettingsPage"
+msgid "List"
+msgstr "Liste"
+
+msgctxt "SettingsPage"
+msgid "Cover art in track lists"
+msgstr "Cover in Titellisten"
+
+msgctxt "SettingsPage"
+msgid "Alternating row colours"
+msgstr "Abwechselnde Zeilenfarben"
+
+msgctxt "SettingsPage"
+msgid "Lowers the gain when it would push the track's true peak above -1 dBTP (the EBU R128 ceiling), so the resampler, the EQ and the DAC's own filter never clip it."
+msgstr "Senkt die Verstärkung, wenn sie den True Peak des Titels über −1 dBTP (die Obergrenze von EBU R128) bringen würde, damit Resampler, Equalizer und das Filter des DAC ihn nie clippen."
+
+msgctxt "SettingsPage"
+msgid "Clear downloaded covers"
+msgstr "Geladene Cover löschen"
+
+msgctxt "SettingsPage"
+msgid "Track list columns"
+msgstr "Spalten der Titellisten"
+
+msgctxt "SettingsPage"
+msgid "Tick the columns to show and use the arrows to order them. In any list you can also drag a header to move its column, drag the dividers to resize (double-click resets), click a header to sort and right-click it for this menu."
+msgstr "Hake die anzuzeigenden Spalten an und ordne sie mit den Pfeilen. In jeder Liste kannst du auch eine Kopfzeile ziehen, um ihre Spalte zu verschieben, die Trenner ziehen, um die Breite zu ändern (Doppelklick setzt zurück), auf eine Kopfzeile klicken, um zu sortieren, und per Rechtsklick dieses Menü öffnen."
+
+msgctxt "SettingsPage"
+msgid "Move left"
+msgstr "Nach links"
+
+msgctxt "SettingsPage"
+msgid "Move right"
+msgstr "Nach rechts"
+
+msgctxt "SettingsPage"
+msgid "Reset columns"
+msgstr "Spalten zurücksetzen"
+
+msgctxt "SettingsPage"
+msgid "Desktop integration"
+msgstr "Desktop-Integration"
+
+msgctxt "SettingsPage"
+msgid "Tray icon"
+msgstr "Symbol im Infobereich"
+
+msgctxt "SettingsPage"
+msgid "Play / pause, next and previous from the panel (some desktops need a tray extension)."
+msgstr "Wiedergabe/Pause, Weiter und Zurück aus der Leiste (manche Desktops brauchen eine Infobereich-Erweiterung)."
+
+msgctxt "SettingsPage"
+msgid "Close to tray"
+msgstr "In den Infobereich schließen"
+
+msgctxt "SettingsPage"
+msgid "System media controls (MPRIS)"
+msgstr "System-Mediensteuerung (MPRIS)"
+
+msgctxt "SettingsPage"
+msgid "ON"
+msgstr "AN"
+
+msgctxt "SettingsPage"
+msgid "Taskbar buttons"
+msgstr "Taskleisten-Schaltflächen"
+
+msgctxt "SettingsPage"
+msgid "The desktop's media controls, the lock screen, the dock, media keys and playerctl control Sonkore. Off: they no longer see it, and opening a file while Sonkore is running starts a second window."
+msgstr "Die Mediensteuerung des Desktops, der Sperrbildschirm, das Dock, die Medientasten und playerctl steuern Sonkore. Aus: sie sehen ihn nicht mehr, und eine Datei zu öffnen, während Sonkore läuft, startet ein zweites Fenster."
+
+msgctxt "SettingsPage"
+msgid "Previous / play / next in the taskbar thumbnail and the track progress on the taskbar button."
+msgstr "Zurück / Wiedergabe / Weiter in der Taskleisten-Vorschau und der Titelfortschritt auf der Taskleistenschaltfläche."
+
+msgctxt "SettingsPage"
+msgid "Renderer"
+msgstr "Renderer"
+
+msgctxt "SettingsPage"
+msgid "Software"
+msgstr "Software"
+
+msgctxt "SettingsPage"
+msgid "Threaded rendering"
+msgstr "Rendern in eigenem Thread"
+
+msgctxt "SettingsPage"
+msgid "Not used by the software renderer, which always draws on the main thread."
+msgstr "Wird vom Software-Renderer nicht genutzt, der immer im Hauptthread zeichnet."
+
+msgctxt "SettingsPage"
+msgid "Renders on its own thread so animations follow the display refresh rate (144 Hz and up). Recommended."
+msgstr "Rendert in einem eigenen Thread, damit Animationen der Bildwiederholrate folgen (144 Hz und mehr). Empfohlen."
+
+msgctxt "SettingsPage"
+msgid "Show frame rate"
+msgstr "Bildrate anzeigen"
+
+msgctxt "SettingsPage"
+msgid "Keyboard shortcuts"
+msgstr "Tastenkürzel"
+
+msgctxt "SettingsPage"
+msgid "Play / pause"
+msgstr "Wiedergabe / Pause"
+
+msgctxt "SettingsPage"
+msgid "Next / previous track"
+msgstr "Nächster / vorheriger Titel"
+
+msgctxt "SettingsPage"
+msgid "Volume"
+msgstr "Lautstärke"
+
+msgctxt "SettingsPage"
+msgid "Search"
+msgstr "Suchen"
+
+msgctxt "SettingsPage"
+msgid "Select all tracks in a list"
+msgstr "Alle Titel einer Liste auswählen"
+
+msgctxt "SettingsPage"
+msgid "Play the selected track"
+msgstr "Ausgewählten Titel abspielen"
+
+msgctxt "SettingsPage"
+msgid "Remove from playlist / queue"
+msgstr "Aus Playlist / Warteschlange entfernen"
+
+msgctxt "SettingsPage"
+msgid "Equalizer"
+msgstr "Equalizer"
+
+msgctxt "SettingsPage"
+msgid "Quit"
+msgstr "Beenden"
+
+msgctxt "SettingsPage"
+msgid "About"
+msgstr "Über"
+
+msgctxt "Sidebar"
+msgid "Subfolders"
+msgstr "Unterordner"
+
+msgctxt "Sidebar"
+msgid "Scanning… {0} files"
+msgstr "Durchsuche… {0} Dateien"
+
+msgctxt "Sidebar"
+msgid "Rescan library"
+msgstr "Mediathek neu einlesen"
+
+msgctxt "Sidebar"
+msgid "Library"
+msgstr "Mediathek"
+
+msgctxt "Sidebar"
+msgid "Now playing"
+msgstr "Aktuelle Wiedergabe"
+
+msgctxt "Sidebar"
+msgid "Tracks"
+msgstr "Titel"
+
+msgctxt "Sidebar"
+msgid "Favorites"
+msgstr "Favoriten"
+
+msgctxt "Sidebar"
+msgid "Albums"
+msgstr "Alben"
+
+msgctxt "Sidebar"
+msgid "Artists"
+msgstr "Künstler"
+
+msgctxt "Sidebar"
+msgid "Genres"
+msgstr "Genres"
+
+msgctxt "Sidebar"
+msgid "Folders"
+msgstr "Ordner"
+
+msgctxt "Sidebar"
+msgid "Add music folder"
+msgstr "Musikordner hinzufügen"
+
+msgctxt "Sidebar"
+msgid "Playlists"
+msgstr "Playlists"
+
+msgctxt "Sidebar"
+msgid "New playlist"
+msgstr "Neue Playlist"
+
+msgctxt "Sidebar"
+msgid "New playlist…"
+msgstr "Neue Playlist…"
+
+msgctxt "Sidebar"
+msgid "New playlist from a folder…"
+msgstr "Neue Playlist aus einem Ordner…"
+
+msgctxt "Sidebar"
+msgid "Import M3U…"
+msgstr "M3U importieren…"
+
+msgctxt "Sidebar"
+msgid "Play"
+msgstr "Abspielen"
+
+msgctxt "Sidebar"
+msgid "Rename…"
+msgstr "Umbenennen…"
+
+msgctxt "Sidebar"
+msgid "Delete playlist…"
+msgstr "Playlist löschen…"
+
+msgctxt "Sidebar"
+msgid "Rename playlist"
+msgstr "Playlist umbenennen"
+
+msgctxt "Sidebar"
+msgid "Rename"
+msgstr "Umbenennen"
+
+msgctxt "Sidebar"
+msgid "Delete “{0}”?"
+msgstr "„{0}“ löschen?"
+
+msgctxt "Sidebar"
+msgid "The playlist is removed; its tracks stay in the library and on disk."
+msgstr "Die Playlist wird gelöscht; ihre Titel bleiben in der Bibliothek und auf der Festplatte."
+
+msgctxt "Sidebar"
+msgid "Delete playlist"
+msgstr "Playlist löschen"
+
+msgctxt "Sidebar"
+msgid "No playlists yet. Press + or drop tracks here."
+msgstr "Noch keine Wiedergabelisten. Drücke + oder lege Titel hier ab."
+
+msgctxt "Sidebar"
+msgid "Added {0} to “{1}”"
+msgstr "{0} zu „{1}“ hinzugefügt"
+
+msgctxt "Sidebar"
+msgid "Drop to create a playlist"
+msgstr "Ablegen, um eine Playlist zu erstellen"
+
+msgctxt "SignalPathList"
+msgid "Lossless"
+msgstr "Verlustfrei"
+
+msgctxt "SignalPathList"
+msgid "High quality"
+msgstr "Hohe Qualität"
+
+msgctxt "SignalPathList"
+msgid "Enhanced"
+msgstr "Verbessert"
+
+msgctxt "SignalPathList"
+msgid "Warning"
+msgstr "Warnung"
+
+msgctxt "SignalPathList"
+msgid "Low quality"
+msgstr "Niedrige Qualität"
+
+msgctxt "SignalPathList"
+msgid "Nothing is playing."
+msgstr "Es wird nichts abgespielt."
+
+msgctxt "SignalPathList"
+msgid "Use automatic headroom"
+msgstr "Automatischen Headroom verwenden"
+
+msgctxt "SignalPathPopup"
+msgid "Signal path"
+msgstr "Signalweg"
+
+msgctxt "SignalPathPopup"
+msgid "BIT-PERFECT"
+msgstr "BIT-PERFECT"
+
+msgctxt "StatusCard"
+msgid "On"
+msgstr "An"
+
+msgctxt "StatusCard"
+msgid "Off"
+msgstr "Aus"
+
+msgctxt "SubfolderLevels"
+msgid "Subfolders"
+msgstr "Unterordner"
+
+msgctxt "SubfolderLevels"
+msgid "Fewer levels"
+msgstr "Weniger Ebenen"
+
+msgctxt "SubfolderLevels"
+msgid "More levels"
+msgstr "Mehr Ebenen"
+
+msgctxt "Theme"
+msgid "Deep black · green"
+msgstr "Tiefschwarz · Grün"
+
+msgctxt "Theme"
+msgid "Charcoal · green"
+msgstr "Anthrazit · grün"
+
+msgctxt "Theme"
+msgid "Bright · blue"
+msgstr "Hell · blau"
+
+msgctxt "Theme"
+msgid "Dark grey · blue"
+msgstr "Dunkelgrau · blau"
+
+msgctxt "Theme"
+msgid "Dark · red"
+msgstr "Dunkel · rot"
+
+msgctxt "Theme"
+msgid "Soft grey"
+msgstr "Sanftes Grau"
+
+msgctxt "Theme"
+msgid "Cool blue-grey"
+msgstr "Kühles Blaugrau"
+
+msgctxt "Theme"
+msgid "Ink · violet"
+msgstr "Tinte · violett"
+
+msgctxt "Theme"
+msgid "Warm light"
+msgstr "Warmes Hell"
+
+msgctxt "Theme"
+msgid "True black · amber"
+msgstr "Reines Schwarz · Bernstein"
+
+msgctxt "Theme"
+msgid "Muted plum · rose"
+msgstr "Gedämpfte Pflaume · Rosé"
+
+msgctxt "Theme"
+msgid "Compact desktop"
+msgstr "Kompakter Desktop"
+
+msgctxt "Theme"
+msgid "Navy · cyan"
+msgstr "Marineblau · Cyan"
+
+msgctxt "Theme"
+msgid "Deep green · moss"
+msgstr "Tiefgrün · Moos"
+
+msgctxt "Theme"
+msgid "Warm dark · orange"
+msgstr "Warmes Dunkel · Orange"
+
+msgctxt "Theme"
+msgid "Coffee · cream"
+msgstr "Kaffee · Creme"
+
+msgctxt "Theme"
+msgid "Night · violet & mint"
+msgstr "Nacht · Violett & Mint"
+
+msgctxt "Theme"
+msgid "Synth night · magenta"
+msgstr "Synth-Nacht · Magenta"
+
+msgctxt "Theme"
+msgid "Light · pink"
+msgstr "Hell · rosa"
+
+msgctxt "Theme"
+msgid "Light · warm beige"
+msgstr "Hell · warmes Beige"
+
+msgctxt "Theme"
+msgid "Light · violet"
+msgstr "Hell · violett"
+
+msgctxt "Theme"
+msgid "Light · icy blue"
+msgstr "Hell · eisblau"
+
+msgctxt "Theme"
+msgid "High contrast · light"
+msgstr "Hoher Kontrast · hell"
+
+msgctxt "Theme"
+msgid "High contrast · dark"
+msgstr "Hoher Kontrast · dunkel"
+
+msgctxt "Theme"
+msgid "Editor dark · blue"
+msgstr "Editor dunkel · Blau"
+
+msgctxt "Theme"
+msgid "Editor light · blue"
+msgstr "Editor hell · Blau"
+
+msgctxt "Theme"
+msgid "IDE dark · orange"
+msgstr "IDE dunkel · Orange"
+
+msgctxt "Theme"
+msgid "IDE dark · cobalt"
+msgstr "IDE dunkel · Kobalt"
+
+msgctxt "Theme"
+msgid "Arctic night · frost"
+msgstr "Arktische Nacht · Frost"
+
+msgctxt "Theme"
+msgid "Night · purple & pink"
+msgstr "Nacht · Lila & Pink"
+
+msgctxt "Theme"
+msgid "Olive night · lime"
+msgstr "Olivnacht · Limette"
+
+msgctxt "Theme"
+msgid "Deep teal · blue"
+msgstr "Dunkles Petrol · Blau"
+
+msgctxt "Theme"
+msgid "Warm light · blue"
+msgstr "Warm hell · Blau"
+
+msgctxt "Theme"
+msgid "Retro brown · amber"
+msgstr "Retrobraun · Bernstein"
+
+msgctxt "Theme"
+msgid "City night · periwinkle"
+msgstr "Stadtnacht · Immergrün"
+
+msgctxt "Theme"
+msgid "Soft night · lilac"
+msgstr "Sanfte Nacht · Flieder"
+
+msgctxt "Theme"
+msgid "Slate night · sky"
+msgstr "Schiefernacht · Himmelblau"
+
+msgctxt "Theme"
+msgid "Deep navy · bright blue"
+msgstr "Marineblau · Hellblau"
+
+msgctxt "Theme"
+msgid "Graphite · green"
+msgstr "Graphit · Grün"
+
+msgctxt "TrackColumns"
+msgid "Title"
+msgstr "Titel"
+
+msgctxt "TrackColumns"
+msgid "Artist"
+msgstr "Interpret"
+
+msgctxt "TrackColumns"
+msgid "Album"
+msgstr "Album"
+
+msgctxt "TrackColumns"
+msgid "Album artist"
+msgstr "Albuminterpret"
+
+msgctxt "TrackColumns"
+msgid "Genre"
+msgstr "Genre"
+
+msgctxt "TrackColumns"
+msgid "Year"
+msgstr "Jahr"
+
+msgctxt "TrackColumns"
+msgid "Track"
+msgstr "Titel"
+
+msgctxt "TrackColumns"
+msgid "Disc"
+msgstr "CD"
+
+msgctxt "TrackColumns"
+msgid "Time"
+msgstr "Dauer"
+
+msgctxt "TrackColumns"
+msgid "Format"
+msgstr "Format"
+
+msgctxt "TrackColumns"
+msgid "Codec"
+msgstr "Codec"
+
+msgctxt "TrackColumns"
+msgid "Sample rate"
+msgstr "Abtastrate"
+
+msgctxt "TrackColumns"
+msgid "Bit depth"
+msgstr "Bittiefe"
+
+msgctxt "TrackColumns"
+msgid "Channels"
+msgstr "Kanäle"
+
+msgctxt "TrackColumns"
+msgid "Bitrate"
+msgstr "Bitrate"
+
+msgctxt "TrackColumns"
+msgid "Size"
+msgstr "Größe"
+
+msgctxt "TrackColumns"
+msgid "File name"
+msgstr "Dateiname"
+
+msgctxt "TrackColumns"
+msgid "Folder"
+msgstr "Ordner"
+
+msgctxt "TrackColumns"
+msgid "Date added"
+msgstr "Hinzugefügt am"
+
+msgctxt "TrackColumns"
+msgid "Modified"
+msgstr "Geändert"
+
+msgctxt "TrackColumns"
+msgid "Favorite"
+msgstr "Favorit"
+
+msgctxt "TrackColumns"
+msgid "Mono"
+msgstr "Mono"
+
+msgctxt "TrackColumns"
+msgid "Stereo"
+msgstr "Stereo"
+
+msgctxt "TrackColumns"
+msgid "Reset columns"
+msgstr "Spalten zurücksetzen"
+
+msgctxt "TrackMenu"
+msgid "Play"
+msgstr "Abspielen"
+
+msgctxt "TrackMenu"
+msgid "Add to queue"
+msgstr "Zur Warteschlange hinzufügen"
+
+msgctxt "TrackMenu"
+msgid "Added to queue"
+msgstr "Zur Warteschlange hinzugefügt"
+
+msgctxt "TrackMenu"
+msgid "Add to playlist"
+msgstr "Zur Playlist hinzufügen"
+
+msgctxt "TrackMenu"
+msgid "New playlist…"
+msgstr "Neue Playlist…"
+
+msgctxt "TrackMenu"
+msgid "Added to “{0}”"
+msgstr "Zu „{0}“ hinzugefügt"
+
+msgctxt "TrackMenu"
+msgid "Open containing folder"
+msgstr "Enthaltenden Ordner öffnen"
+
+msgctxt "TrackMenu"
+msgid "Remove from queue"
+msgstr "Aus der Warteschlange entfernen"
+
+msgctxt "TrackMenu"
+msgid "Remove from playlist"
+msgstr "Aus der Playlist entfernen"
+
+msgctxt "TrackMenu"
+msgid "Remove {0} tracks from library"
+msgstr "{0} Titel aus der Mediathek entfernen"
+
+msgctxt "TrackMenu"
+msgid "Remove from library"
+msgstr "Aus der Mediathek entfernen"
+
+msgctxt "TrackMenu"
+msgid "Remove folder from library"
+msgstr "Ordner aus der Mediathek entfernen"
+
+msgctxt "TrackRow"
+msgid "Remove from favorites"
+msgstr "Aus Favoriten entfernen"
+
+msgctxt "TrackRow"
+msgid "Add to favorites"
+msgstr "Zu Favoriten hinzufügen"
+
+msgctxt "TrackTable"
+msgid "Library order"
+msgstr "Reihenfolge der Bibliothek"
+
+msgctxt "TrackTable"
+msgid "As in the folder (A → Z)"
+msgstr "Wie im Ordner (A → Z)"
+
+msgctxt "TrackTable"
+msgid "As in the folder (Z → A)"
+msgstr "Wie im Ordner (Z → A)"
+
+msgctxt "TrackTable"
+msgid "Title"
+msgstr "Titel"
+
+msgctxt "TrackTable"
+msgid "Artist"
+msgstr "Interpret"
+
+msgctxt "TrackTable"
+msgid "Album artist"
+msgstr "Albuminterpret"
+
+msgctxt "TrackTable"
+msgid "Album"
+msgstr "Album"
+
+msgctxt "TrackTable"
+msgid "Genre"
+msgstr "Genre"
+
+msgctxt "TrackTable"
+msgid "Year (oldest first)"
+msgstr "Jahr (älteste zuerst)"
+
+msgctxt "TrackTable"
+msgid "Year (newest first)"
+msgstr "Jahr (neueste zuerst)"
+
+msgctxt "TrackTable"
+msgid "Duration (shortest first)"
+msgstr "Dauer (kürzeste zuerst)"
+
+msgctxt "TrackTable"
+msgid "Duration (longest first)"
+msgstr "Dauer (längste zuerst)"
+
+msgctxt "TrackTable"
+msgid "File name"
+msgstr "Dateiname"
+
+msgctxt "TrackTable"
+msgid "Recently added"
+msgstr "Zuletzt hinzugefügt"
+
+msgctxt "TrackTable"
+msgid "Recently modified"
+msgstr "Kürzlich geändert"
+
+msgctxt "TrackTable"
+msgid "Favorites first"
+msgstr "Favoriten zuerst"
+
+msgctxt "TrackTable"
+msgid "Reset columns"
+msgstr "Spalten zurücksetzen"
+
+msgctxt "TrackTable"
+msgid "Sort"
+msgstr "Sortieren"
+
+msgctxt "TrackTable"
+msgid "{0} tracks"
+msgstr "{0} Titel"
+
+msgctxt "TracksPage"
+msgid "{0} h {1} min"
+msgstr "{0} h {1} min"
+
+msgctxt "TracksPage"
+msgid "{0} min"
+msgstr "{0} min"
+
+msgctxt "TracksPage"
+msgid "Tracks"
+msgstr "Titel"
+
+msgctxt "TracksPage"
+msgid "Favorites"
+msgstr "Favoriten"
+
+msgctxt "TracksPage"
+msgid "Scanning… {0} files"
+msgstr "Durchsuche… {0} Dateien"
+
+msgctxt "TracksPage"
+msgid "{0} of {1} tracks"
+msgstr "{0} von {1} Titeln"
+
+msgctxt "TracksPage"
+msgid "  ·  {0} selected"
+msgstr "  ·  {0} ausgewählt"
+
+msgctxt "TracksPage"
+msgid "Genre"
+msgstr "Genre"
+
+msgctxt "TracksPage"
+msgid "Artist"
+msgstr "Interpret"
+
+msgctxt "TracksPage"
+msgid "Album"
+msgstr "Album"
+
+msgctxt "TracksPage"
+msgid "No favorites yet"
+msgstr "Noch keine Favoriten"
+
+msgctxt "TracksPage"
+msgid "Click the heart on any track to keep it here."
+msgstr "Klicke bei einem Titel auf das Herz, um ihn hier zu behalten."
+
+msgctxt "TracksPage"
+msgid "Add a music folder — it's watched and kept in sync automatically.\nFLAC, WAV, MP3, ALAC, AAC, Vorbis, DSD and CUE sheets."
+msgstr "Füge einen Musikordner hinzu – er wird überwacht und automatisch synchron gehalten.\nFLAC, WAV, MP3, ALAC, AAC, Vorbis, DSD und CUE-Sheets."
+
+msgctxt "TracksPage"
+msgid "Add music folder"
+msgstr "Musikordner hinzufügen"
+
+msgctxt "TracksPage"
+msgid "Add files"
+msgstr "Dateien hinzufügen"
+
+msgctxt "TracksPage"
+msgid "Your library is empty"
+msgstr "Deine Mediathek ist leer"
+
+msgctxt "TracksPage"
+msgid "No tracks match “{0}”"
+msgstr "Keine Titel passen zu „{0}“"
+
+msgctxt "VolumeModeMenu"
+msgid "Volume control"
+msgstr "Lautstärkeregelung"
+
+msgctxt "VolumeModeMenu"
+msgid "Automatic"
+msgstr "Automatisch"
+
+msgctxt "VolumeModeMenu"
+msgid "The system volume with a PipeWire output (the DAC's own control where it has one); fixed at 100 % on a direct output; Sonkore's own volume otherwise."
+msgstr "Die Systemlautstärke bei einer PipeWire-Ausgabe (der eigene Regler des DAC, wenn er einen hat); fest bei 100 % bei einer direkten Ausgabe; sonst Sonkores eigene Lautstärke."
+
+msgctxt "VolumeModeMenu"
+msgid "Fixed at 100 % on a direct output (set it on the DAC or the amplifier); Sonkore's own volume otherwise."
+msgstr "Auf 100 % fixiert bei direkter Ausgabe (am DAC oder Verstärker einstellen); sonst Sonkores eigene Lautstärke."
+
+msgctxt "VolumeModeMenu"
+msgid "Digital"
+msgstr "Digital"
+
+msgctxt "VolumeModeMenu"
+msgid "Sonkore scales the samples: below 100 % the path is no longer bit-perfect."
+msgstr "Sonkore skaliert die Samples: unter 100 % ist der Signalweg nicht mehr bit-perfect."
+
+msgctxt "VolumeModeMenu"
+msgid "DAC"
+msgstr "DAC"
+
+msgctxt "VolumeModeMenu"
+msgid "Moves the DAC's own volume control, through PipeWire or directly: the audio stays bit-perfect."
+msgstr "Bewegt den eigenen Lautstärkeregler des DAC, über PipeWire oder direkt: Das Audio bleibt bit-perfect."
+
+msgctxt "VolumeModeMenu"
+msgid "Moves the DAC's own volume control: the audio stays bit-perfect."
+msgstr "Bewegt den eigenen Lautstärkeregler des DAC: der Ton bleibt bit-perfect."
+
+msgctxt "VolumeModeMenu"
+msgid "Audio settings…"
+msgstr "Audio-Einstellungen…"
+
+msgctxt "WinEndpointVolume"
+msgid "Output volume"
+msgstr "Ausgangslautstärke"
+
+msgctxt "WindowButtons"
+msgid "Restore"
+msgstr "Wiederherstellen"
+
+msgctxt "WindowButtons"
+msgid "Maximize"
+msgstr "Maximieren"
+
+msgctxt "WindowButtons"
+msgid "Minimize"
+msgstr "Minimieren"
+
+msgctxt "WindowButtons"
+msgid "Close"
+msgstr "Schließen"
+
+msgctxt "SettingsPage"
+msgid "Restart Sonkore to show it in the new language."
+msgstr "Starte Sonkore neu, um es in der neuen Sprache zu sehen."
+
+msgctxt "DspController"
+msgid "The audio output stopped"
+msgstr "Die Audioausgabe wurde beendet"
+

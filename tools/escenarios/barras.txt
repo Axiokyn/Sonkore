@@ -1,0 +1,19 @@
+# Las barras de desplazamiento: ocultas con la lista
+# quieta, visibles mientras se desplaza y hasta 0,9 s después. Rust dejaba la
+# barra de Slint siempre a la vista en Álbumes, Artistas/Géneros y Sonando
+# ahora.
+tamaño 760 640
+esperar 1
+clic 70 214
+estado page=albums
+esperar 1.2
+captura albumes-quieta
+rueda 400 300 3
+esperar 0.3
+captura albumes-desplazando
+esperar 1.6
+captura albumes-despues
+clic 70 94
+estado page=playing
+esperar 1.2
+captura sonando-quieta

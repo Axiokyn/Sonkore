@@ -1,0 +1,1176 @@
+// The Equalizer window: the
+// status card, the profile toolbar, the response graph with draggable
+// points, the preamp, the graphic sliders or the parametric bands, and the
+// AutoEQ search. Rust (equalizer_ui.rs) fills `EqUi` and answers its
+// callbacks.
+
+import { Theme } from "theme.slint";
+import { Icons } from "icons.slint";
+import { IconButton, Badge } from "controls.slint";
+import { WindowActions, WindowOutline, ResizeGrips } from "chrome.slint";
+import { AppWindowBar, Card, LSwitch, StatusCard, Pill, NumField, CheckBox, ComboBox, Caps, WindowGround, TextMetrics } from "panels.slint";
+
+// A band as the window shows it.
+export struct EqBand {
+    kind: string,           // "PK", "LSC"…
+    type-index: int,        // in EqUi.filter-types
+    enabled: bool,
+    has-gain: bool,
+    gain: float,
+    t: float,               // its frequency on the log axis, 0..1 (20 Hz..20 kHz)
+    y-db: float,            // its point's height: the gain (if it has one) plus the preamp
+    freq-text: string,      // "1200.0"
+    gain-text: string,      // "-2.5"
+    q-text: string,         // "0.71"
+    freq-label: string,     // "1.2k" (under the slider)
+    gain-label: string,     // "+2.5" (over the slider)
+    tip: string,            // "Peak · 1.2k Hz · +3.0 dB · Q 2.00"
+}
+
+// A line of the frequency grid.
+export struct EqMark {
+    t: float,
+    label: string,
+}
+
+// A line of the profile menu: 0 a heading (disabled), 1 a profile, 2 a separator.
+export struct EqMenuEntry {
+    kind: int,
+    text: string,
+    checked: bool,
+}
+
+export struct AutoEqRow {
+    name: string,
+    by: string,
+}
+
+export global EqUi {
+    callback quit();                         // Ctrl+Q in the window
+    in property <bool> enabled;
+    in property <bool> graphic: true;
+    in property <bool> linear-phase;
+    in property <float> preamp;
+    in property <string> preamp-text: "0.0";
+    in property <string> profile;              // shown: "Custom" when none
+    in property <bool> user-profile;           // the current one can be deleted
+    in property <string> subtitle;
+    in property <string> clip-text;
+    in property <bool> clipping;
+    in property <string> clip-reserve;         // the longest badge text
+    in property <[EqBand]> bands;
+    in property <bool> can-add: true;
+    in property <[string]> filter-types;       // labels, in the order of EqBand.type-index
+    in property <[float]> db-marks;
+    in property <[EqMark]> freq-marks;
+    in property <float> range: 12;
+    in property <string> curve;                // x 0..1000, y in the graph's pixels
+    in property <string> area;
+    in property <[EqMenuEntry]> menu;
+    // AutoEQ.
+    in property <[AutoEqRow]> autoeq-results;
+    in property <bool> autoeq-busy;
+    in property <string> autoeq-status;
+    in-out property <string> autoeq-text;
+
+    callback set-enabled(bool);
+    callback set-mode(bool);                   // true: graphic
+    callback set-preamp(float);
+    callback preamp-edited(string);
+    callback auto-preamp();
+    callback set-linear-phase(bool);
+    callback set-gain(int, float);
+    callback band-toggled(int, bool);
+    callback band-type(int, int);
+    callback band-edited(int, string, string); // index, "freq" | "gain" | "q", text
+    callback add-band();
+    callback remove-band(int);
+    callback reset();
+    callback load-profile(int);                // index in `menu`
+    callback save-profile(string);
+    callback delete-profile();
+    callback import-profile();
+    callback export-profile();
+    // The graph: a point pressed (with the graph's size), dragged to x, y,
+    // released, reset (right click), put back on its frequency (double
+    // click), its Q changed (wheel up / down).
+    callback point-pressed(int, length, length);
+    callback point-dragged(int, length, length);
+    callback point-reset(int);
+    callback point-standard(int);
+    callback point-wheel(int, bool);
+    callback autoeq-search(string);
+    callback autoeq-refresh();
+    callback autoeq-apply(int);
+}
+
+// The response graph (ResponseGraph): the dB and frequency grid, the curve
+// over a fill down to 0 dB, a point per band.
+component ResponseGraph inherits Rectangle {
+    clip: true;
+    property <length> kl: 34px;
+    property <length> kt: 8px;
+    property <length> kb: 20px;
+    property <length> pw: root.width - kl;
+    property <length> ph: root.height - kb - kt;
+    property <float> r: EqUi.range;
+    property <int> hover: -1;
+    property <int> drag: -1;
+    pure function y-of(db: float) -> length { kt + ph * (r - db) / (2 * r) }
+
+    for db in EqUi.db-marks: Rectangle {
+        property <length> at: round(root.y-of(db) / 1px) * 1px;
+        Rectangle {
+            x: root.kl;
+            y: parent.at;
+            width: root.width - root.kl;
+            height: 1px;
+            background: db == 0 ? Theme.text-faint.with-alpha(0.6) : Theme.border;
+        }
+        Text {
+            x: root.kl - 6px - self.width;
+            y: parent.at - 7px;
+            width: self.preferred-width;
+            text: (db > 0 ? "+" : "") + db;
+            font-size: 10px;
+            color: Theme.text-faint;
+        }
+    }
+    for m in EqUi.freq-marks: Rectangle {
+        property <length> at: round((root.kl + root.pw * m.t) / 1px) * 1px;
+        Rectangle {
+            x: parent.at;
+            y: 0;
+            width: 1px;
+            height: root.height - root.kb;
+            background: Theme.border;
+        }
+        Text {
+            property <length> cx: min(max(parent.at + 0.5px, root.kl + 8px), root.width - 12px);
+            x: self.cx - self.preferred-width / 2;
+            y: root.height - 15px;
+            width: self.preferred-width;
+            text: m.label;
+            font-size: 10px;
+            color: Theme.text-faint;
+        }
+    }
+    // The fill between the curve and 0 dB.
+    Path {
+        x: root.kl;
+        y: 0;
+        width: root.pw;
+        height: root.height - root.kb;
+        viewbox-x: 0;
+        viewbox-y: 0;
+        viewbox-width: 1000;
+        viewbox-height: (root.height - root.kb) / 1px;
+        fit: fill;
+        commands: EqUi.area;
+        fill: @linear-gradient(180deg, Theme.accent.with-alpha(EqUi.enabled ? 0.35 : 0.08) 0%,
+                                       Theme.accent.with-alpha(EqUi.enabled ? 0.06 : 0.02) 50%,
+                                       Theme.accent.with-alpha(EqUi.enabled ? 0.35 : 0.08) 100%);
+    }
+    // The curve, 2.2 px (the element grows by the stroke so the view box
+    // maps to the plot exactly).
+    Path {
+        x: root.kl - 1.1px;
+        y: -1.1px;
+        width: root.pw + 2.2px;
+        height: root.height - root.kb + 2.2px;
+        viewbox-x: 0;
+        viewbox-y: 0;
+        viewbox-width: 1000;
+        viewbox-height: (root.height - root.kb) / 1px;
+        fit: fill;
+        commands: EqUi.curve;
+        stroke: EqUi.enabled ? Theme.accent : Theme.text-faint;
+        stroke-width: 2.2px;
+        stroke-line-cap: butt;
+        stroke-line-join: round;
+    }
+    for b[i] in EqUi.bands: Rectangle {
+        property <length> cx: root.kl + root.pw * b.t;
+        property <length> cy: root.y-of(b.y-db);
+        property <length> d: i == root.hover || i == root.drag ? 18px : 14px;
+        x: round((self.cx - self.d / 2) / 1px) * 1px;
+        y: round((self.cy - self.d / 2) / 1px) * 1px;
+        width: self.d;
+        height: self.d;
+        border-radius: self.d / 2;
+        background: b.enabled ? Theme.accent : Theme.text-faint;
+        border-width: 2px;
+        border-color: Theme.surface;
+        opacity: EqUi.enabled ? 1 : 0.5;
+        if !EqUi.graphic: Text {
+            x: round((parent.width - self.preferred-width) / 2 / 1px) * 1px;
+            y: round((parent.height - self.preferred-height) / 2 / 1px) * 1px;
+            text: i + 1;
+            font-size: 8px;
+            font-weight: 700;
+            color: Theme.on-accent;
+        }
+        area := TouchArea {
+            x: parent.cx - parent.x - 11px;
+            y: parent.cy - parent.y - 11px;
+            width: 22px;
+            height: 22px;
+            enabled: EqUi.enabled;
+            mouse-cursor: self.pressed ? grabbing : grab;
+            changed has-hover => {
+                if (self.has-hover) { root.hover = i; } else if (root.hover == i) { root.hover = -1; }
+            }
+            pointer-event(e) => {
+                if (e.kind == PointerEventKind.down && e.button == PointerEventButton.right) {
+                    EqUi.point-reset(i);
+                } else if (e.kind == PointerEventKind.down && e.button == PointerEventButton.left) {
+                    root.drag = i;
+                    EqUi.point-pressed(i, root.width, root.height);
+                } else if (e.kind == PointerEventKind.up) {
+                    root.drag = -1;
+                }
+            }
+            moved => {
+                if (self.pressed && root.drag == i) {
+                    EqUi.point-dragged(i, parent.x + self.x + self.mouse-x, parent.y + self.y + self.mouse-y);
+                }
+            }
+            double-clicked => { EqUi.point-standard(i); }
+            scroll-event(e) => {
+                if (EqUi.graphic || e.delta-y == 0) { return reject; }
+                EqUi.point-wheel(i, e.delta-y > 0);
+                accept
+            }
+        }
+    }
+    // The point's values while it is under the pointer.
+    property <int> tip: root.drag >= 0 ? root.drag : root.hover;
+    if root.tip >= 0 && root.tip < EqUi.bands.length: Rectangle {
+        property <EqBand> b: EqUi.bands[root.tip];
+        property <length> cx: root.kl + root.pw * self.b.t;
+        property <length> cy: root.y-of(self.b.y-db);
+        x: min(self.cx + 14px, root.width - self.width);
+        y: self.cy + 14px > root.height - self.height ? self.cy - 14px - self.height : self.cy + 14px;
+        width: tip-text.preferred-width + 16px;
+        height: tip-text.preferred-height + 8px;
+        border-radius: 4px;
+        background: Theme.surface-hi;
+        border-width: 1px;
+        border-color: Theme.border;
+        tip-text := Text {
+            x: 8px;
+            text: parent.b.tip;
+            font-size: 12px;
+            color: Theme.text;
+            vertical-alignment: center;
+        }
+    }
+}
+
+// A vertical slider: a 4 px track, a tick at 0 dB, the fill from
+// 0 dB to the value, an 18 × 10 handle; the whole column grabs it.
+component Fader inherits Rectangle {
+    in property <int> index;
+    in property <float> gain;
+    width: 28px;
+    property <float> position: 1 - (root.gain + 12) / 24;
+    property <length> zero: root.height / 2;
+    property <length> at: root.position * root.height;
+    Rectangle {
+        x: 12px;
+        width: 4px;
+        height: root.height;
+        border-radius: 2px;
+        background: Theme.border;
+    }
+    Rectangle {
+        x: 8px;
+        y: round(root.height / 2 / 1px) * 1px;
+        width: 12px;
+        height: 1px;
+        background: Theme.text-faint;
+    }
+    if abs(root.zero - root.at) > 0: Rectangle {
+        x: 12px;
+        y: min(root.zero, root.at);
+        width: 4px;
+        height: abs(root.zero - root.at);
+        border-radius: 2px;
+        background: EqUi.enabled ? Theme.accent : Theme.text-faint;
+    }
+    Rectangle {
+        x: 5px;
+        y: round(root.position * (root.height - 10px) / 1px) * 1px;
+        width: 18px;
+        height: 10px;
+        border-radius: Theme.radius <= 2px ? 1px : 5px;
+        background: Theme.dark ? white : Theme.surface;
+        border-width: area.pressed ? 2px : 1px;
+        border-color: area.pressed ? Theme.accent : Theme.border;
+    }
+    pure function gain-at(y: length) -> float {
+        let v = 1 - clamp((y - 5px) / max(1px, root.height - 10px), 0, 1);
+        round((-12 + v * 24) * 2) / 2
+    }
+    area := TouchArea {
+        enabled: EqUi.enabled;
+        mouse-cursor: pointer;
+        pointer-event(e) => {
+            if (e.kind == PointerEventKind.down && e.button == PointerEventButton.left) {
+                EqUi.set-gain(root.index, root.gain-at(self.mouse-y));
+            }
+        }
+        moved => {
+            if (self.pressed) { EqUi.set-gain(root.index, root.gain-at(self.mouse-y)); }
+        }
+        double-clicked => { EqUi.set-gain(root.index, 0); }
+    }
+}
+
+// The preamp's slider (FlatSlider with its knob always shown, -24..+6 dB
+// in tenths), drawn in the volume's style.
+component PreampSlider inherits Rectangle {
+    property <float> span: clamp((EqUi.preamp * 10 + 240) / 300, 0, 1);
+    property <string> style: Theme.volume-style;
+    property <bool> active: (area.has-hover || area.pressed) && EqUi.enabled;
+    property <length> th: style == "pill" ? 6px : style == "thick" ? 10px : style == "classic" ? 8px : style == "led" ? 10px
+                        : style == "ring" ? 3px : style == "line" && active ? 5px : 4px;
+    property <color> fill: !EqUi.enabled ? Theme.text-faint : active ? Theme.accent : Theme.accent.darker(Theme.dark ? 5% : 0%);
+    Rectangle {
+        opacity: EqUi.enabled ? 1 : 0.45;
+        Rectangle {
+            y: (root.height - root.th) / 2;
+            height: root.th;
+            border-radius: root.style == "classic" ? 2px : root.th / 2;
+            background: Theme.text.with-alpha(Theme.dark ? 0.08 : 0.13);
+        }
+        Rectangle {
+            x: 0;
+            y: (root.height - root.th) / 2;
+            width: root.span * root.width;
+            height: root.th;
+            border-radius: root.style == "classic" ? 2px : root.th / 2;
+            background: root.fill;
+        }
+        if EqUi.enabled: Rectangle {
+            property <length> d: area.pressed ? 15px : 13px;
+            x: root.span * (root.width - self.d);
+            y: (root.height - self.d) / 2;
+            width: self.d;
+            height: self.d;
+            border-radius: self.d / 2;
+            background: Theme.dark ? white : Theme.surface;
+            border-width: Theme.dark ? 0 : 1px;
+            border-color: Theme.border;
+        }
+    }
+    pure function value-at(x: length) -> float {
+        let t = clamp((x - 6.5px) / max(1px, root.width - 13px), 0, 1);
+        round(-240 + t * 300) / 10
+    }
+    area := TouchArea {
+        enabled: EqUi.enabled;
+        mouse-cursor: pointer;
+        pointer-event(e) => {
+            if (e.kind == PointerEventKind.down && e.button == PointerEventButton.left) {
+                EqUi.set-preamp(root.value-at(self.mouse-x));
+            }
+        }
+        moved => {
+            if (self.pressed) { EqUi.set-preamp(root.value-at(self.mouse-x)); }
+        }
+    }
+}
+
+// The graphic EQ: a column per band (the gain over its fader, the
+// frequency under it), spread evenly.
+component Faders inherits Rectangle {
+    height: 250px;
+    property <length> w: root.width / max(1, EqUi.bands.length);
+    for b[i] in EqUi.bands: Rectangle {
+        property <length> cx: i * root.w + root.w / 2;
+        gain := Text {
+            x: round((parent.cx - self.width / 2) / 1px) * 1px;
+            y: 0;
+            width: ceil(TextMetrics.tnum-width(self.text, 11px, 400) / 1px) * 1px;
+            text: b.gain-label;
+            font-family: Theme.tnum-family;
+            font-size: 11px;
+            color: b.gain != 0 ? Theme.accent : Theme.text-faint;
+        }
+        freq := Text {
+            x: round((parent.cx - self.width / 2) / 1px) * 1px;
+            y: root.height - 14px;
+            width: ceil(TextMetrics.width(self.text, 11px, 600) / 1px) * 1px;
+            text: b.freq-label;
+            font-size: 11px;
+            font-weight: 600;
+            color: Theme.text-dim;
+        }
+        Fader {
+            index: i;
+            gain: b.gain;
+            x: round((parent.cx - 14px) / 1px) * 1px;
+            y: 18px;
+            height: root.height - 18px - 18px;
+        }
+    }
+}
+
+// The mode buttons (Graphic / Parametric).
+component ModeTab inherits Rectangle {
+    in property <string> text;
+    in property <bool> current;
+    callback clicked();
+    width: TextMetrics.width(root.text, 13px, 600) + 28px;
+    height: 30px;
+    border-radius: Theme.radius <= 2px ? 2px : 15px;
+    background: current ? Theme.accent-soft : area.has-hover ? Theme.hover : transparent;
+    border-width: 1px;
+    border-color: current ? Theme.accent : Theme.border;
+    label := Text {
+        x: round((root.width - self.preferred-width) / 2 / 1px) * 1px;
+        y: round((root.height - self.preferred-height) / 2 / 1px) * 1px;
+        text: root.text;
+        font-size: 13px;
+        font-weight: 600;
+        color: root.current ? Theme.accent : Theme.text-dim;
+    }
+    area := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { root.clicked(); }
+    }
+}
+
+// A parametric band: number, on, type, frequency, gain, Q, remove.
+component BandRow inherits Rectangle {
+    in property <int> index;
+    in property <EqBand> band;
+    height: 34px;
+    Text {
+        x: 0;
+        width: 22px;
+        height: root.height;
+        vertical-alignment: center;
+        text: root.index + 1;
+        font-size: 13px;
+        color: Theme.text-faint;
+    }
+    LSwitch {
+        x: 32px;
+        checked: root.band.enabled;
+        toggled(v) => { EqUi.band-toggled(root.index, v); }
+    }
+    ComboBox {
+        x: 82px;
+        width: 130px;
+        model: EqUi.filter-types;
+        current-index: root.band.type-index;
+        activated(i) => { EqUi.band-type(root.index, i); }
+    }
+    NumField {
+        x: 222px;
+        y: (root.height - self.height) / 2;
+        width: 104px;
+        suffix: "Hz";
+        value-text: root.band.freq-text;
+        edited(t) => { EqUi.band-edited(root.index, "freq", t); }
+    }
+    NumField {
+        x: 336px;
+        y: (root.height - self.height) / 2;
+        width: 90px;
+        suffix: "dB";
+        value-text: root.band.gain-text;
+        enabled: root.band.has-gain;
+        opacity: root.band.has-gain ? 1 : 0.4;
+        edited(t) => { EqUi.band-edited(root.index, "gain", t); }
+    }
+    NumField {
+        x: 436px;
+        y: (root.height - self.height) / 2;
+        width: 80px;
+        value-text: root.band.q-text;
+        edited(t) => { EqUi.band-edited(root.index, "q", t); }
+    }
+    IconButton {
+        x: root.width - self.width;
+        y: (root.height - self.height) / 2;
+        icon: Icons.trash;
+        icon-size: 15px;
+        width: 31px;
+        height: 31px;
+        clicked => { EqUi.remove-band(root.index); }
+    }
+}
+
+// The search field in the AutoEQ card (36 px).
+component AutoEqSearch inherits Rectangle {
+    in property <string> placeholder;
+    in-out property <string> text;
+    callback edited(string);
+    height: Theme.compact ? 28px : 36px;
+    border-radius: Theme.radius <= 2px ? Theme.radius-small : self.height / 2;
+    background: Theme.surface-hi;
+    border-width: input.has-focus ? 2px : 1px;
+    border-color: input.has-focus ? Theme.accent : Theme.border;
+    Image {
+        x: 12px;
+        y: floor((root.height - 15px) / 2 / 1px) * 1px;
+        width: 15px;
+        height: 15px;
+        source: Icons.search;
+        colorize: Theme.text-faint;
+    }
+    input := TextInput {
+        x: 34px;
+        width: root.width - 34px - (root.text != "" ? 30px : 12px);
+        height: root.height;
+        vertical-alignment: center;
+        font-size: 13px;
+        color: Theme.text;
+        text <=> root.text;
+        single-line: true;
+        selection-background-color: Theme.accent;
+        selection-foreground-color: Theme.on-accent;
+        edited => { root.edited(self.text); }
+        key-pressed(e) => {
+            if (e.text == Key.Escape) {
+                self.text = "";
+                root.edited("");
+                self.clear-focus();
+                return accept;
+            }
+            reject
+        }
+    }
+    if root.text == "": Text {
+        x: 34px;
+        width: root.width - 46px;
+        height: root.height;
+        text: root.placeholder;
+        font-size: 13px;
+        color: Theme.text-faint;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+    if root.text != "": IconButton {
+        x: root.width - 4px - self.width;
+        y: (root.height - self.height) / 2;
+        icon: Icons.close;
+        icon-size: 12px;
+        clicked => {
+            root.text = "";
+            root.edited("");
+        }
+    }
+}
+
+// A small spinning arc (22 px).
+component Busy inherits Rectangle {
+    width: 22px;
+    height: 22px;
+    property <angle> a: -360deg * mod(animation-tick(), 960ms) / 960ms;
+    Path {
+        x: 3px - 1.25px;
+        y: 3px - 1.25px;
+        width: 16px + 2.5px;
+        height: 16px + 2.5px;
+        viewbox-x: 0;
+        viewbox-y: 0;
+        viewbox-width: 16;
+        viewbox-height: 16;
+        fit: fill;
+        stroke: Theme.accent;
+        stroke-width: 2.5px;
+        stroke-line-cap: round;
+        MoveTo {
+            x: 8 + 8 * cos(root.a);
+            y: 8 + 8 * sin(root.a);
+        }
+        ArcTo {
+            radius-x: 8;
+            radius-y: 8;
+            x: 8 + 8 * cos(root.a + 270deg);
+            y: 8 + 8 * sin(root.a + 270deg);
+            sweep: true;
+            large-arc: true;
+        }
+    }
+}
+
+// One AutoEQ result: the headphones' name, who measured them, Apply.
+component ResultRow inherits Rectangle {
+    in property <int> index;
+    in property <AutoEqRow> result;
+    height: 46px;
+    border-radius: Theme.radius-small;
+    background: area.has-hover ? Theme.hover : transparent;
+    area := TouchArea { }
+    Image {
+        x: 10px;
+        y: 15px;
+        width: 16px;
+        height: 16px;
+        source: Icons.headphones;
+        colorize: Theme.text-dim;
+    }
+    Text {
+        x: 36px;
+        y: 6px;
+        width: apply.x - 10px - self.x;
+        text: root.result.name;
+        font-size: 13px;
+        font-weight: 500;
+        color: Theme.text;
+        overflow: elide;
+    }
+    Text {
+        x: 36px;
+        y: 24px;
+        width: apply.x - 10px - self.x;
+        text: root.result.by;
+        font-size: 11px;
+        color: Theme.text-dim;
+        overflow: elide;
+    }
+    apply := Pill {
+        x: root.width - 6px - self.width;
+        y: (root.height - self.height) / 2;
+        text: @tr("EqualizerPage" => "Apply");
+        primary: area.has-hover || self.hovered;
+        enabled: !EqUi.autoeq-busy;
+        clicked => { EqUi.autoeq-apply(root.index); }
+    }
+}
+
+// A card asking for a name (Save disabled
+// while it is empty).
+component NameDialog inherits Rectangle {
+    in property <string> title;
+    in property <string> placeholder;
+    in property <string> accept-text;
+    in-out property <string> text;
+    callback accepted(string);
+    callback cancelled();
+    background: #00000073;
+    TouchArea {
+        clicked => { root.cancelled(); }
+    }
+    card := Rectangle {
+        width: 380px;
+        height: column.preferred-height;
+        x: (root.width - self.width) / 2;
+        y: (root.height - self.height) / 2;
+        border-radius: Theme.radius + 2px;
+        background: Theme.surface;
+        border-width: 1px;
+        border-color: Theme.border;
+        TouchArea { }
+        column := VerticalLayout {
+            padding: 20px;
+            spacing: 14px;
+            Text {
+                text: root.title;
+                font-size: 15px;
+                font-weight: 600;
+                color: Theme.text;
+            }
+            Rectangle {
+                height: 36px;
+                border-radius: Theme.radius-small;
+                background: Theme.surface-hi;
+                border-width: 1px;
+                border-color: field.has-focus ? Theme.accent : Theme.border;
+                field := TextInput {
+                    x: 8px;
+                    width: parent.width - 16px;
+                    height: parent.height;
+                    vertical-alignment: center;
+                    single-line: true;
+                    font-size: 13px;
+                    color: Theme.text;
+                    text <=> root.text;
+                    selection-background-color: Theme.accent;
+                    selection-foreground-color: Theme.on-accent;
+                    accepted => {
+                        if (self.text.is-empty) { return; }
+                        root.accepted(self.text);
+                    }
+                    key-pressed(e) => {
+                        if (e.text == Key.Escape) {
+                            root.cancelled();
+                            return accept;
+                        }
+                        reject
+                    }
+                }
+                if root.text == "": Text {
+                    x: 8px;
+                    height: parent.height;
+                    vertical-alignment: center;
+                    text: root.placeholder;
+                    font-size: 13px;
+                    color: Theme.text-faint;
+                }
+            }
+            HorizontalLayout {
+                spacing: 8px;
+                alignment: end;
+                Pill {
+                    text: @tr("NameDialog" => "Cancel");
+                    clicked => { root.cancelled(); }
+                }
+                Pill {
+                    text: root.accept-text;
+                    primary: true;
+                    enabled: !root.text.is-empty;
+                    clicked => { root.accepted(root.text); }
+                }
+            }
+        }
+    }
+    public function focus-field() {
+        field.focus();
+        field.select-all();
+    }
+}
+
+export component EqualizerWindow inherits Window {
+    title: @tr("Main" => "Equalizer");
+    icon: Icons.logo;
+    no-frame: true;
+    background: transparent;
+    default-font-family: Theme.font-family;
+    default-font-size: 13px;
+    min-width: 720px;
+    preferred-width: 1000px;
+    preferred-height: 720px;
+    // What shows everything (the window is never taller).
+    out property <length> full-height: content.preferred-height + 38px;
+    // Never taller than its content.
+    min-height: min(420px, self.full-height);
+    max-height: max(self.full-height, 420px);
+    property <length> corner: WindowActions.maximized ? 0 : Theme.window-radius;
+    property <bool> naming: false;
+    property <string> name-text;
+
+    WindowGround {
+        corner: root.corner;
+        clip: true;
+        // Escape closes the window.
+        keys := FocusScope {
+            init => { self.focus(); }
+            key-pressed(e) => {
+                if (e.text == Key.Escape) {
+                    WindowActions.close();
+                    return accept;
+                }
+                if (e.modifiers.control && (e.text == "q" || e.text == "Q")) {
+                    EqUi.quit();
+                    return accept;
+                }
+                reject
+            }
+        }
+        AppWindowBar {
+            x: 0;
+            y: 0;
+            width: parent.width;
+            icon: Icons.eq;
+            title: root.title;
+            corner: root.corner;
+        }
+        flick := Flickable {
+            // Wheel and touch only: a mouse drag is for the sliders and
+            // the graph's points, never for scrolling (as Slint's desktop ScrollView).
+            mouse-drag-pan-enabled: false;
+            x: 0;
+            y: 38px;
+            width: parent.width;
+            height: parent.height - 38px;
+            content-height: content.preferred-height;
+            content := VerticalLayout {
+                width: flick.width;
+                padding-left: 20px;
+                padding-right: 20px;
+                padding-top: 6px;
+                padding-bottom: 20px;
+                spacing: 14px;
+                alignment: start;
+
+                StatusCard {
+                    title: EqUi.profile;
+                    subtitle: EqUi.subtitle;
+                    on: EqUi.enabled;
+                    toggled(v) => { EqUi.set-enabled(v); }
+                }
+
+                // The profile toolbar.
+                Rectangle {
+                    height: 34px;
+                    opacity: EqUi.enabled ? 1 : 0.45;
+                    profile-button := Pill {
+                        x: 0;
+                        has-icon: true;
+                        icon: Icons.chevron-down;
+                        text: EqUi.profile;
+                        width: min(320px, self.natural);
+                        enabled: EqUi.enabled;
+                        clicked => { menu.show(); }
+                    }
+                    save := Pill {
+                        x: profile-button.width + 8px;
+                        has-icon: true;
+                        icon: Icons.save;
+                        text: @tr("EqualizerPage" => "Save as…");
+                        enabled: EqUi.enabled;
+                        clicked => {
+                            root.name-text = EqUi.user-profile ? EqUi.profile : "";
+                            root.naming = true;
+                        }
+                    }
+                    if EqUi.user-profile: IconButton {
+                        x: save.x + save.width + 8px;
+                        width: 34px;
+                        height: 34px;
+                        icon: Icons.trash;
+                        icon-size: 18px;
+                        enabled: EqUi.enabled;
+                        clicked => { EqUi.delete-profile(); }
+                    }
+                    reset := Pill {
+                        x: parent.width - self.width;
+                        has-icon: true;
+                        icon: Icons.refresh;
+                        text: @tr("EqualizerPage" => "Reset");
+                        enabled: EqUi.enabled;
+                        clicked => { EqUi.reset(); }
+                    }
+                    export-button := Pill {
+                        x: reset.x - 8px - self.width;
+                        has-icon: true;
+                        icon: Icons.download;
+                        text: @tr("EqualizerPage" => "Export");
+                        enabled: EqUi.enabled;
+                        clicked => { EqUi.export-profile(); }
+                    }
+                    Pill {
+                        x: export-button.x - 8px - self.width;
+                        has-icon: true;
+                        icon: Icons.upload;
+                        text: @tr("EqualizerPage" => "Import");
+                        enabled: EqUi.enabled;
+                        clicked => { EqUi.import-profile(); }
+                    }
+                    // The profiles: built-in, then the saved ones.
+                    menu := PopupWindow {
+                        x: 0;
+                        y: profile-button.height + 4px;
+                        width: max(220px, menu-list.preferred-width);
+                        height: menu-list.preferred-height;
+                        Rectangle {
+                            border-radius: Theme.radius;
+                            background: Theme.surface;
+                            border-width: 1px;
+                            border-color: Theme.dark ? #000000d9 : #0000004d;
+                            Rectangle {
+                                x: 1px;
+                                y: 1px;
+                                width: parent.width - 2px;
+                                height: parent.height - 2px;
+                                border-radius: max(0px, Theme.radius - 1px);
+                                border-width: 1px;
+                                border-color: Theme.dark ? #ffffff12 : #ffffff99;
+                            }
+                        }
+                        menu-list := VerticalLayout {
+                            padding: 5px;
+                            for e[i] in EqUi.menu: Rectangle {
+                                height: e.kind == 2 ? 9px : Theme.compact ? 28px : Theme.spacious ? 36px : 32px;
+                                min-width: e.kind == 2 ? 0 : item-text.preferred-width + 20px + (e.kind == 1 ? 24px : 0px);
+                                border-radius: Theme.radius-small;
+                                background: e.kind == 1 && item.has-hover ? Theme.hover : transparent;
+                                if e.kind == 2: Rectangle {
+                                    x: 8px;
+                                    y: 4px;
+                                    width: parent.width - 16px;
+                                    height: 1px;
+                                    background: Theme.border;
+                                }
+                                if e.kind == 1 && e.checked: Image {
+                                    x: 11px;
+                                    y: round((parent.height - 16px) / 2 / 1px) * 1px + 1px;
+                                    width: 14px;
+                                    height: 14px;
+                                    source: Icons.check;
+                                    colorize: Theme.accent;
+                                }
+                                item-text := Text {
+                                    x: e.kind == 1 ? 34px : 10px;
+                                    width: parent.width - self.x - 10px;
+                                    height: parent.height;
+                                    vertical-alignment: center;
+                                    visible: e.kind != 2;
+                                    text: e.text;
+                                    font-size: 13px;
+                                    font-weight: e.checked ? 600 : 400;
+                                    color: e.kind == 0 ? Theme.text-faint : e.checked ? Theme.accent : Theme.text;
+                                    overflow: elide;
+                                }
+                                item := TouchArea {
+                                    enabled: e.kind == 1;
+                                    clicked => {
+                                        EqUi.load-profile(i);
+                                        menu.close();
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Response.
+                Card {
+                    height: 300px;
+                    opacity: EqUi.enabled ? 1 : 0.45;
+                    ResponseGraph {
+                        x: 14px;
+                        y: 18px;
+                        width: parent.width - 28px;
+                        height: parent.height - 32px;
+                    }
+                    Text {
+                        x: parent.width - 12px - self.width;
+                        y: 12px;
+                        width: self.preferred-width;
+                        text: EqUi.graphic ? @tr("EqualizerPage" => "Drag points · double click = standard frequency · right click = reset")
+                                           : @tr("EqualizerPage" => "Drag points · wheel = Q · right click = reset");
+                        font-size: 11px;
+                        color: Theme.text-faint;
+                    }
+                }
+
+                // Preamp.
+                Card {
+                    height: 58px;
+                    opacity: EqUi.enabled ? 1 : 0.45;
+                    preamp-name := Text {
+                        x: 16px;
+                        y: (parent.height - self.preferred-height) / 2;
+                        width: self.preferred-width;
+                        text: @tr("EqualizerPage" => "Preamp");
+                        font-size: 13px;
+                        font-weight: 600;
+                        color: EqUi.enabled ? Theme.text : Theme.text-faint;
+                    }
+                    PreampSlider {
+                        x: preamp-name.x + ceil(TextMetrics.width(preamp-name.text, 13px, 600) / 1px) * 1px + 14px;
+                        y: (parent.height - 20px) / 2;
+                        width: preamp-field.x - 14px - self.x;
+                        height: 20px;
+                    }
+                    preamp-field := NumField {
+                        x: auto-button.x - 14px - self.width;
+                        y: (parent.height - self.height) / 2;
+                        suffix: "dB";
+                        value-text: EqUi.preamp-text;
+                        enabled: EqUi.enabled;
+                        edited(t) => { EqUi.preamp-edited(t); }
+                    }
+                    auto-button := Pill {
+                        x: linear.x - 14px - self.width;
+                        y: (parent.height - self.height) / 2;
+                        text: @tr("EqualizerPage" => "Auto");
+                        enabled: EqUi.enabled;
+                        clicked => { EqUi.auto-preamp(); }
+                    }
+                    linear := CheckBox {
+                        x: clip.x - 14px - self.width;
+                        y: (parent.height - self.height) / 2;
+                        text: @tr("EqualizerPage" => "Linear phase");
+                        checked: EqUi.linear-phase;
+                        enabled: EqUi.enabled;
+                        toggled(v) => { EqUi.set-linear-phase(v); }
+                    }
+                    clip := Badge {
+                        x: parent.width - 12px - self.width;
+                        y: (parent.height - self.height) / 2;
+                        width: floor((TextMetrics.spaced-width(EqUi.clip-reserve, 10px, 600, 0.4px) + 12px) / 1px) * 1px;
+                        text: EqUi.clip-text;
+                        tone: EqUi.clipping ? Theme.warn : Theme.good;
+                    }
+                }
+
+                // Bands.
+                Card {
+                    height: EqUi.graphic ? 320px : 14px + 34px + 12px + table.height + 14px;
+                    opacity: EqUi.enabled ? 1 : 0.45;
+                    graphic-tab := ModeTab {
+                        x: 14px;
+                        y: EqUi.graphic ? 14px : 16px;
+                        text: @tr("EqualizerPage" => "Graphic");
+                        current: EqUi.graphic;
+                        clicked => { EqUi.set-mode(true); }
+                    }
+                    ModeTab {
+                        x: graphic-tab.x + graphic-tab.width + 4px;
+                        y: graphic-tab.y;
+                        text: @tr("EqualizerPage" => "Parametric");
+                        current: !EqUi.graphic;
+                        clicked => { EqUi.set-mode(false); }
+                    }
+                    if !EqUi.graphic: Pill {
+                        x: parent.width - 14px - self.width;
+                        y: 14px;
+                        has-icon: true;
+                        icon: Icons.plus;
+                        text: @tr("EqualizerPage" => "Add band");
+                        enabled: EqUi.can-add && EqUi.enabled;
+                        clicked => { EqUi.add-band(); }
+                    }
+                    if EqUi.graphic: Faders {
+                        x: 14px;
+                        y: 14px + 30px + 12px;
+                        width: parent.width - 28px;
+                    }
+                    table := Rectangle {
+                        x: 14px;
+                        y: 14px + 34px + 12px;
+                        width: parent.width - 28px;
+                        visible: !EqUi.graphic;
+                        height: EqUi.bands.length == 0 ? 12px + 4px + 17px : 12px + 4px + EqUi.bands.length * 38px - 4px;
+                        Caps { x: 0; y: 0; width: 22px; label: "#"; overflow: TextOverflow.clip; }
+                        Caps { x: 32px; y: 0; width: 40px; label: @tr("EqualizerPage" => "On"); overflow: TextOverflow.clip; }
+                        Caps { x: 82px; y: 0; width: 130px; label: @tr("EqualizerPage" => "Type"); overflow: TextOverflow.clip; }
+                        Caps { x: 222px; y: 0; width: 104px; label: @tr("EqualizerPage" => "Frequency"); overflow: TextOverflow.clip; }
+                        Caps { x: 336px; y: 0; width: 90px; label: @tr("EqualizerPage" => "Gain"); overflow: TextOverflow.clip; }
+                        Caps { x: 436px; y: 0; width: 80px; label: @tr("EqualizerPage" => "Q"); overflow: TextOverflow.clip; }
+                        if !EqUi.graphic: Rectangle {
+                            y: 16px;
+                            height: parent.height - 16px;
+                            for b[i] in EqUi.bands: BandRow {
+                                y: i * 38px;
+                                width: parent.width;
+                                index: i;
+                                band: b;
+                            }
+                        }
+                        if EqUi.bands.length == 0: Text {
+                            y: 16px;
+                            width: parent.width;
+                            text: @tr("EqualizerPage" => "No bands. Add one, import a profile or pick an AutoEQ correction below.");
+                            font-size: 13px;
+                            color: Theme.text-dim;
+                            wrap: word-wrap;
+                        }
+                    }
+                }
+
+                // AutoEQ.
+                Card {
+                    opacity: EqUi.enabled ? 1 : 0.45;
+                    VerticalLayout {
+                        padding: 16px;
+                        spacing: 10px;
+                        HorizontalLayout {
+                            spacing: 10px;
+                            height: 22px;
+                            Image {
+                                width: 22px;
+                                height: 22px;
+                                source: Icons.headphones;
+                                colorize: Theme.accent;
+                            }
+                            Text {
+                                text: @tr("EqualizerPage" => "AutoEQ headphone correction");
+                                font-size: 15px;
+                                font-weight: 600;
+                                color: Theme.text;
+                                vertical-alignment: center;
+                            }
+                            Rectangle { horizontal-stretch: 1; }
+                            if EqUi.autoeq-busy: Busy { }
+                            Text {
+                                max-width: 380px;
+                                text: EqUi.autoeq-status;
+                                font-size: 12px;
+                                color: Theme.text-dim;
+                                vertical-alignment: center;
+                                overflow: elide;
+                            }
+                        }
+                        Text {
+                            text: @tr("EqualizerPage" => "Measurements of thousands of headphones and in-ear monitors. Find yours and apply its parametric correction to a neutral target — it is saved to “My profiles”.");
+                            font-size: 13px;
+                            color: Theme.text-dim;
+                            wrap: word-wrap;
+                        }
+                        HorizontalLayout {
+                            spacing: 8px;
+                            AutoEqSearch {
+                                horizontal-stretch: 1;
+                                placeholder: @tr("EqualizerPage" => "Search your headphones by brand or model");
+                                text <=> EqUi.autoeq-text;
+                                edited(t) => { search-delay.running = false; search-delay.running = true; }
+                            }
+                            Pill {
+                                has-icon: true;
+                                icon: Icons.refresh;
+                                text: @tr("EqualizerPage" => "Update database");
+                                enabled: !EqUi.autoeq-busy && EqUi.enabled;
+                                y: 1px;
+                                clicked => { EqUi.autoeq-refresh(); }
+                            }
+                        }
+                        if EqUi.autoeq-results.length > 0: Flickable {
+                            // Wheel and touch only: a mouse drag is for the sliders and
+                            // the graph's points, never for scrolling (as Slint's desktop ScrollView).
+                            mouse-drag-pan-enabled: false;
+                            height: min(EqUi.autoeq-results.length * 46px, 320px);
+                            content-height: EqUi.autoeq-results.length * 46px;
+                            for r[i] in EqUi.autoeq-results: ResultRow {
+                                y: i * 46px;
+                                width: parent.width - 10px;
+                                index: i;
+                                result: r;
+                            }
+                        }
+                        if EqUi.autoeq-text.character-count > 1 && EqUi.autoeq-results.length == 0 && !EqUi.autoeq-busy: Text {
+                            text: @tr("EqualizerPage" => "No headphones match “{0}”", EqUi.autoeq-text);
+                            font-size: 13px;
+                            color: Theme.text-dim;
+                            wrap: word-wrap;
+                        }
+                    }
+                }
+            }
+        }
+        search-delay := Timer {
+            interval: 250ms;
+            running: false;
+            triggered => {
+                self.running = false;
+                EqUi.autoeq-search(EqUi.autoeq-text);
+            }
+        }
+        if root.naming: dialog := NameDialog {
+            title: @tr("EqualizerPage" => "Save EQ profile");
+            placeholder: @tr("EqualizerPage" => "e.g. My headphones — warm");
+            accept-text: @tr("NameDialog" => "Save");
+            text: root.name-text;
+            init => { self.focus-field(); }
+            accepted(name) => {
+                root.naming = false;
+                EqUi.save-profile(name);
+            }
+            cancelled => { root.naming = false; }
+        }
+        WindowOutline {
+            radius: root.corner;
+        }
+        ResizeGrips {
+            enabled: !WindowActions.maximized;
+        }
+    }
+}

@@ -1,0 +1,60 @@
+# DSD y el DAC directo, en la DX1 de tests/asound (ALSA nulo:
+# tests/pipewire/alsa-null.conf). Ajustes › Audio › Reproducción DSD cambiada
+# mientras suena 06-tono.dsf (DSD64, 1 kHz a la mitad de la modulación):
+# nativo, DoP (marcadores 0x05/0xFA en cada muestra) y convertido a PCM.
+# Con la DX1 aparecen las filas del DAC: todo baja ~95 px.
+# Después, Liberar DAC y Devolver el DAC en pausa (1,5 s en la prueba, un
+# minuto en la app): la salida se cierra y Play sigue donde estaba.
+pantalla 2546 4200
+ajuste widgets/windows/settings=@Size(920 2700)
+ajuste appearance/language=es
+preparar python3 {repo}/tools/tonos.py --biblioteca {rt}/p
+ajuste library/rescanOnStartup=true
+ajuste playback/repeat=2
+ajuste playback/device="alsa|hw:CARD=DX1,DEV=0"
+entorno SONKORE_IDLE_RELEASE_MS=1500
+argumentos {repo}/target/ui-live/tonos/06-tono.dsf
+estado playing=true 5
+tecla ctrl+comma
+ventanas 2
+foco last
+esperar 0.8
+clic 578 67
+esperar 0.8
+sonido dsd=NativeU32Be tasa=88200
+clic 807 1241
+esperar 0.4
+clic 807 1348
+guardado playback/dsdOutput=2
+sonido dsd=Dop dop=1 tasa=176400
+clic 807 1241
+esperar 0.4
+clic 807 1284
+guardado playback/dsdOutput=0
+sonido dsd=no frec-i=1000±1 nivel-i=-6±0.3 nivel-d=-6±0.3
+# Liberar DAC: se cierra y Play lo vuelve a tomar, en el mismo lugar.
+estado format~rate
+clic 825 690
+estado format=
+estado playing=false
+foco main
+tecla space
+estado playing=true
+estado format~rate
+sonido dsd=no nivel-i=-6±0.3
+# Devolver el DAC en pausa.
+tecla space
+estado playing=false
+estado format= 4
+tecla space
+estado playing=true
+sonido dsd=no nivel-i=-6±0.3
+# Apagado, queda tomado.
+foco last
+clic 851 730
+guardado playback/releaseDacWhenIdle=false
+foco main
+tecla space
+estado playing=false
+esperar 3
+estado format~rate

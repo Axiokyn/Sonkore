@@ -18,12 +18,12 @@
     <p>Sonkore plays your files exactly as they were recorded. Leave the volume and the effects alone and every bit
     reaches your DAC untouched; the signal path shows each stage from the file to the speakers, with its quality.</p>
     <ul>
-      <li>Bit-perfect output through PipeWire, which follows each track's sample rate, direct ALSA devices or JACK</li>
+      <li>Bit-perfect output through PipeWire, which follows each track's sample rate, or direct ALSA devices; WASAPI exclusive on Windows</li>
       <li>Native DSD, DoP or high-quality conversion to PCM, compressed DST included</li>
       <li>Graphic or parametric equalizer, optionally linear-phase, with AutoEQ corrections for about 7,000 headphones</li>
       <li>Convolution, crossfeed, oversampling, a true-peak limiter, ReplayGain 2.0 and HDCD decoding</li>
       <li>Sample-exact gapless playback, also with the equalizer or the volume in use</li>
-      <li>FLAC, WAV, MP3, ALAC, AAC, Opus, Vorbis, AIFF, APE, WavPack, DSF/DFF, CUE sheets and more</li>
+      <li>FLAC, WAV, AIFF, ALAC, AAC, MP3, Vorbis, DSF/DFF (DST too) and CUE sheets</li>
       <li>Watched folders, a folder tree, 20 columns, M3U playlists, a mini player and 39 themes</li>
     </ul>
     <p>Covers missing from your files can be looked up on MusicBrainz and the Cover Art Archive. This is off until

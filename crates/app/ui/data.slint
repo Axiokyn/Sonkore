@@ -1,0 +1,199 @@
+// What the interface shows and asks for, set and handled in Rust
+// (src/controller.rs): the player, the library's lists, the sidebar.
+
+export struct NavItem {
+    id: string,          // playing | tracks | favorites | albums | artists | genres
+    icon: image,
+    label: string,
+    badge: string,
+}
+
+export struct FolderRow {
+    path: string,
+    name: string,
+    depth: int,
+    has-children: bool,
+    expanded: bool,
+    count: string,
+    selected: bool,
+    holds-playing: bool,
+    playing-here: bool,
+    show-bars: bool,
+}
+
+export struct PlaylistRow {
+    name: string,
+    count: string,
+    current: bool,
+}
+
+// A column of the track lists, its width already laid out.
+export struct Column {
+    key: string,
+    title: string,
+    x: length,          // its left edge, from the first column's
+    width: length,
+    badge: bool,
+    flex: bool,
+}
+
+export struct Cell {
+    text: string,
+    special: bool,   // a badge in the accent (hi-res, DSD)
+}
+
+export struct TrackRow {
+    number: string,
+    path: string,
+    cover: image,
+    has-cover: bool,
+    cells: [Cell],
+    playing: bool,
+    missing: bool,
+    favorite: bool,
+    selected: bool,
+    artist-line: string,   // under the title when there is no artist column
+}
+
+export global App {
+    // --- Navigation.
+    in property <string> page: "tracks";
+    in property <string> page-argument;
+    in property <[NavItem]> nav;
+    in property <[FolderRow]> folders;
+    in property <[PlaylistRow]> playlists;
+    in property <string> heading;
+    in property <string> subheading;
+    in property <bool> searchable: true;
+    in property <string> search-placeholder;
+    in property <length> sidebar-width: 248px;
+    callback navigate(string, string);
+    callback search(string);
+    callback toggle-folder(string);
+    callback sidebar-resized(length);
+    callback add-folder();               // the folders' + (a folder dialog)
+    callback rescan-library();
+    callback subfolders-menu();          // the sliders button (Menus.anchor-* set)
+    callback playlists-menu();           // the playlists' + (Menus.anchor-* set)
+    callback playlist-menu(string);      // right-click on a playlist (Menus.anchor-x/y)
+    callback folder-menu(string);        // right-click on a folder of the tree (Menus.anchor-x/y)
+    // The sidebar's sections (ui/libraryHeight: -1 = all the entries;
+    // ui/playlistsHeight: the playlists' list under its band).
+    in-out property <length> library-height: -1px;
+    in-out property <length> playlists-height: 150px;
+    callback sidebar-sections-changed(length, length);
+
+    // --- The track list of the page shown.
+    in property <[Column]> columns;
+    in property <[TrackRow]> rows;
+    in property <int> playing-row: -1;
+    in property <string> sort-key;
+    in property <bool> sort-descending;
+    in property <string> empty-title;
+    in property <string> empty-text;
+    in property <length> list-width;
+    in property <length> cover-width;    // the cover column (0 when it does not fit)
+    callback list-resized(length);
+    callback activate-row(int);
+    callback select-row(int, bool, bool);   // row, ctrl, shift
+    callback toggle-favorite(int);
+    callback sort-by(string);
+    callback row-menu(int, length, length);   // row, x, y in the window
+    callback sort-menu();                     // the ≡ button (Menus.anchor-* set)
+    callback columns-menu();                  // right-click on the header (Menus.anchor-x/y)
+
+    // --- The player.
+    in property <bool> loaded;
+    in property <bool> playing;
+    in property <string> title;
+    in property <string> artist;
+    in property <string> format;
+    in property <bool> format-special;
+    in property <image> cover;
+    in property <bool> has-cover;
+    in property <float> position;        // 0..1
+    in property <string> elapsed: "0:00";
+    in property <float> duration;            // seconds
+    in property <string> total: "0:00";
+    in property <float> volume: 1;       // slider position 0..1
+    in property <bool> muted;
+    in property <bool> shuffle;
+    in property <int> repeat;            // 0 off, 1 all, 2 one
+    in property <bool> bit-perfect;
+    in property <string> path-summary;
+    in property <string> path-quality;   // lossless | high | enhanced | low | warning
+    in property <bool> eq-on;
+    in property <bool> pitch-on;
+    in property <bool> settings-open;
+    // The window's shortcuts and the list's keys: true when handled.
+    callback key(string, bool) -> bool;
+    // The header: a divider dragged to `width` (commit: let
+    // go), double-clicked (its default width), a column moved; where a column
+    // dropped at `x` (from the first column's left edge) would go.
+    callback column-resize(int, length, bool);
+    callback column-reset-width(int);
+    callback column-move(int, int);
+    pure callback column-target(length) -> int;
+    // Tracks carried from a list: the pointer in the
+    // window, what is under it ("playing" / "playlist:<name>" over the
+    // sidebar's items, "list" / "new-playlist" over the areas), the row of
+    // a reorderable list it would go before.
+    in-out property <bool> dragging;
+    in-out property <length> drag-x;
+    in-out property <length> drag-y;
+    in-out property <string> drop-item;
+    in-out property <string> drop-area;
+    in-out property <int> drop-row;
+    in property <bool> reorderable;          // the queue, Now playing, a playlist
+    in property <string> drag-label;         // "3 tracks", beside the pointer
+    callback drag-started();
+    // A wheel notch over a list: `wheel-amount` px down,
+    // eased; ui/wheelStep px a notch.
+    in-out property <int> wheel-serial;
+    in-out property <length> wheel-amount;
+    in property <length> wheel-step: 180px;
+    callback drop-tracks();
+    callback quit();
+    // Bumped to give the keyboard back to the window (a row clicked, Esc in
+    // the search) / to put it in the search field (Ctrl+F).
+    in-out property <int> focus-request;
+    in-out property <int> search-request;
+    in property <bool> show-search: true;       // ui/searchBar
+    in-out property <bool> search-summoned;     // Ctrl+F while it is hidden
+    // The list scrolled so that this row shows (bump reveal-serial).
+    in property <int> reveal-row;
+    in property <int> reveal-serial;
+    in property <bool> reveal-centred;        // in the middle
+    in property <bool> stop-button;              // ui/stopButton
+    in property <bool> output-loaded;            // the engine holds a track
+    in property <bool> volume-fixed;             // at 100 %, set on the DAC: a padlock pill
+    in property <string> volume-kind;            // "DAC" / "System": where the volume acts
+    in property <string> volume-tooltip;
+    in property <string> output-description;     // the output button's tooltip
+    in property <[float]> spectrum;
+    in property <string> message;
+    callback toggle-play();
+    callback previous();
+    callback next();
+    callback stop();
+    callback seek(float);
+    callback seek-drag(float);               // while the bar is dragged (live seek)
+    callback step-volume(int);               // a wheel notch over the volume: ±1 dB
+    callback set-volume(float);
+    callback toggle-mute();
+    callback toggle-shuffle();
+    callback cycle-repeat();
+    callback open-equalizer();
+    callback open-settings();
+    callback open-pitch();
+    callback open-mini();
+    // Seconds on the playing bars' clock (moved with the visualizer's frames).
+    in property <float> bars-time;
+    // The list's cover column or density changed: its columns laid out again.
+    callback list-look-changed();
+    // The decorated ground needs painting again (size, style, colours).
+    callback ground-changed();
+    callback show-signal-path();             // Menus.anchor-* set by the button
+    callback show-outputs();
+    callback volume-menu();                  // right-click on the volume button
+}

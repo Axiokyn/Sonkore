@@ -1,0 +1,442 @@
+// The sidebar: the library's entries, the folder tree
+// and the playlists, each under its section band.
+
+import { Theme } from "theme.slint";
+import { Icons } from "icons.slint";
+import { IconButton, SectionLabel } from "controls.slint";
+import { App, NavItem, FolderRow, PlaylistRow } from "data.slint";
+import { Menus } from "pagedata.slint";
+import { TurnedIcons } from "pagekit.slint";
+
+// A band in the surface colour, the title in small caps.
+export component SectionBand inherits Rectangle {
+    in property <string> title;
+    height: Theme.section-height;
+    border-radius: Theme.radius-small + 2px;
+    background: Theme.surface;
+    @children
+    SectionLabel {
+        x: 10px;
+        text: root.title.to-uppercase();
+        vertical-alignment: center;
+        height: parent.height;
+    }
+}
+
+// A library entry (NavButton): the icon 12 px in, the text, a faint count.
+component NavButton inherits Rectangle {
+    in property <NavItem> item;
+    in property <bool> current;
+    callback clicked();
+    height: Theme.nav-height;
+    border-radius: Theme.radius-small;
+    // Tracks carried over Now playing: they join the queue.
+    property <bool> dropping: App.dragging && root.item.id == "playing"
+        && App.drag-x >= self.absolute-position.x && App.drag-x < self.absolute-position.x + self.width
+        && App.drag-y >= self.absolute-position.y && App.drag-y < self.absolute-position.y + self.height;
+    changed dropping => {
+        if (self.dropping) { App.drop-item = "playing"; } else if (App.drop-item == "playing") { App.drop-item = ""; }
+    }
+    background: current || dropping ? Theme.accent-soft : area.has-hover ? Theme.hover : transparent;
+    border-width: dropping ? 1.5px : 0;
+    border-color: Theme.accent;
+    Image {
+        x: 12px;
+        width: 17px;
+        height: 17px;
+        source: root.item.icon;
+        colorize: root.current ? Theme.accent : Theme.text-dim;
+    }
+    Text {
+        x: 39px; // the icon's right edge + 11, the edge including its last pixel: 12 + 17 - 1
+        width: parent.width - self.x - (root.item.badge != "" ? badge.preferred-width + 22px : 8px);
+        height: parent.height;
+        text: root.item.label;
+        font-size: 13px;
+        font-weight: root.current ? 600 : 400;
+        color: root.current ? Theme.text : Theme.text-dim;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+    badge := Text {
+        x: parent.width - 14px - self.preferred-width;
+        height: parent.height;
+        text: root.item.badge;
+        font-size: 11px;
+        color: Theme.text-faint;
+        vertical-alignment: center;
+    }
+    area := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { root.clicked(); }
+    }
+}
+
+// The playing bars: three 3 px bars, 2 px
+// apart, each rising and falling at its own pace on the clock Rust moves
+// while it plays (App.bars-time); at rest when paused, or (hold: the folder
+// tree's, whose timer stops) still where they were.
+export component PlayingBars inherits Rectangle {
+    in property <color> tint: Theme.accent;
+    in property <bool> hold;
+    property <float> time: App.playing || root.hold ? App.bars-time : 0;
+    width: 13px;
+    height: 12px;
+    pure function level(i: int) -> float {
+        return (3 + 9 * (0.5 - 0.5 * cos(2 * 3.14159265 * root.time / (0.56 + i * 0.16) * 1rad))) / 12;
+    }
+    Rectangle {
+        x: 0;
+        width: 3px;
+        height: max(3px, 12px * root.level(0));
+        y: 12px - self.height;
+        border-radius: 1px;
+        background: root.tint;
+    }
+    Rectangle {
+        x: 5px;
+        width: 3px;
+        height: max(3px, 12px * root.level(1));
+        y: 12px - self.height;
+        border-radius: 1px;
+        background: root.tint;
+    }
+    Rectangle {
+        x: 10px;
+        width: 3px;
+        height: max(3px, 12px * root.level(2));
+        y: 12px - self.height;
+        border-radius: 1px;
+        background: root.tint;
+    }
+}
+
+// A row of the folder tree: the chevron, the folder (or the playing bars),
+// the name, the count on the right; 32 px (26 compact), 16 px per level.
+component FolderItem inherits Rectangle {
+    in property <FolderRow> item;
+    callback clicked();
+    callback toggled();
+    height: Theme.compact ? 26px : 32px;
+    property <length> indent: 6px + item.depth * 16px;
+    Rectangle {
+        width: parent.width - 4px;
+        x: 0;
+        border-radius: Theme.radius-small;
+        background: root.item.selected ? Theme.accent-soft : area.has-hover ? Theme.hover : transparent;
+    }
+    area := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { root.clicked(); }
+        // A right click: its tracks' menu, and taking the folder out.
+        pointer-event(e) => {
+            if (e.kind == PointerEventKind.up && e.button == PointerEventButton.right) {
+                Menus.anchor-x = self.absolute-position.x + self.mouse-x;
+                Menus.anchor-y = self.absolute-position.y + self.mouse-y;
+                App.folder-menu(root.item.path);
+            }
+        }
+    }
+    if root.item.has-children: TouchArea {
+        x: root.indent - 3px;
+        width: 22px;
+        clicked => { root.toggled(); }
+        Image {
+            x: 3px + 1.5px;
+            // Painted around the chevron box's centre, the row's
+            // centre (whole pixels: (h - 1) / 2), 6 px up.
+            y: floor((root.height / 1px - 1) / 2) * 1px - 6px;
+            width: 13px;
+            height: 13px;
+            // (Turned by hand: the software renderer does not rotate images.)
+            source: root.item.expanded ? Icons.chevron-down : TurnedIcons.chevron-right;
+            colorize: Theme.text-dim;
+        }
+    }
+    if root.item.show-bars: PlayingBars {
+        hold: true;
+        x: root.indent + 16px + 7px + 1px;
+        y: (root.height - 12px) / 2 + 1px;
+    }
+    if !root.item.show-bars: Image {
+        x: root.indent + 16px + 6px;
+        // A 15 × 15 box from the icon's centre less 7, the icon at the
+        // row's centre less 8: the row's (h - 1) / 2 less 8.
+        y: floor((root.height / 1px - 1) / 2) * 1px - 8px;
+        width: 15px;
+        height: 15px;
+        source: Icons.folder;
+        colorize: root.item.selected || root.item.holds-playing ? Theme.accent : Theme.text-dim;
+    }
+    count := Text {
+        x: root.width - 12px - self.preferred-width;
+        height: root.height;
+        text: root.item.count;
+        font-family: Theme.tnum-family;
+        font-size: 11px;
+        color: Theme.text-faint;
+        vertical-alignment: center;
+    }
+    Text {
+        x: root.indent + 16px + 6px + 15px + 6px;
+        width: count.x - 6px - self.x;
+        height: root.height;
+        text: root.item.name;
+        font-size: 13px;
+        font-weight: root.item.selected || root.item.playing-here ? 600 : 400;
+        color: root.item.holds-playing ? Theme.accent : root.item.selected ? Theme.text : Theme.text-dim;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+}
+
+// The bar between two sections: a pill in the middle, an
+// accent line while it is hovered or dragged; double-click folds.
+component Grip inherits Rectangle {
+    // The pill's centre: 8.5 px under the library, 10.5 under the tree.
+    in property <length> center;
+    callback dragged(length);
+    callback fold();
+    height: 17px;
+    property <bool> active: area.has-hover || area.pressed;
+    if root.active: Rectangle {
+        y: root.center - 0.5px;
+        height: 1px;
+        background: Theme.accent;
+    }
+    // The 5 px pill's edge is stroked with a 1 px pen: half outside.
+    Rectangle {
+        property <length> w: root.active ? 40px : 28px;
+        x: (root.width - self.w) / 2 - 0.5px;
+        y: root.center - 3px;
+        width: self.w + 1px;
+        height: 6px;
+        border-radius: 3px;
+        border-width: 1px;
+        border-color: root.active ? Theme.accent : Theme.text.with-alpha(Theme.dark ? 0.28 : 0.32);
+        background: root.active ? Theme.accent : Theme.frame;
+    }
+    area := TouchArea {
+        mouse-cursor: ns-resize;
+        moved => {
+            if (self.pressed) {
+                root.dragged(self.mouse-y - self.pressed-y);
+            }
+        }
+        double-clicked => { root.fold(); }
+    }
+}
+
+export component Sidebar inherits Rectangle {
+    in property <length> library-height: 300px;
+    callback add-folder();
+    callback rescan();
+    callback new-playlist();
+    callback subfolders-menu();
+    // Band and gap above a section's list.
+    property <length> band: Theme.section-height + 6px;
+    // All the library's entries; the section never grows past them.
+    // The band, 6 px, the entries 2 px apart; the grip right
+    // under the last one.
+    property <length> library-full: Theme.section-height + 6px + App.nav.length * (Theme.nav-height + 2px) - 2px;
+    property <length> library-shown: App.library-height < 0 ? library-full : clamp(App.library-height, 0, library-full);
+    property <length> lists-shown: max(0px, App.playlists-height + band);
+    // What the folders keep at least: nothing (the splitter collapses them).
+    property <length> room: root.height - 12px - 34px;
+    // A window too short for all three:
+    // the folders go down to their least first (they stretch: the hint is
+    // the least), then the library and the playlists give up the same, each
+    // down to its least (the band and a scroll area's 62 px; the library
+    // gives the odd pixel). Measured from 760 to 480 px.
+    property <length> scroll-least: 62px;
+    property <length> library-least: min(root.library-shown, root.band + root.scroll-least);
+    property <length> lists-least: min(root.lists-shown, root.band + root.scroll-least);
+    property <length> both-room: root.height - 12px - 2 * 17px - 4px - root.band - root.scroll-least;
+    property <length> deficit: max(0px, root.library-shown + root.lists-shown - root.both-room);
+    property <length> library-cut: round(root.deficit / 2 / 1px) * 1px;
+    property <length> lists-first: max(root.lists-least, root.lists-shown - (root.deficit - root.library-cut));
+    property <length> library-fit: max(root.library-least, root.library-shown - (root.deficit - (root.lists-shown - root.lists-first)));
+    property <length> lists-fit: max(root.lists-least, root.lists-shown - (root.deficit - (root.library-shown - root.library-fit)));
+    property <length> library-restore: 0px;
+    property <length> lists-restore: 0px;
+    function save() {
+        App.sidebar-sections-changed(root.library-shown >= root.library-full ? -1px : root.library-shown, max(0px, root.lists-shown - root.band));
+    }
+    // Placed, not sized by its sections: a short window takes it from them
+    // (above), it never pushes the player bar off the window.
+    VerticalLayout {
+        x: 0;
+        y: 0;
+        width: root.width;
+        height: root.height;
+        padding: 6px;
+        spacing: 0;
+        // Library: its entries keep their size and scroll when the room is short.
+        Flickable {
+            height: root.library-fit;
+            content-height: root.library-full;
+            VerticalLayout {
+                alignment: start;
+                spacing: 2px;
+                SectionBand { title: @tr("Sidebar" => "Library"); }
+                Rectangle { height: 2px; }
+                for item in App.nav: NavButton {
+                    item: item;
+                    current: App.page == item.id;
+                    clicked => { App.navigate(item.id, ""); }
+                }
+            }
+        }
+        Grip {
+            center: 8.5px;
+            dragged(dy) => {
+                App.library-height = clamp(root.library-shown + dy, 0px, min(root.library-full, root.room - root.lists-shown));
+                root.save();
+            }
+            fold => {
+                if (root.library-shown > 0) {
+                    root.library-restore = root.library-shown;
+                    App.library-height = 0px;
+                } else {
+                    App.library-height = root.library-restore > 0 ? root.library-restore : 150px;
+                }
+                root.save();
+            }
+        }
+        // Folders.
+        VerticalLayout {
+            spacing: 0;
+            vertical-stretch: 1;
+            padding-top: 4px; // 4 px above the folders' band
+            SectionBand {
+                title: @tr("Sidebar" => "Folders");
+                HorizontalLayout {
+                    alignment: end;
+                    padding-right: 3px;
+                    spacing: 2px;
+                    IconButton {
+                        icon: Icons.sliders; icon-size: 14px; width: Theme.section-height - 6px; height: self.width; tooltip: @tr("Sidebar" => "Subfolders"); y: (parent.height - self.height) / 2;
+                        clicked => {
+                            Menus.anchor-x = self.absolute-position.x;
+                            Menus.anchor-y = self.absolute-position.y;
+                            Menus.anchor-width = self.width;
+                            Menus.anchor-height = self.height;
+                            App.subfolders-menu();
+                        }
+                    }
+                    IconButton { icon: Icons.refresh; icon-size: 14px; width: Theme.section-height - 6px; height: self.width; tooltip: @tr("Sidebar" => "Rescan library"); y: (parent.height - self.height) / 2; clicked => { root.rescan(); } }
+                    IconButton { icon: Icons.plus; icon-size: 14px; width: Theme.section-height - 6px; height: self.width; tooltip: @tr("Sidebar" => "Add music folder"); y: (parent.height - self.height) / 2; clicked => { root.add-folder(); } }
+                }
+            }
+            Rectangle { height: 6px; } // the section header's 6 px, less the spacing
+            Flickable {
+                vertical-stretch: 1;
+                VerticalLayout {
+                    alignment: start;
+                    for row in App.folders: FolderItem {
+                        item: row;
+                        clicked => { App.navigate("folders", row.path); }
+                        toggled => { App.toggle-folder(row.path); }
+                    }
+                }
+            }
+        }
+        Grip {
+            center: 10.5px;
+            dragged(dy) => {
+                App.playlists-height = clamp(root.lists-shown - dy, 0px, root.room - root.library-shown) - root.band;
+                root.save();
+            }
+            fold => {
+                if (root.lists-shown > 0) {
+                    root.lists-restore = root.lists-shown;
+                    App.playlists-height = -root.band;
+                } else {
+                    App.playlists-height = (root.lists-restore > 0 ? root.lists-restore : 150px) - root.band;
+                }
+                root.save();
+            }
+        }
+        // Playlists.
+        Rectangle {
+          height: root.lists-fit;
+          clip: true;
+          // Tracks dropped under the playlists make a new one.
+          property <bool> dropping: App.dragging
+              && App.drag-x >= self.absolute-position.x && App.drag-x < self.absolute-position.x + self.width
+              && App.drag-y >= self.absolute-position.y && App.drag-y < self.absolute-position.y + self.height;
+          changed dropping => {
+              if (self.dropping) { App.drop-area = "new-playlist"; } else if (App.drop-area == "new-playlist") { App.drop-area = ""; }
+          }
+          VerticalLayout {
+            y: 0;
+            height: max(parent.height, root.band);
+            spacing: 0;
+            SectionBand {
+                title: @tr("Sidebar" => "Playlists");
+                HorizontalLayout {
+                    alignment: end;
+                    padding-right: 3px;
+                    IconButton {
+                        icon: Icons.plus; icon-size: 14px; width: Theme.section-height - 6px; height: self.width; tooltip: @tr("Sidebar" => "New playlist"); y: (parent.height - self.height) / 2;
+                        clicked => {
+                            Menus.anchor-x = self.absolute-position.x;
+                            Menus.anchor-y = self.absolute-position.y;
+                            Menus.anchor-width = self.width;
+                            Menus.anchor-height = self.height;
+                            App.playlists-menu();
+                        }
+                    }
+                }
+            }
+            Rectangle { height: 6px; }
+            if App.playlists.length == 0: VerticalLayout {
+                padding-left: 10px;
+                padding-right: 10px;
+                padding-top: 10px;
+                Text {
+                    text: @tr("Sidebar" => "No playlists yet. Press + or drop tracks here.");
+                    font-size: 11px;
+                    color: Theme.text-faint;
+                    wrap: word-wrap;
+                }
+            }
+            Flickable {
+                vertical-stretch: 1;
+                VerticalLayout {
+                    alignment: start;
+                    spacing: 2px;
+                    for p in App.playlists: Rectangle {
+                        height: Theme.nav-height;
+                        border-radius: Theme.radius-small;
+                        // Tracks carried over it: they join it.
+                        property <bool> dropping: App.dragging
+                            && App.drag-x >= self.absolute-position.x && App.drag-x < self.absolute-position.x + self.width
+                            && App.drag-y >= self.absolute-position.y && App.drag-y < self.absolute-position.y + self.height;
+                        changed dropping => {
+                            if (self.dropping) { App.drop-item = "playlist:" + p.name; } else if (App.drop-item == "playlist:" + p.name) { App.drop-item = ""; }
+                        }
+                        background: p.current || self.dropping ? Theme.accent-soft : pa.has-hover ? Theme.hover : transparent;
+                        border-width: self.dropping ? 1.5px : 0;
+                        border-color: Theme.accent;
+                        Image { x: 12px; width: 17px; height: 17px; source: Icons.playlist; colorize: p.current ? Theme.accent : Theme.text-dim; }
+                        Text { x: 39px; width: parent.width - 80px; height: parent.height; text: p.name; font-size: 13px; color: p.current ? Theme.text : Theme.text-dim; vertical-alignment: center; overflow: elide; }
+                        Text { x: parent.width - 14px - self.preferred-width; height: parent.height; text: p.count; font-size: 11px; color: Theme.text-faint; vertical-alignment: center; }
+                        pa := TouchArea {
+                            mouse-cursor: pointer;
+                            clicked => { App.navigate("playlist", p.name); }
+                            pointer-event(e) => {
+                                if (e.kind == PointerEventKind.up && e.button == PointerEventButton.right) {
+                                    Menus.anchor-x = self.absolute-position.x + self.mouse-x;
+                                    Menus.anchor-y = self.absolute-position.y + self.mouse-y;
+                                    App.playlist-menu(p.name);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+          }
+        }
+    }
+}

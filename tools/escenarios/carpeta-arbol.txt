@@ -1,0 +1,19 @@
+# Clic derecho en una carpeta del árbol de la barra lateral:
+# el menú de sus pistas y «Quitar carpeta de la biblioteca», que pregunta
+# antes. La carpeta vigilada (musica) se va con sus 12 pistas, y al cerrar y
+# volver a abrir (re-escaneo encendido) no vuelve.
+ajuste library/rescanOnStartup=true
+estado tracks=12 8
+rclic 70 390
+esperar 0.6
+captura menu
+clic 177 549
+esperar 0.6
+captura dialogo
+clic 791 459
+estado tracks=0 3
+clic 1300 13
+reiniciar
+esperar 3
+estado tracks=0 5
+captura reabierta

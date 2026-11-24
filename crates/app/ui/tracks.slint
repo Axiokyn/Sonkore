@@ -1,0 +1,584 @@
+// The track lists: a header with the columns'
+// titles (a click sorts), rows rounded at both ends, the number (or the
+// playing bars, or play under the pointer), the cover, the cells, the
+// format as a badge, the heart.
+
+import { Theme } from "theme.slint";
+import { Icons } from "icons.slint";
+import { Badge, PillButton, OverlayScrollBar } from "controls.slint";
+import { App, Column, TrackRow, Cell } from "data.slint";
+import { Menus } from "pagedata.slint";
+import { TurnedIcons } from "pagekit.slint";
+import { PlayingBars } from "sidebar.slint";
+import { ListView } from "std-widgets.slint";
+
+// The column header: at the top of the page's panel the
+// panel's top, edge to edge, a hairline under it (joined); elsewhere a soft
+// rounded band of its own. The sort button over the numbers (sortable
+// lists), each column's title (click: sort; right-click: the columns).
+component Header inherits Rectangle {
+    in property <length> leading;      // the rows' origin + the number column
+    in property <length> cover;
+    in property <bool> joined: true;
+    in property <bool> sortable: true;
+    in property <length> origin;       // the rows' left edge
+    height: Theme.list-density == "list" ? 28px : 34px;
+    if root.joined: Rectangle {
+        background: Theme.surface;
+        border-top-left-radius: 14px;
+        Rectangle {
+            y: parent.height - 1px;
+            height: 1px;
+            background: Theme.border;
+        }
+    }
+    if !root.joined: Rectangle {
+        border-radius: Theme.radius-small + 2px;
+        background: Theme.surface;
+        border-width: 1px;
+        border-color: Theme.text.with-alpha(Theme.dark ? 0.05 : 0.08);
+    }
+    // Right-click anywhere on it: the columns.
+    TouchArea {
+        pointer-event(e) => {
+            if (e.kind == PointerEventKind.up && e.button == PointerEventButton.right) {
+                Menus.anchor-x = self.absolute-position.x + self.mouse-x;
+                Menus.anchor-y = self.absolute-position.y + self.mouse-y;
+                App.columns-menu();
+            }
+        }
+    }
+    // The sort button in the number column's head: the orders that are not
+    // a column (folder, added…).
+    if root.sortable: sort := TouchArea {
+        property <length> side: min(28px, root.height - 4px);
+        x: root.origin + (36px - self.side) / 2;
+        y: (root.height - self.side) / 2;
+        width: self.side;
+        height: self.side;
+        mouse-cursor: pointer;
+        clicked => {
+            Menus.anchor-x = root.absolute-position.x + root.origin;
+            Menus.anchor-y = root.absolute-position.y;
+            Menus.anchor-width = root.width;
+            Menus.anchor-height = root.height;
+            App.sort-menu();
+        }
+        Rectangle {
+            border-radius: self.height / 2;
+            background: sort.has-hover ? Theme.hover : transparent;
+        }
+        Image {
+            x: floor((sort.side / 2 - 0.5px) / 1px) * 1px - 6px;
+            y: floor((sort.side / 2 - 0.5px) / 1px) * 1px - 6px;
+            width: 14px;
+            height: 14px;
+            source: Icons.sort;
+            colorize: App.sort-key != "" ? Theme.accent : sort.has-hover ? Theme.text : Theme.text-dim;
+        }
+    }
+    // A divider dragged (its column), a column carried.
+    property <int> resizing: -1;
+    property <length> start-width;
+    property <length> press-abs;
+    property <int> press-col: -1;
+    property <bool> moving;
+    property <length> press-x;
+    property <length> drag-x;
+    property <length> grab;
+    property <length> left: root.leading + root.cover;
+    HorizontalLayout {
+        padding-left: root.left;
+        for c[i] in App.columns: Rectangle {
+            property <bool> sorted: root.sortable && App.sort-key == c.key;
+            width: c.width;
+            opacity: root.moving && root.press-col == i ? 0.3 : 1;
+            ha := TouchArea {
+                mouse-cursor: root.moving ? MouseCursor.grabbing : pointer;
+                // The pointer in the header's terms.
+                property <length> hx: self.absolute-position.x - root.absolute-position.x + self.mouse-x;
+                pointer-event(e) => {
+                    if (e.kind == PointerEventKind.down && e.button == PointerEventButton.left) {
+                        root.press-col = i;
+                        root.press-x = self.hx;
+                    } else if (e.kind == PointerEventKind.up && e.button == PointerEventButton.left) {
+                        if (root.moving) {
+                            App.column-move(i, App.column-target(root.drag-x + root.grab - root.left));
+                        } else if (root.press-col == i && self.has-hover && root.sortable) {
+                            App.sort-by(c.key);
+                        }
+                        root.moving = false;
+                        root.press-col = -1;
+                    } else if (e.kind == PointerEventKind.up && e.button == PointerEventButton.right) {
+                        Menus.anchor-x = self.absolute-position.x + self.mouse-x;
+                        Menus.anchor-y = self.absolute-position.y + self.mouse-y;
+                        App.columns-menu();
+                    }
+                }
+                moved => {
+                    if (self.pressed && root.press-col == i) {
+                        if (!root.moving && abs(self.hx - root.press-x) > 8px) {
+                            root.moving = true;
+                            root.grab = root.press-x - (root.left + c.x);
+                        }
+                        if (root.moving) {
+                            root.drag-x = self.hx - root.grab;
+                        }
+                    }
+                }
+            }
+            if (ha.has-hover && root.resizing < 0 && !root.moving) || (ha.pressed && !root.moving): Rectangle {
+                x: 3px;
+                y: 4px;
+                width: parent.width - 6px;
+                height: parent.height - 8px;
+                border-radius: Theme.radius-small;
+                background: ha.pressed ? Theme.surface-hi : Theme.hover;
+            }
+            HorizontalLayout {
+                padding-left: 12px;
+                padding-right: 12px;
+                spacing: 4px;
+                alignment: start;
+                if c.key != "favorite": Text {
+                    text: c.title;
+                    font-size: 11px;
+                    font-weight: 500;
+                    color: sorted ? Theme.accent : Theme.text-dim;
+                    vertical-alignment: center;
+                    overflow: elide;
+                }
+                if c.key == "favorite": Image {
+                    source: Icons.heart-filled;
+                    width: 11px;
+                    height: 11px;
+                    y: floor(parent.height / 2 / 1px) * 1px - 5px;
+                    colorize: sorted ? Theme.accent : Theme.text-dim;
+                }
+                if sorted: Image {
+                    source: App.sort-descending ? Icons.chevron-down : TurnedIcons.chevron-up;
+                    width: 11px;
+                    height: 11px;
+                    y: floor(parent.height / 2 / 1px) * 1px - 5px;
+                    colorize: Theme.accent;
+                }
+            }
+        }
+    }
+    // The dividers, also the resize grips (8 px either side); not the last
+    // column's. Hidden while a column is carried.
+    for c[i] in App.columns: TouchArea {
+        x: root.left + c.x + c.width - 8px;
+        width: 16px;
+        visible: i < App.columns.length - 1 && !root.moving;
+        enabled: self.visible;
+        mouse-cursor: ew-resize;
+        pointer-event(e) => {
+            if (e.kind == PointerEventKind.down && e.button == PointerEventButton.left) {
+                root.resizing = i;
+                root.start-width = c.width;
+                root.press-abs = self.absolute-position.x + self.mouse-x;
+            } else if (e.kind == PointerEventKind.up && e.button == PointerEventButton.left) {
+                root.resizing = -1;
+            }
+        }
+        moved => {
+            if (self.pressed && root.resizing == i) {
+                App.column-resize(i, root.start-width + (self.absolute-position.x + self.mouse-x - root.press-abs), false);
+            }
+        }
+        double-clicked => { App.column-reset-width(i); }
+        property <bool> lit: self.has-hover || root.resizing == i;
+        Rectangle {
+            x: (parent.width - self.width) / 2;
+            width: parent.lit ? 2px : 1px;
+            height: parent.lit ? root.height - 8px : root.height * 0.42;
+            y: (root.height - self.height) / 2;
+            border-radius: 1px;
+            background: parent.lit ? Theme.accent : Theme.border;
+        }
+    }
+    // The column being carried, and where it would land.
+    if root.moving && root.press-col >= 0: Rectangle {
+        x: root.drag-x;
+        y: 3px;
+        width: App.columns[root.press-col].width;
+        height: root.height - 6px;
+        border-radius: Theme.radius-small;
+        border-width: 1px;
+        border-color: Theme.accent;
+        background: Theme.surface-hi;
+        opacity: 0.95;
+        Text {
+            x: 12px;
+            width: parent.width - 24px;
+            text: App.columns[root.press-col].title.to-uppercase();
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 1.2px;
+            color: Theme.text;
+            vertical-alignment: center;
+            overflow: elide;
+        }
+    }
+    if root.moving && root.press-col >= 0: Rectangle {
+        property <int> target: App.column-target(root.drag-x + root.grab - root.left);
+        property <length> edge: self.target < App.columns.length ? App.columns[self.target].x
+            : App.columns[App.columns.length - 1].x + App.columns[App.columns.length - 1].width;
+        x: root.left + self.edge - 1px;
+        width: 3px;
+        border-radius: 1.5px;
+        background: Theme.accent;
+    }
+}
+
+component Row inherits Rectangle {
+    in property <TrackRow> track;
+    in property <int> index;
+    in property <length> leading;
+    in property <length> cover;
+    property <bool> list: Theme.list-density == "list";
+    property <bool> hovered: area.has-hover;
+    height: Theme.row-pitch;
+    // The ground, rounded at its two ends (one piece per row).
+    Rectangle {
+        y: 0;
+        height: Theme.row-height;
+        border-radius: root.list ? 0 : Theme.radius-small;
+        background: root.track.playing ? Theme.accent.with-alpha(Theme.dark ? 0.11 : 0.08)
+                  : root.track.selected ? Theme.accent.with-alpha(Theme.dark ? 0.045 : 0.035)
+                  : root.hovered ? Theme.hover.with-alpha(0.35)
+                  : Theme.alternate-rows && mod(root.index, 2) == 1 ? Theme.text.with-alpha(Theme.dark ? 0.025 : 0.03)
+                  : transparent;
+    }
+    // A press on a selected row keeps the selection until let go (it may
+    // be dragged); past 10 px the selected tracks are carried.
+    property <bool> deferred;
+    property <length> press-x;
+    property <length> press-y;
+    area := TouchArea {
+        y: 0;
+        height: Theme.row-height;
+        mouse-cursor: App.dragging ? MouseCursor.grabbing : MouseCursor.default;
+        pointer-event(e) => {
+            if (e.kind == PointerEventKind.down && e.button == PointerEventButton.left) {
+                App.focus-request += 1;
+                root.press-x = self.mouse-x;
+                root.press-y = self.mouse-y;
+                root.deferred = root.track.selected && !e.modifiers.control && !e.modifiers.shift;
+                if (!root.deferred) {
+                    App.select-row(root.index, e.modifiers.control, e.modifiers.shift);
+                }
+            }
+            if (e.kind == PointerEventKind.up && e.button == PointerEventButton.left) {
+                if (App.dragging) {
+                    App.drop-tracks();
+                    App.dragging = false;
+                    App.drop-item = "";
+                    App.drop-area = "";
+                } else if (root.deferred) {
+                    App.select-row(root.index, false, false);
+                }
+                root.deferred = false;
+            }
+            if (e.kind == PointerEventKind.up && e.button == PointerEventButton.right) {
+                App.row-menu(root.index, self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y);
+            }
+        }
+        double-clicked => { App.activate-row(root.index); }
+        // A wheel's notch (60 px from winit's line delta) scrolls
+        // ui/wheelStep px, eased; a touchpad's pixels go to the list as they are.
+        scroll-event(e) => {
+            if (e.delta-y != 0 && mod(round(e.delta-y / 1px), 60) == 0) {
+                App.wheel-amount = -e.delta-y / 60px * App.wheel-step;
+                App.wheel-serial += 1;
+                return accept;
+            }
+            reject
+        }
+        moved => {
+            if (self.pressed) {
+                if (!App.dragging && (abs(self.mouse-x - root.press-x) > 10px || abs(self.mouse-y - root.press-y) > 10px)) {
+                    App.dragging = true;
+                    App.drag-started();
+                }
+                if (App.dragging) {
+                    App.drag-x = self.absolute-position.x + self.mouse-x;
+                    App.drag-y = self.absolute-position.y + self.mouse-y;
+                }
+            }
+        }
+    }
+    // The number, the playing bars, or play under the pointer.
+    Rectangle {
+        x: 0;
+        y: 0;
+        width: root.leading;
+        height: Theme.row-height;
+        if root.hovered: Image {
+            width: root.list ? 10px : 13px;
+            height: self.width;
+            source: root.track.playing && App.playing ? Icons.pause : Icons.play;
+            colorize: Theme.text;
+        }
+        if !root.hovered && root.track.playing: PlayingBars {
+        }
+        if !root.hovered && !root.track.playing: Text {
+            text: root.track.number;
+            font-family: Theme.tnum-family;
+            font-size: 11px;
+            color: Theme.text-faint;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+        }
+        TouchArea {
+            mouse-cursor: pointer;
+            // The playing row's pause / play (the icon shown); another plays.
+            clicked => {
+                if (root.track.playing) {
+                    App.toggle-play();
+                } else {
+                    App.activate-row(root.index);
+                }
+            }
+        }
+    }
+    if root.cover > 0: Rectangle {
+        property <length> side: Theme.list-density == "spacious" ? 52px : 40px;
+        x: root.leading;
+        y: (Theme.row-height - self.side) / 2;
+        width: self.side;
+        height: self.side;
+        border-radius: Theme.radius-small;
+        background: Theme.surface-hi;
+        border-width: root.track.has-cover ? 0 : 1px;
+        border-color: Theme.border;
+        clip: true;
+        if root.track.has-cover: Image {
+            source: root.track.cover;
+            width: parent.width;
+            height: parent.height;
+            image-fit: ImageFit.cover;
+        }
+        if !root.track.has-cover: Image {
+            width: 14px;
+            height: 14px;
+            source: Icons.music;
+            colorize: Theme.text-faint;
+        }
+    }
+    HorizontalLayout {
+        x: root.leading + root.cover;
+        y: 0;
+        height: Theme.row-height;
+        for c[i] in App.columns: Rectangle {
+            width: c.width;
+            if c.key == "favorite" && (root.track.favorite || root.hovered): Image {
+                x: 12px;
+                width: root.list ? 12px : 15px;
+                height: self.width;
+                source: root.track.favorite ? Icons.heart-filled : Icons.heart-empty;
+                colorize: root.track.favorite ? Theme.accent : Theme.text-dim;
+                TouchArea {
+                    mouse-cursor: pointer;
+                    clicked => { App.toggle-favorite(root.index); }
+                }
+            }
+            if c.badge && !root.list && root.track.cells[i].text != "": Badge {
+                x: 12px;
+                text: root.track.cells[i].text;
+                border: 0.5px;
+                tone: root.track.cells[i].special ? Theme.accent : Theme.text-dim;
+            }
+            if c.key != "favorite" && !(c.badge && !root.list): VerticalLayout {
+                padding-left: 12px;
+                padding-right: 12px;
+                alignment: center;
+                spacing: 2px;
+                Text {
+                    text: root.track.cells[i].text;
+                    font-family: c.key == "title" ? Theme.font-family : Theme.tnum-family;
+                    font-size: (c.key == "title" || i == 0) && Theme.list-density != "list" && Theme.list-density != "compact" ? 14px : 13px;
+                    font-weight: (c.key == "title" || i == 0) && !root.list ? 500 : 400;
+                    color: root.track.missing ? Theme.text-faint : root.track.playing && (c.key == "title" || i == 0) ? Theme.accent
+                         : i == 0 || c.key == "title" ? Theme.text : Theme.text-dim;
+                    overflow: elide;
+                }
+                if c.key == "title" && root.track.artist-line != "": Text {
+                    text: root.track.artist-line;
+                    font-size: 12px;
+                    color: Theme.text-dim;
+                    overflow: elide;
+                }
+            }
+        }
+    }
+}
+
+// `joined`: at the top of the page's panel (Tracks, Favorites, Folders):
+// the header edge to edge, the rows 8 px in. Elsewhere the header is a band
+// 2 px down, 12 px short of the right edge, the rows from the left edge.
+// `sortable`: the lists with a filter sort by their header and the sort
+// button; the queue and the playlists keep their order.
+export component TrackTable inherits Rectangle {
+    in property <bool> joined: true;
+    in property <bool> sortable: true;
+    property <length> inset: root.joined ? 8px : 0px;
+    property <length> leading: 36px; // in every density
+    property <length> cover: App.cover-width;
+    // The rows' viewport: the view less its inset. The columns share it less
+    // 14 px, the row's ground as wide as they are.
+    property <length> viewport: root.width - root.inset;
+    property <length> list-offset;           // the list's content-y
+    changed width => { App.list-resized(self.viewport); }
+    init => { App.list-resized(self.viewport); }
+    // A new density or the covers switched lays
+    // the columns out again (the cover column comes and goes with them).
+    property <bool> look-covers: Theme.list-covers;
+    property <string> look-density: Theme.list-density;
+    changed look-covers => { App.list-look-changed(); }
+    changed look-density => { App.list-look-changed(); }
+    header := Header {
+        x: 0;
+        y: root.joined ? 0px : 2px;
+        width: root.joined ? root.width : max(0px, root.width - 12px);
+        origin: root.inset;
+        leading: root.leading + root.inset;
+        cover: root.cover;
+        joined: root.joined;
+        sortable: root.sortable;
+    }
+    property <length> top: header.y + header.height + 4px;
+    // The library's empty state (the other lists show nothing).
+    // The logo (a heart on Favorites), the title at
+    // 20 px, the text; the library's "Add music folder" under them.
+    property <bool> favorites: App.page == "favorites";
+    if App.rows.length == 0 && root.joined: VerticalLayout {
+        y: root.top;
+        height: root.height - root.top;
+        padding-left: 24px;
+        padding-right: 24px;
+        alignment: center;
+        spacing: root.favorites ? 10px : 14px;
+        HorizontalLayout {
+            alignment: center;
+            if !root.favorites: Image { source: Icons.logo; width: 72px; height: 72px; }
+            if root.favorites: Image { source: Icons.heart; width: 48px; height: 48px; colorize: Theme.text-faint; }
+        }
+        Text {
+            text: App.empty-title;
+            font-size: 20px;
+            font-weight: 600;
+            color: Theme.text;
+            horizontal-alignment: center;
+        }
+        if App.empty-text != "": Text {
+            text: App.empty-text;
+            font-size: Theme.font-body;
+            color: Theme.text-dim;
+            horizontal-alignment: center;
+            wrap: word-wrap;
+        }
+        if !root.favorites: HorizontalLayout {
+            alignment: center;
+            padding-top: 6px;
+            PillButton {
+                has-icon: true;
+                icon: Icons.folder-plus;
+                text: @tr("TracksPage" => "Add music folder");
+                primary: true;
+                clicked => { App.add-folder(); }
+            }
+        }
+    }
+    list := ListView {
+        visible: App.rows.length > 0;
+        y: root.top;
+        height: root.height - root.top;
+        // The overlay bar instead (below).
+        vertical-scrollbar-policy: always-off;
+        horizontal-scrollbar-policy: always-off;
+        // Carried rows over a reorderable list: the boundary nearest the
+        // pointer, shown as a line.
+        property <bool> over: App.dragging && App.reorderable
+            && App.drag-x >= self.absolute-position.x && App.drag-x < self.absolute-position.x + self.width
+            && App.drag-y >= self.absolute-position.y && App.drag-y < self.absolute-position.y + self.height;
+        property <int> target: clamp(round((App.drag-y - self.absolute-position.y - self.content-y) / self.row-h), 0, App.rows.length);
+        changed over => {
+            App.drop-row = self.target;
+            if (self.over) { App.drop-area = "list"; } else if (App.drop-area == "list") { App.drop-area = ""; }
+        }
+        changed target => { App.drop-row = self.target; root.list-offset = self.content-y; }
+        changed content-y => { root.list-offset = self.content-y; }
+        // The keyboard's row (or "Show in library") scrolled into view.
+        property <int> reveal: App.reveal-serial;
+        property <length> row-h: Theme.row-pitch;
+        changed reveal => {
+            let top = App.reveal-row * self.row-h;
+            if (App.reveal-centred) {
+                self.content-y = -clamp(top - (self.visible-height - self.row-h) / 2, 0, max(0, self.content-height - self.visible-height));
+            } else if (top < -self.content-y) {
+                self.content-y = -top;
+            } else if (top + self.row-h > -self.content-y + self.visible-height) {
+                self.content-y = -(top + self.row-h - self.visible-height);
+            }
+        }
+        for row[i] in App.rows: Row {
+            x: root.inset;
+            width: max(0px, root.viewport - 14px);
+            track: row;
+            index: i;
+            leading: root.leading;
+            cover: root.cover;
+        }
+    }
+    // A wheel notch eases to its goal in 140 ms (cubic ease-out); notches
+    // during the ease add to the goal.
+    property <length> total-h: App.rows.length * (Theme.row-pitch);
+    property <length> range: max(0px, root.total-h - list.visible-height);
+    property <length> wheel-goal;
+    property <length> wheel-from;
+    property <duration> wheel-start;
+    property <bool> easing;
+    property <int> wheel: App.wheel-serial;
+    changed wheel => {
+        let from = root.easing ? root.wheel-goal : -list.content-y;
+        root.wheel-goal = clamp(from + App.wheel-amount, 0px, root.range);
+        root.wheel-from = -list.content-y;
+        root.wheel-start = animation-tick();
+        root.easing = true;
+    }
+    Timer {
+        interval: 8ms;
+        running: root.easing;
+        triggered => {
+            let t = min(1, (animation-tick() - root.wheel-start) / 140ms);
+            let k = 1 - pow(1 - t, 3);
+            list.content-y = -(root.wheel-from + (root.wheel-goal - root.wheel-from) * k);
+            if (t >= 1) { root.easing = false; }
+        }
+    }
+    // The overlay scroll bar.
+    if root.range > 0: OverlayScrollBar {
+        x: root.width - 10px;
+        y: list.y;
+        width: 10px;
+        height: list.height;
+        position: -list.content-y;
+        page: list.visible-height;
+        range: root.range;
+        scroll-to(y) => {
+            root.easing = false;
+            list.content-y = -clamp(y, 0px, root.range);
+        }
+    }
+    // Where carried rows would land.
+    if App.dragging && App.drop-area == "list" && App.drop-item == "": Rectangle {
+        x: root.inset;
+        width: max(0px, root.viewport - 14px);
+        y: root.top + root.list-offset + App.drop-row * (Theme.row-pitch) - 1px;
+        height: 2px;
+        border-radius: 1px;
+        background: Theme.accent;
+    }
+}

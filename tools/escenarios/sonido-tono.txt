@@ -1,0 +1,56 @@
+# Tono y tempo (el ícono de onda de la barra, con PipeWire en 738, 795), sobre
+# 01-izquierda (1 kHz): tono +12 semitonos da 2 kHz; velocidad 1,5 da 1,5 kHz
+# y avanza 1,5 veces más rápido; tempo 1,5 deja la frecuencia y también
+# acelera (tools/ritmo.py). Escritos con coma, como en español.
+preparar python3 {repo}/tools/tonos.py --biblioteca {rt}/p
+ajuste library/rescanOnStartup=true
+ajuste playback/repeat=2
+argumentos {repo}/target/ui-live/tonos/01-izquierda.flac
+estado playing=true 5
+clic 738 795
+ventanas 2
+foco last
+esperar 0.8
+sonido frec-i=1000±1
+clic 525 71
+guardado pitch/enabled=true
+clic 313 161
+tecla ctrl+a
+tecla 1
+tecla 2
+tecla enter
+guardado pitch/pitch=12
+sonido frec-i=2000±2 nivel-i=-12±0.5
+sh python3 {repo}/tools/ritmo.py {rt}/state 1
+clic 313 161
+tecla ctrl+a
+tecla 0
+tecla enter
+guardado pitch/pitch=0
+clic 313 285
+tecla ctrl+a
+tecla 1
+tecla comma
+tecla 5
+tecla enter
+guardado pitch/rate=1.5
+sonido frec-i=1500±2
+sh python3 {repo}/tools/ritmo.py {rt}/state 1.5
+clic 313 285
+tecla ctrl+a
+tecla 1
+tecla enter
+guardado pitch/rate=1
+clic 313 223
+tecla ctrl+a
+tecla 1
+tecla comma
+tecla 5
+tecla enter
+guardado pitch/tempo=1.5
+sonido frec-i=1000±2
+sh python3 {repo}/tools/ritmo.py {rt}/state 1.5
+clic 525 71
+guardado pitch/enabled=false
+sonido frec-i=1000±1
+sh python3 {repo}/tools/ritmo.py {rt}/state 1

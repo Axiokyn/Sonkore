@@ -1,12 +1,12 @@
 # English source -> (es, pt_BR, fr, de, it). Part 5: short setting descriptions (the long ones live behind the "i").
 T = {
 "Invert panel colours": ("Invertir colores de los paneles", "Inverter cores dos painéis", "Inverser les couleurs des panneaux", "Panelfarben umkehren", "Inverti i colori dei pannelli"),
-"%1 tracks removed by hand.": ("%1 pistas quitadas a mano.", "%1 faixas removidas manualmente.", "%1 pistes retirées à la main.", "%1 Titel von Hand entfernt.", "%1 brani rimossi a mano."),
+"{0} tracks removed by hand.": ("{0} pistas quitadas a mano.", "{0} faixas removidas manualmente.", "{0} pistes retirées à la main.", "{0} Titel von Hand entfernt.", "{0} brani rimossi a mano."),
 "88.2 kHz for CDs, 96 kHz for 48 kHz files.": ("88,2 kHz para CD, 96 kHz para archivos de 48 kHz.", "88,2 kHz para CDs, 96 kHz para arquivos de 48 kHz.", "88,2 kHz pour les CD, 96 kHz pour les fichiers à 48 kHz.", "88,2 kHz für CDs, 96 kHz für 48-kHz-Dateien.", "88,2 kHz per i CD, 96 kHz per i file a 48 kHz."),
 "A multiple of each file's rate.": ("Un múltiplo de la frecuencia de cada archivo.", "Um múltiplo da taxa de cada arquivo.", "Un multiple de la fréquence de chaque fichier.", "Ein Vielfaches der Rate jeder Datei.", "Un multiplo della frequenza di ogni file."),
-"Automatic: now %1 dB.": ("Automático: ahora %1 dB.", "Automático: agora %1 dB.", "Automatique : actuellement %1 dB.", "Automatisch: derzeit %1 dB.", "Automatico: ora %1 dB."),
+"Automatic: now {0} dB.": ("Automático: ahora {0} dB.", "Automático: agora {0} dB.", "Automatique : actuellement {0} dB.", "Automatisch: derzeit {0} dB.", "Automatico: ora {0} dB."),
 "Bit-perfect; the DAC switches rate between files.": ("Bit-perfect; el DAC cambia de frecuencia entre archivos.", "Bit-perfect; o DAC troca de taxa entre arquivos.", "Bit-perfect ; le DAC change de fréquence entre les fichiers.", "Bit-perfect; der DAC wechselt die Rate zwischen Dateien.", "Bit-perfect; il DAC cambia frequenza tra i file."),
-"Currently: %1.": ("Actualmente: %1.", "Atualmente: %1.", "Actuellement : %1.", "Aktuell: %1.", "Attuale: %1."),
+"Currently: {0}.": ("Actualmente: {0}.", "Atualmente: {0}.", "Actuellement : {0}.", "Aktuell: {0}.", "Attuale: {0}."),
 "DAC keeps bit-perfect; Digital does not below 100 %.": ("DAC mantiene el bit-perfect; Digital no, por debajo del 100 %.", "DAC mantém o bit-perfect; Digital não, abaixo de 100 %.", "DAC reste bit-perfect ; Numérique non, sous 100 %.", "DAC bleibt bit-perfect; Digital unter 100 % nicht.", "DAC resta bit-perfect; Digitale no, sotto il 100 %."),
 "Hear the audio while dragging the bar.": ("Se oye el audio mientras arrastras la barra.", "Ouça o áudio enquanto arrasta a barra.", "Le son suit la barre pendant que vous la faites glisser.", "Der Ton folgt der Leiste beim Ziehen.", "Si sente l'audio mentre trascini la barra."),
 "In use by Sonkore only.": ("En uso solo por Sonkore.", "Em uso só pelo Sonkore.", "Utilisé par Sonkore seul.", "Nur von Sonkore belegt.", "In uso solo da Sonkore."),
@@ -94,10 +94,10 @@ T = {
     "Favorites first": ("Favoritas primero", "Favoritas primeiro", "Favoris d'abord", "Favoriten zuerst", "Preferiti prima"),
     "Expand sidebar": ("Desplegar la barra lateral", "Expandir a barra lateral", "Déplier la barre latérale", "Seitenleiste ausklappen", "Espandi la barra laterale"),
     "Add music folder…": ("Agregar carpeta de música…", "Adicionar pasta de música…", "Ajouter un dossier de musique…", "Musikordner hinzufügen…", "Aggiungi cartella musicale…"),
-    "Its %1 tracks disappear from Sonkore; the files stay on disk. You can bring it back in Settings › Library › Skipped folders.": (
-        "Sus %1 pistas desaparecen de Sonkore; los archivos siguen en el disco. Puedes recuperarla en Ajustes › Biblioteca › Carpetas omitidas.",
-        "Suas %1 faixas somem do Sonkore; os arquivos continuam no disco. Você pode trazê-la de volta em Configurações › Biblioteca › Pastas ignoradas.",
-        "Ses %1 pistes disparaissent de Sonkore ; les fichiers restent sur le disque. Vous pouvez la récupérer dans Paramètres › Bibliothèque › Dossiers ignorés.",
-        "Ihre %1 Titel verschwinden aus Sonkore; die Dateien bleiben auf der Festplatte. Du kannst ihn unter Einstellungen › Mediathek › Übersprungene Ordner zurückholen.",
-        "I suoi %1 brani spariscono da Sonkore; i file restano sul disco. Puoi recuperarla in Impostazioni › Libreria › Cartelle saltate."),
+    "Its {0} tracks disappear from Sonkore; the files stay on disk. You can bring it back in Settings › Library › Skipped folders.": (
+        "Sus {0} pistas desaparecen de Sonkore; los archivos siguen en el disco. Puedes recuperarla en Ajustes › Biblioteca › Carpetas omitidas.",
+        "Suas {0} faixas somem do Sonkore; os arquivos continuam no disco. Você pode trazê-la de volta em Configurações › Biblioteca › Pastas ignoradas.",
+        "Ses {0} pistes disparaissent de Sonkore ; les fichiers restent sur le disque. Vous pouvez la récupérer dans Paramètres › Bibliothèque › Dossiers ignorés.",
+        "Ihre {0} Titel verschwinden aus Sonkore; die Dateien bleiben auf der Festplatte. Du kannst ihn unter Einstellungen › Mediathek › Übersprungene Ordner zurückholen.",
+        "I suoi {0} brani spariscono da Sonkore; i file restano sul disco. Puoi recuperarla in Impostazioni › Libreria › Cartelle saltate."),
 }

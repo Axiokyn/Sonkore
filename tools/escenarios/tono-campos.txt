@@ -1,0 +1,32 @@
+# Tono y tempo › SoundTouch avanzado: entrar a un campo numérico y salir sin
+# escribir no cambia nada. El campo muestra «64 coeficientes»; al salir se
+# leía con to-float, que daba 0, y quedaba el mínimo (8 coeficientes,
+# solapamiento 1 ms, secuencia y ventana en auto).
+ajuste appearance/language=es
+preparar python3 {repo}/tools/tonos.py --biblioteca {rt}/p
+argumentos {repo}/target/ui-live/tonos/01-izquierda.flac
+estado playing=true 5
+clic 738 795
+ventanas 2
+foco last
+esperar 0.8
+clic 525 71
+guardado pitch/enabled=true
+# Escrito: 32 coeficientes.
+clic 400 477
+tecla ctrl+a
+tecla 3
+tecla 2
+tecla enter
+guardado soundtouch/aaFilterLength=32
+guardado soundtouch/overlapMs=8
+# Entrar y salir de los dos campos sin escribir.
+clic 400 477
+esperar 0.3
+clic 150 30
+clic 400 615
+esperar 0.3
+clic 150 30
+esperar 2
+guardado soundtouch/aaFilterLength=32
+guardado soundtouch/overlapMs=8

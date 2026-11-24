@@ -1,0 +1,54 @@
+# Ajustes › Audio › ReplayGain: se aplica en el momento a la pista que suena.
+# 05-replaygain: −12 dBFS, pista −6 dB, álbum −10 dB. 09-rg-alto: −12 dBFS,
+# pista +6 dB, pico 0,25: con +9 dB de preamplificación pasaría 0 dBFS, y
+# «Evitar saturación» lo deja en −1 dBFS (tools/tonos.py).
+pantalla 2546 4200
+ajuste widgets/windows/settings=@Size(920 2700)
+ajuste appearance/language=es
+preparar python3 {repo}/tools/tonos.py --biblioteca {rt}/p
+ajuste library/rescanOnStartup=true
+ajuste playback/repeat=2
+argumentos {repo}/target/ui-live/tonos/05-replaygain.flac {repo}/target/ui-live/tonos/09-rg-alto.flac
+estado playing=true 5
+tecla ctrl+comma
+ventanas 2
+foco last
+esperar 0.8
+clic 578 67
+esperar 0.8
+sonido nivel-i=-12±0.2
+clic 807 1841
+esperar 0.4
+clic 807 1916
+guardado playback/replayGain=1
+sonido nivel-i=-18±0.2 nivel-d=-18±0.2
+clic 807 1841
+esperar 0.4
+clic 807 1948
+guardado playback/replayGain=2
+sonido nivel-i=-22±0.2
+# Preamplificación +3 dB.
+clic 833 1881
+tecla ctrl+a
+tecla 3
+tecla enter
+guardado playback/replayGainPreamp=3
+sonido nivel-i=-19±0.2
+# Por pista, +9 dB, y la pista que saturaría.
+clic 807 1841
+esperar 0.4
+clic 807 1916
+guardado playback/replayGain=1
+clic 833 1881
+tecla ctrl+a
+tecla 9
+tecla enter
+guardado playback/replayGainPreamp=9
+foco main
+tecla ctrl+right
+estado index=1
+foco last
+sonido pico-i=-1.0±0.15
+clic 851 1919
+guardado playback/replayGainPreventClipping=false
+sonido pico-i>-0.1

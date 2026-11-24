@@ -1,0 +1,399 @@
+// What the Equalizer and the Pitch & tempo windows share: the frame of a
+// secondary window, the cards and the small controls (PillButton,
+// NumField, CheckBox, ComboBox).
+
+import { Theme, TextMetrics } from "theme.slint";
+import { Icons } from "icons.slint";
+import { WindowButtons, WindowActions } from "chrome.slint";
+
+export { TextMetrics }
+
+// AppWindowBar: 38 px; the icon (accent, 16 px) and the title from 16 px in;
+// dragging it moves the window, a double click maximizes it (when it can).
+export component AppWindowBar inherits Rectangle {
+    in property <image> icon;
+    in property <string> title;
+    in property <bool> maximizable: true;
+    in property <length> corner: 0px;
+    height: 38px;
+    TouchArea {
+        pointer-event(e) => {
+            if (e.kind == PointerEventKind.down && e.button == PointerEventButton.left) {
+                WindowActions.start-move();
+            }
+        }
+        double-clicked => {
+            if (root.maximizable) { WindowActions.toggle-maximize(); }
+        }
+    }
+    Image {
+        x: 16px;
+        y: round((root.height - 16px) / 2 / 1px) * 1px;
+        width: 16px;
+        height: 16px;
+        source: root.icon;
+        colorize: Theme.accent;
+    }
+    Text {
+        x: 41px;
+        y: 10px;
+        width: max(0px, buttons.x - 12px - self.x);
+        text: root.title;
+        font-size: 14px;
+        font-weight: 600;
+        color: Theme.text;
+        overflow: elide;
+    }
+    buttons := WindowButtons {
+        corner: root.corner;
+        x: root.width - self.preferred-width - (Theme.window-buttons == "windows" ? 0 : 8px);
+        y: Theme.window-buttons == "windows" ? 0 : 4px;
+    }
+}
+
+// A rounded surface with a hairline.
+export component Card inherits Rectangle {
+    in property <color> border: Theme.border;
+    border-radius: Theme.radius;
+    background: Theme.surface;
+    border-width: 1px;
+    border-color: root.border;
+}
+
+// 50 × 34, the 38 × 22 track 6 px in.
+export component LSwitch inherits Rectangle {
+    in-out property <bool> checked;
+    in property <bool> enabled: true;
+    callback toggled(bool);
+    width: 50px;
+    height: 34px;
+    opacity: enabled ? 1 : 0.5;
+    Rectangle {
+        x: 6px;
+        y: round((parent.height - 22px) / 2 / 1px) * 1px;
+        width: 38px;
+        height: 22px;
+        border-radius: Theme.radius <= 2px ? 3px : 11px;
+        background: root.checked ? Theme.accent : Theme.border;
+        animate background { duration: 140ms; }
+        Rectangle {
+            x: root.checked ? parent.width - self.width - 3px : 3px;
+            y: 3px;
+            width: 16px;
+            height: 16px;
+            border-radius: Theme.radius <= 2px ? 2px : 8px;
+            background: white;
+            animate x { duration: 140ms; easing: ease-out; }
+        }
+    }
+    TouchArea {
+        enabled: root.enabled;
+        mouse-cursor: pointer;
+        clicked => {
+            root.checked = !root.checked;
+            root.toggled(root.checked);
+        }
+    }
+}
+
+// The title in large type, a line under it, the state named
+// beside the switch.
+export component StatusCard inherits Card {
+    in property <string> title;
+    in property <string> subtitle;
+    in property <bool> on;
+    in property <string> tooltip;
+    callback toggled(bool);
+    border: Theme.text.with-alpha(Theme.dark ? 0.06 : 0.09);
+    height: 59px;
+    Text {
+        x: 16px;
+        y: 12px;
+        width: state.x - 12px - self.x;
+        text: root.title;
+        font-size: 15px;
+        font-weight: 600;
+        color: Theme.text;
+        overflow: elide;
+    }
+    Text {
+        x: 16px;
+        y: 33px;
+        width: state.x - 12px - self.x;
+        text: root.subtitle;
+        font-size: 11px;
+        color: Theme.text-dim;
+        overflow: elide;
+    }
+    state := Text {
+        x: switch.x - 12px - self.width;
+        y: floor((root.height - self.height) / 2 / 1px) * 1px;
+        width: ceil(TextMetrics.width(self.text, 13px, 600) / 1px) * 1px;
+        text: root.on ? @tr("StatusCard" => "On") : @tr("StatusCard" => "Off");
+        font-size: 13px;
+        font-weight: 600;
+        color: root.on ? Theme.accent : Theme.text-dim;
+    }
+    switch := LSwitch {
+        x: root.width - 14px - self.width;
+        y: floor((root.height - self.height) / 2 / 1px) * 1px;
+        checked: root.on;
+        toggled(v) => { root.toggled(v); }
+    }
+}
+
+// A rounded button,
+// the 16 px icon 6 px before the 13 px semi-bold text; the accent's when
+// primary. Half-transparent while disabled.
+export component Pill inherits Rectangle {
+    in property <image> icon;
+    in property <bool> has-icon: false;
+    in property <string> text;
+    in property <bool> primary: false;
+    in property <bool> enabled: true;
+    callback clicked();
+    out property <bool> hovered: area.has-hover;
+    property <length> text-width: TextMetrics.width(root.text, 13px, 600);
+    property <length> row-width: (has-icon ? 22px : 0px) + text-width;
+    height: Theme.compact ? 28px : 34px;
+    out property <length> natural: ceil((row-width + (Theme.compact ? 20px : 28px)) / 1px) * 1px;
+    width: self.natural;
+    border-radius: Theme.radius <= 2px ? Theme.radius-small : self.height / 2;
+    opacity: enabled ? 1 : 0.45;
+    property <bool> hot: area.has-hover && root.enabled;
+    background: primary ? (area.pressed ? Theme.accent.darker(15%) : hot ? Theme.accent.brighter(8%) : Theme.accent)
+              : area.pressed ? Theme.border : hot ? Theme.hover : Theme.surface-hi;
+    border-width: primary ? 0 : 1px;
+    border-color: Theme.border;
+    property <length> left: round((root.width - min(root.row-width, root.width - (Theme.compact ? 20px : 28px))) / 2 / 1px) * 1px;
+    if has-icon: Image {
+        x: root.left;
+        y: round((root.height - 16px) / 2 / 1px) * 1px;
+        width: 16px;
+        height: 16px;
+        source: root.icon;
+        colorize: root.primary ? Theme.on-accent : Theme.text;
+    }
+    label := Text {
+        x: root.left + (root.has-icon ? 22px : 0px);
+        y: round((root.height - self.preferred-height) / 2 / 1px) * 1px;
+        width: root.row-width + (Theme.compact ? 20px : 28px) > root.width ? root.width - self.x - (Theme.compact ? 10px : 14px) : self.preferred-width + 1px;
+        overflow: elide;
+        text: root.text;
+        font-size: 13px;
+        font-weight: 600;
+        color: root.primary ? Theme.on-accent : Theme.text;
+    }
+    area := TouchArea {
+        enabled: root.enabled;
+        mouse-cursor: pointer;
+        clicked => { root.clicked(); }
+    }
+}
+
+// A right-aligned number with a faint unit,
+// re-formatted when it loses focus; Enter or leaving it commits the text.
+export component NumField inherits Rectangle {
+    in property <string> value-text;      // the value, formatted
+    in property <string> suffix;
+    in property <bool> enabled: true;
+    callback edited(string);              // the text typed, on Enter / focus out
+    width: 84px;
+    height: Theme.compact ? 26px : 32px;
+    border-radius: Theme.radius-small;
+    background: Theme.surface-hi;
+    border-width: 1px;
+    border-color: input.has-focus ? Theme.accent : Theme.border;
+    if root.suffix != "": Text {
+        x: root.width - 8px - self.width;
+        y: round((root.height - self.preferred-height) / 2 / 1px) * 1px;
+        width: self.preferred-width;
+        text: root.suffix;
+        font-size: 11px;
+        color: Theme.text-faint;
+    }
+    input := TextInput {
+        x: 6px;
+        width: root.width - 6px - (root.suffix == "" ? 10px : 32px);
+        height: root.height;
+        enabled: root.enabled;
+        horizontal-alignment: right;
+        vertical-alignment: center;
+        single-line: true;
+        font-size: 13px;
+        color: Theme.text;
+        selection-background-color: Theme.accent;
+        selection-foreground-color: Theme.on-accent;
+        init => { self.text = root.value-text; }
+        accepted => {
+            root.edited(self.text);
+            self.text = root.value-text;
+        }
+        changed has-focus => {
+            if (!self.has-focus) {
+                root.edited(self.text);
+                self.text = root.value-text;
+            }
+        }
+        key-pressed(e) => {
+            if (e.text == Key.Escape) {
+                self.text = root.value-text;
+                self.clear-focus();
+                return accept;
+            }
+            reject
+        }
+    }
+    changed value-text => {
+        if (!input.has-focus) { input.text = root.value-text; }
+    }
+}
+
+// An 18 px rounded square (the accent with a
+// check when on, an outline when off), the text 10 px after it.
+export component CheckBox inherits Rectangle {
+    in-out property <bool> checked;
+    in property <string> text;
+    in property <bool> enabled: true;
+    callback toggled(bool);
+    width: ceil((6px + 18px + (text == "" ? 0px : 10px + TextMetrics.width(root.text, 13px, 400)) + 6px) / 1px) * 1px;
+    height: 30px;
+    opacity: enabled ? 1 : 0.45;
+    property <bool> hot: area.has-hover && root.enabled;
+    Rectangle {
+        x: 6px;
+        y: 6px + (root.height - 12px - 18px) / 2;
+        width: 18px;
+        height: 18px;
+        border-radius: 5px;
+        background: root.checked ? Theme.accent : root.hot ? Theme.hover : transparent;
+        border-width: root.checked ? 0 : 2px;
+        border-color: root.hot ? Theme.text-dim : Theme.text-faint;
+        if root.checked: Image {
+            x: 2px;
+            y: 2px;
+            width: 14px;
+            height: 14px;
+            source: @image-url("../icons/check.svg");
+            colorize: Theme.on-accent;
+        }
+    }
+    label := Text {
+        x: 34px;
+        y: 6px + round((root.height - 12px - self.preferred-height) / 2 / 1px) * 1px;
+        width: max(0px, root.width - 40px);
+        text: root.text;
+        font-size: 13px;
+        color: root.checked ? Theme.text : Theme.text-dim;
+        overflow: elide;
+    }
+    area := TouchArea {
+        enabled: root.enabled;
+        mouse-cursor: pointer;
+        clicked => {
+            root.checked = !root.checked;
+            root.toggled(root.checked);
+        }
+    }
+}
+
+// A rounded field with the chevron at the
+// right, its list in a rounded card under it (the current one in the
+// accent and bold).
+export component ComboBox inherits Rectangle {
+    in property <[string]> model;
+    in property <int> current-index;
+    in property <bool> enabled: true;
+    callback activated(int);
+    height: Theme.compact ? 28px : Theme.spacious ? 38px : 34px;
+    width: 120px;
+    border-radius: Theme.radius <= 2px ? Theme.radius-small : min(self.height / 2, Theme.radius);
+    background: area.pressed ? Theme.border : area.has-hover && root.enabled ? Theme.hover : Theme.surface-hi;
+    border-width: 1px;
+    border-color: Theme.border;
+    opacity: enabled ? 1 : 0.5;
+    property <length> row-h: Theme.compact ? 26px : Theme.spacious ? 36px : 32px;
+    Text {
+        x: 12px;
+        y: round((root.height - self.preferred-height) / 2 / 1px) * 1px;
+        width: root.width - 12px - 30px;
+        text: root.model[root.current-index];
+        font-size: 13px;
+        color: Theme.text;
+        overflow: elide;
+    }
+    Image {
+        x: root.width - 24px;
+        y: floor((root.height - 14px) / 2 / 1px) * 1px;
+        width: 14px;
+        height: 14px;
+        source: Icons.chevron-down;
+        colorize: Theme.text-dim;
+    }
+    area := TouchArea {
+        enabled: root.enabled;
+        mouse-cursor: pointer;
+        clicked => { popup.show(); }
+    }
+    popup := PopupWindow {
+        x: 0;
+        y: root.height + 4px;
+        width: max(root.width, 160px);
+        height: min(root.row-h * root.model.length + 12px, 360px);
+        Rectangle {
+            border-radius: Theme.radius;
+            background: Theme.surface;
+            border-width: 1px;
+            border-color: Theme.border;
+            Flickable {
+                x: 6px;
+                y: 6px;
+                width: parent.width - 12px;
+                height: parent.height - 12px;
+                content-height: root.row-h * root.model.length;
+                for item[i] in root.model: Rectangle {
+                    y: i * root.row-h;
+                    height: root.row-h;
+                    border-radius: Theme.radius-small;
+                    background: pick.has-hover ? Theme.hover : transparent;
+                    Text {
+                        x: 6px;
+                        width: parent.width - 12px;
+                        height: parent.height;
+                        vertical-alignment: center;
+                        text: item;
+                        font-size: 13px;
+                        font-weight: i == root.current-index ? 600 : 400;
+                        color: i == root.current-index ? Theme.accent : Theme.text;
+                        overflow: elide;
+                    }
+                    pick := TouchArea {
+                        mouse-cursor: pointer;
+                        clicked => {
+                            root.activated(i);
+                            popup.close();
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// Small, bold, upper case, faint.
+export component Caps inherits Text {
+    in property <string> label;
+    text: label.to-uppercase();
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1.2px;
+    color: Theme.text-faint;
+}
+
+// The window's ground: the skin's background with
+// the window's corner; the outline and the edges that resize it go on top.
+export component WindowGround inherits Rectangle {
+    in property <length> corner;
+    background: Theme.bg;
+    border-radius: corner;
+}

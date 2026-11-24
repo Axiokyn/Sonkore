@@ -1,0 +1,18 @@
+# Sin agujeros transparentes ni restos fuera del daño (líneas sueltas) al
+# pasar el mouse, desplazar, abrir menús y reproducir. Correr en varias escalas: --escalas 100,110,125,150,175,200
+mover 600 150
+mover 600 190
+mover 600 230
+rueda 600 300 10
+esperar 0.3
+rueda 600 300 -10
+esperar 0.3
+dclic 900 113
+estado playing=true
+esperar 0.5
+rclic 600 230
+esperar 0.3
+captura menu
+tecla escape
+esperar 0.3
+revisar principal

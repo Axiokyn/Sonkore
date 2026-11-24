@@ -1,0 +1,21 @@
+# Las ventanas aparte (Ajustes, Ecualizador) se abren rápido, y el mini
+# reproductor (Ctrl+M) también. Barra inferior con salida PipeWire (aparece la
+# etiqueta «Sistema»): ecualizador 935, salidas 973, mini 1037, ajustes 1074 (y=795).
+ventanas 1
+latencia abrir-ajustes 300 ventana
+clic 1074 795
+ventanas 2
+captura ajustes
+foco main
+latencia abrir-ecualizador 300 ventana
+clic 935 795
+ventanas 3
+foco main
+latencia menu-salidas 150
+clic 973 795
+captura salidas
+tecla escape
+latencia mini 200
+tecla ctrl+m
+esperar 0.8
+captura mini

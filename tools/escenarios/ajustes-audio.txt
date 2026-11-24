@@ -1,0 +1,10 @@
+# Ajustes › Audio: el punto de la salida elegida queda en el medio de su
+# anillo a cualquier escala (a 165 %, interfaz 110 %, salía corrido 1 px).
+# Pestaña Audio en (578, 67) de la ventana de Ajustes.
+ventanas 1
+clic 1074 795
+ventanas 2
+foco last
+clic 578 67
+esperar 0.5
+captura audio

@@ -1,0 +1,1341 @@
+// Settings › Appearance: the view being
+// edited, the skins, the accent and every setting chosen from pictures, each
+// picture drawn as the interface draws it.
+
+import { Theme } from "theme.slint";
+import { Icons } from "icons.slint";
+import { Opt, UiText, Label, Section, Row, Card, Pill } from "settings_controls.slint";
+
+// A skin's card (SkinCard): its colours, resolved in Rust.
+export struct SkinTile {
+    index: int,
+    name: string,
+    hint: string,
+    frame: color,
+    pane: color,
+    accent: color,
+    border: color,
+    surface-hi: color,
+    text-dim: color,
+    text-faint: color,
+    radius: length,
+    inverted: bool,
+}
+
+// What the Appearance tab shows: the values of the view being edited
+// and whether the mini player has its own.
+export global Appearance {
+    in property <bool> editing-compact: false;
+    in property <[SkinTile]> skins;
+    in property <int> skin: 0;
+    in property <color> skin-accent: #1ed760;
+    in property <color> skin-on-accent: #000000;
+    in property <color> skin-sidebar: #0e0e11;
+    in property <string> accent-override;
+    in property <string> icon-style: "solid";
+    in property <string> transport-style: "sonkore";
+    in property <string> slider-style: "line";
+    in property <string> volume-style: "line";
+    in property <string> window-buttons: "windows";
+    in property <string> window-radius: "8";
+    in property <string> window-outline: "highlight";
+    in property <string> backdrop: "plain";
+    in property <string> visualizer: "bars";
+    in property <string> density: "comfortable";
+    in property <string> list-density: "comfortable";
+    in property <bool> list-covers: true;
+    in property <bool> alternate-rows: false;
+    // The density the window shows now (the covers lock follows it).
+    in property <string> shown-list-density: "comfortable";
+    in property <bool> restart-for-corners: false;
+    // The keys the mini player sets apart.
+    in property <[string]> own;
+    // The backdrop's two other colours (the accent's hue turned).
+    in property <color> backdrop-a2: #1ed760;
+    in property <color> backdrop-a3: #1ed760;
+    // The waveform preview: half heights of its 1 px lines, every 2 px.
+    in property <[float]> wave: [];
+
+    callback set-compact(bool);
+    callback edit(string, string);      // key, value
+    callback inherit(string);           // key
+    callback pick-skin(int);
+    callback invert-skin(int);
+    callback restart();
+}
+
+// Line and solid glyphs whatever the window's icon style (the previews show
+// each style).
+global Glyphs {
+    out property <image> music-line: @image-url("../icons/music.svg");
+    out property <image> music-solid: @image-url("../icons/solid/music.svg");
+    out property <image> folder-line: @image-url("../icons/folder.svg");
+    out property <image> folder-solid: @image-url("../icons/solid/folder.svg");
+    out property <image> eq-line: @image-url("../icons/eq.svg");
+    out property <image> eq-solid: @image-url("../icons/solid/eq.svg");
+    out property <image> settings-line: @image-url("../icons/settings.svg");
+    out property <image> settings-solid: @image-url("../icons/solid/settings.svg");
+    out property <image> prev-line: @image-url("../icons/prev.svg");
+    out property <image> prev-solid: @image-url("../icons/solid/prev.svg");
+    out property <image> play-line: @image-url("../icons/play.svg");
+    out property <image> play-solid: @image-url("../icons/solid/play.svg");
+    out property <image> next-line: @image-url("../icons/next.svg");
+    out property <image> next-solid: @image-url("../icons/solid/next.svg");
+    out property <image> volume-line: @image-url("../icons/volume.svg");
+    out property <image> volume-solid: @image-url("../icons/solid/volume.svg");
+    out property <image> win-min: @image-url("../icons/win-min.svg");
+    out property <image> win-max: @image-url("../icons/win-max.svg");
+    out property <image> close: @image-url("../icons/close.svg");
+    out property <image> breeze-min: @image-url("../icons/breeze-min.svg");
+    out property <image> breeze-max: @image-url("../icons/breeze-max.svg");
+    out property <image> breeze-close: @image-url("../icons/breeze-close.svg");
+}
+
+// A preview's frame: the page colour, rounded 5 px, a hairline.
+component Frame inherits Rectangle {
+    background: Theme.bg;
+    border-radius: 5px;
+    border-width: 1px;
+    border-color: Theme.border;
+}
+
+// --- The previews --------------------------------------------------------------
+
+// The Tracks page: the list alone, or three filter columns above it.
+export component BrowserPreview inherits Frame {
+    in property <bool> filters;
+    if root.filters: Rectangle {
+        for i in 3: Rectangle {
+            x: 5px + i * 25px;
+            y: 5px;
+            width: 22px;
+            height: 17px;
+            border-radius: 2px;
+            background: Theme.surface-hi;
+            for j in 3: Rectangle {
+                x: 3px;
+                y: 3px + j * 4px;
+                width: 14px - j * 3px;
+                height: 2px;
+                border-radius: 1px;
+                background: j == 0 && i == 0 ? Theme.accent : Theme.text-faint;
+            }
+        }
+    }
+    for i in (root.filters ? 3 : 6): Rectangle {
+        x: 6px;
+        y: (root.filters ? 27px : 7px) + i * 6px;
+        width: 62px - mod(i, 2) * 12px;
+        height: 3px;
+        border-radius: 1.5px;
+        background: Theme.text-faint;
+    }
+}
+
+// A few icons of the bar and the sidebar in that style.
+component IconStylePreview inherits Frame {
+    in property <string> value;
+    property <bool> tiles: root.value == "tile";
+    property <bool> line: root.value == "line" || root.value == "tile";
+    property <length> w: root.tiles ? 19px : 14px;
+    property <length> gap: root.tiles ? 4px : 7px;
+    property <length> x0: round((root.width - (4 * root.w + 3 * root.gap)) / 2px) * 1px;
+    property <length> y0: round((root.height - root.w) / 2px) * 1px;
+    for i in 4: Rectangle {
+        x: root.x0 + i * (root.w + root.gap);
+        y: root.y0;
+        width: root.w;
+        height: root.w;
+        border-radius: 5px;
+        background: !root.tiles ? transparent : i == 2 ? Theme.accent-soft : Theme.surface-hi;
+        property <length> s: root.tiles ? 12px : 14px;
+        Image {
+            x: round((parent.width - parent.s) / 2px) * 1px;
+            y: round((parent.height - parent.s) / 2px) * 1px;
+            width: parent.s;
+            height: parent.s;
+            source: i == 0 ? (root.line ? Glyphs.music-line : Glyphs.music-solid)
+                  : i == 1 ? (root.line ? Glyphs.folder-line : Glyphs.folder-solid)
+                  : i == 2 ? (root.line ? Glyphs.eq-line : Glyphs.eq-solid)
+                  : (root.line ? Glyphs.settings-line : Glyphs.settings-solid);
+            colorize: i == 2 ? Theme.accent : Theme.text;
+        }
+    }
+}
+
+// Previous, play and next: the play button in that shape, the glyphs (and
+// tiles) in the icon style being edited.
+component TransportPreview inherits Frame {
+    in property <string> value;
+    property <string> style: Appearance.icon-style;
+    property <bool> tiles: root.style == "tile";
+    property <bool> line: root.style == "line" || root.style == "tile";
+    property <bool> is-round: root.value == "round";
+    property <bool> shaped: root.value != "sonkore";
+    property <length> main-w: root.shaped || root.tiles ? 22px : 16px;
+    property <length> side-w: root.tiles ? 19px : 16px;
+    property <length> x0: round((root.width - (2 * root.side-w + root.main-w + 8px)) / 2px) * 1px;
+    for i in 3: Rectangle {
+        property <bool> main: i == 1;
+        property <length> w: self.main ? root.main-w : root.side-w;
+        property <bool> shape: self.main && root.shaped;
+        x: root.x0 + (i == 0 ? 0px : i == 1 ? root.side-w + 4px : root.side-w + root.main-w + 8px);
+        y: round((root.height - self.w) / 2px) * 1px;
+        width: self.w;
+        height: self.w;
+        border-radius: self.shape ? self.w / 2 : 5px;
+        background: self.shape ? (root.is-round ? (Theme.dark ? Theme.text : Theme.accent) : transparent)
+                  : root.tiles ? Theme.surface-hi : transparent;
+        border-width: self.shape && root.value == "outline" ? 1px : 0;
+        border-color: Theme.text;
+        property <length> s: self.main && root.value == "sonkore" ? (root.tiles ? 13px : 16px) : 11px;
+        // Centred exactly (rounding 5.5 up and adding 8 %, the
+        // triangle sat 1.5 px right and half a pixel low in the 22 px disc);
+        // half that nudge is left for the triangle's weight.
+        property <length> shift: self.main && !root.line ? self.s * 0.04 : 0px;
+        Image {
+            x: (parent.width - parent.s) / 2 + parent.shift;
+            y: (parent.height - parent.s) / 2;
+            width: parent.s;
+            height: parent.s;
+            source: i == 0 ? (root.line ? Glyphs.prev-line : Glyphs.prev-solid)
+                  : i == 1 ? (root.line ? Glyphs.play-line : Glyphs.play-solid)
+                  : (root.line ? Glyphs.next-line : Glyphs.next-solid);
+            colorize: root.is-round && parent.main ? (Theme.dark ? Theme.bg : Theme.on-accent) : Theme.text;
+        }
+    }
+}
+
+// A slider face for a preview: the groove, the part played, the
+// knob of the style (not hovered).
+component SliderLook inherits Rectangle {
+    in property <string> style;
+    in property <float> span;
+    property <length> th: root.style == "pill" ? 6px : root.style == "thick" ? 10px : root.style == "classic" ? 8px
+                        : root.style == "led" ? 10px : root.style == "ring" ? 3px : root.style == "wave" ? 20px : 4px;
+    property <color> fill: Theme.dark ? Theme.accent.darker(5%) : Theme.accent;
+    property <color> groove: Theme.text.with-alpha(Theme.dark ? 0.08 : 0.13);
+    property <length> ty: (root.height - root.th) / 2;
+    property <length> pos: root.span * root.width;
+    property <length> radius: root.style == "classic" ? 2px : root.th / 2;
+    // The waveform: a 1 px line every 2 px, the played part in the accent.
+    if root.style == "wave": Rectangle {
+        for h[i] in Appearance.wave: Rectangle {
+            x: i * 2px;
+            y: root.height / 2 - h * 1px;
+            width: 1px;
+            height: 2 * h * 1px;
+            background: i * 2px < root.pos ? Theme.accent : Theme.text.with-alpha(Theme.dark ? 0.22 : 0.28);
+        }
+    }
+    // LED: segments 2 px apart, lit up to the value.
+    if root.style == "led": Rectangle {
+        property <int> count: max(1, floor((root.width + 2px) / 6px));
+        property <length> seg: (root.width - 2px * (self.count - 1)) / self.count;
+        for i in self.count: Rectangle {
+            x: i * (parent.seg + 2px);
+            y: root.ty;
+            width: parent.seg;
+            height: root.th;
+            border-radius: 1px;
+            background: root.groove;
+            property <length> lit: clamp(root.pos - self.x, 0px, self.width);
+            if self.lit > 0: Rectangle {
+                x: 0;
+                width: parent.lit;
+                border-radius: 1px;
+                background: root.fill;
+            }
+        }
+    }
+    if root.style != "wave" && root.style != "led": Rectangle {
+        Rectangle {
+            y: root.ty;
+            height: root.th;
+            border-radius: root.radius;
+            background: root.groove;
+            border-width: root.style == "classic" ? 1px : 0;
+            border-color: #000000.with-alpha(Theme.dark ? 0.45 : 0.12);
+        }
+        Rectangle {
+            x: 0;
+            y: root.ty;
+            width: root.pos;
+            height: root.th;
+            border-radius: root.radius;
+            background: root.style == "glow" ? @linear-gradient(90deg, root.fill.with-alpha(0.12) 0%, root.fill 100%) : root.fill;
+        }
+        // The knob: always for pill, classic, glow and ring.
+        if root.style == "classic": Rectangle {
+            x: root.span * (root.width - 8px);
+            y: root.height / 2 - 8px;
+            width: 8px;
+            height: 16px;
+            border-radius: 2px;
+            background: Theme.surface-hi.brighter(30%);
+            border-width: 1px;
+            border-color: #000000.with-alpha(Theme.dark ? 0.5 : 0.2);
+        }
+        if root.style == "ring": Rectangle {
+            x: root.span * (root.width - 12px);
+            y: root.height / 2 - 6px;
+            width: 12px;
+            height: 12px;
+            border-radius: 6px;
+            background: Theme.bg;
+            border-width: 2px;
+            border-color: root.fill;
+        }
+        if root.style == "glow": Rectangle {
+            property <length> cx: root.span * (root.width - 10px) + 5px;
+            Rectangle {
+                x: parent.cx - 8px;
+                y: root.height / 2 - 8px;
+                width: 16px;
+                height: 16px;
+                border-radius: 8px;
+                background: root.fill.with-alpha(0.25);
+            }
+            Rectangle {
+                x: parent.cx - 5px;
+                y: root.height / 2 - 5px;
+                width: 10px;
+                height: 10px;
+                border-radius: 5px;
+                background: root.fill;
+            }
+        }
+        if root.style == "pill": Rectangle {
+            x: root.span * (root.width - 13px);
+            y: root.height / 2 - 6.5px;
+            width: 13px;
+            height: 13px;
+            border-radius: 6.5px;
+            background: Theme.dark ? white : Theme.surface;
+            border-width: Theme.dark ? 0 : 1px;
+            border-color: Theme.border;
+        }
+    }
+}
+
+// Progress bar: a seek bar (the waveform a made-up one).
+component SliderPreview inherits Frame {
+    in property <string> value;
+    SliderLook {
+        x: round(root.width / 2 / 1px) * 1px - 38px;
+        y: root.height / 2 - 10px;
+        width: 76px;
+        height: 20px;
+        style: root.value;
+        span: 0.45;
+    }
+}
+
+// Volume bar: the speaker and a short bar.
+component VolumePreview inherits Frame {
+    in property <string> value;
+    property <length> x0: round((root.width - 73px) / 2px) * 1px;
+    property <bool> line: Appearance.icon-style == "line" || Appearance.icon-style == "tile";
+    Image {
+        x: root.x0;
+        y: round(root.height / 2 / 1px - 6.5) * 1px;
+        width: 13px;
+        height: 13px;
+        source: root.line ? Glyphs.volume-line : Glyphs.volume-solid;
+        colorize: Theme.text-dim;
+    }
+    SliderLook {
+        x: root.x0 + 19px;
+        y: root.height / 2 - 10px;
+        width: 54px;
+        height: 20px;
+        style: root.value;
+        span: 0.7;
+    }
+}
+
+// One window button of a style, at 0.68 of its size.
+component MiniTitleButton inherits Rectangle {
+    in property <string> style;
+    in property <string> kind;
+    property <bool> danger: root.kind == "close";
+    property <float> k: 0.68;
+    property <color> light: root.danger ? #ff5f57 : root.kind == "minimize" ? #febc2e : #28c840;
+    property <length> disc: root.style == "cinnamon" ? (root.danger ? 18px : 0px) : root.style == "mac" ? 13px : root.style == "gnome" ? 24px : 0px;
+    if root.disc > 0: Rectangle {
+        x: (root.width - root.disc * root.k) / 2;
+        y: (root.height - root.disc * root.k) / 2;
+        width: root.disc * root.k;
+        height: self.width;
+        border-radius: self.width / 2;
+        background: root.style == "cinnamon" ? #1f9ede : root.style == "mac" ? root.light : Theme.text.with-alpha(0.09);
+        border-width: root.style == "mac" ? 1px * root.k : 0;
+        border-color: #0000002e;
+    }
+    property <length> size: (root.style == "windows" || root.style == "breeze" ? 14px : root.style == "cinnamon" && root.danger ? 10px : 12px) * root.k;
+    if root.style != "mac": Image {
+        x: (root.width - root.size) / 2;
+        y: (root.height - root.size) / 2 + (root.style == "cinnamon" && root.kind == "minimize" ? 4px * root.k : 0px);
+        width: root.size;
+        height: root.size;
+        source: root.style == "breeze"
+            ? (root.kind == "close" ? Glyphs.breeze-close : root.kind == "minimize" ? Glyphs.breeze-min : Glyphs.breeze-max)
+            : (root.kind == "close" ? Glyphs.close : root.kind == "minimize" ? Glyphs.win-min : Glyphs.win-max);
+        colorize: root.style == "cinnamon" && root.danger ? white
+                : root.style == "gnome" || root.style == "cinnamon" || root.style == "breeze" ? Theme.text : Theme.text-dim;
+    }
+}
+
+// A window corner with the three buttons in that style.
+component WindowButtonsPreview inherits Frame {
+    in property <string> value;
+    property <float> k: 0.68;
+    property <length> bw: (root.value == "windows" ? 39px : root.value == "mac" ? 20px : root.value == "cinnamon" ? 28px : 30px) * root.k;
+    property <length> bh: (root.value == "windows" ? 27px : 30px) * root.k;
+    property <length> gap: (root.value == "mac" ? 1px : 0px) * root.k;
+    property <length> right: root.width - (root.value == "windows" ? 1px : 5px);
+    property <length> top: root.value == "windows" ? 1px : 4px;
+    Rectangle {
+        clip: true;
+        for i in 3: MiniTitleButton {
+            x: root.right - 3 * root.bw - 2 * root.gap + i * (root.bw + root.gap);
+            y: root.top;
+            width: root.bw;
+            height: root.bh;
+            style: root.value;
+            kind: i == 0 ? "minimize" : i == 1 ? "maximize" : "close";
+        }
+    }
+    Rectangle {
+        x: 8px;
+        y: 24px;
+        width: 46px;
+        height: 3px;
+        border-radius: 1.5px;
+        background: Theme.text-faint;
+    }
+    Rectangle {
+        x: 8px;
+        y: 31px;
+        width: 34px;
+        height: 3px;
+        border-radius: 1.5px;
+        background: Theme.text-faint;
+    }
+}
+
+// A window corner at its real radius.
+component CornerPreview inherits Rectangle {
+    in property <string> value;
+    background: Theme.bg;
+    border-radius: root.value.to-float() * 1px;
+    border-width: 2px;
+    border-color: Theme.text-dim;
+}
+
+// A small window on a wallpaper, with the outline as the app draws it.
+component OutlinePreview inherits Rectangle {
+    in property <string> value;
+    border-radius: 4px;
+    background: @linear-gradient(180deg, (Theme.dark ? #4a5568 : #c3cfe2) 0%, (Theme.dark ? #1a202c : #8fa3c4) 100%);
+    mini := Rectangle {
+        x: root.width / 2 - 32px;
+        y: root.height / 2 - 19px;
+        width: 64px;
+        height: 38px;
+        border-radius: 6px;
+        background: Theme.bg;
+    }
+    property <int> rings: root.value == "highlight" ? 2 : root.value == "glow" ? 4 : root.value == "accent" || root.value == "bold" || root.value == "line" ? 1 : 0;
+    for i in root.rings: Rectangle {
+        property <length> inset: root.value == "bold" ? 0px : i * 1px;
+        x: mini.x + self.inset;
+        y: mini.y + self.inset;
+        width: mini.width - 2 * self.inset;
+        height: mini.height - 2 * self.inset;
+        border-radius: max(0px, 6px - i * 1px);
+        border-width: root.value == "bold" ? 2px : 1px;
+        border-color: root.value == "highlight" ? (i == 0 ? #000000.with-alpha(Theme.dark ? 0.7 : 0.28) : #ffffff.with-alpha(Theme.dark ? 0.13 : 0.55))
+                    : root.value == "glow" ? Theme.accent.with-alpha(i == 0 ? 1 : i == 1 ? 0.45 : i == 2 ? 0.22 : 0.08)
+                    : root.value == "accent" ? Theme.accent : root.value == "bold" ? Theme.text-faint : Theme.border;
+    }
+}
+
+// The window's background: the skin's colour with the accent's soft glows or
+// wash.
+component BackdropPreview inherits Rectangle {
+    in property <string> value;
+    property <float> k: Theme.dark ? 1 : 0.7;
+    property <color> a1: Theme.accent;
+    property <color> a2: Appearance.backdrop-a2;
+    property <color> a3: Appearance.backdrop-a3;
+    property <length> big: max(root.width, root.height);
+    border-radius: 6px;
+    background: Theme.bg;
+    border-width: 1px;
+    border-color: Theme.border;
+    Rectangle {
+        clip: true;
+        if root.value == "gradient": Rectangle {
+            x: 1px;
+            y: 1px;
+            width: root.width - 2px;
+            height: root.height - 2px;
+            border-radius: 5px;
+            background: @linear-gradient(90deg, root.a1.with-alpha(0.3 * root.k) 0%, root.a2.with-alpha(0.1 * root.k) 55%, root.a3.with-alpha(0.22 * root.k) 100%);
+        }
+        if root.value == "aurora": Rectangle {
+            property <length> r: 0.7 * root.big;
+            property <length> cx: 0.12 * root.width;
+            property <length> cy: 0.2 * root.height;
+            background: @radial-gradient(circle self.r at self.cx self.cy, root.a1.with-alpha(0.34 * root.k) 0%, root.a1.with-alpha(0) 100%);
+        }
+        if root.value == "aurora": Rectangle {
+            property <length> r: 0.65 * root.big;
+            property <length> cx: 0.8 * root.width;
+            property <length> cy: 0.86 * root.height;
+            background: @radial-gradient(circle self.r at self.cx self.cy, root.a2.with-alpha(0.28 * root.k) 0%, root.a2.with-alpha(0) 100%);
+        }
+        if root.value == "aurora": Rectangle {
+            property <length> r: 0.45 * root.big;
+            property <length> cx: 0.56 * root.width;
+            property <length> cy: 0.09 * root.height;
+            background: @radial-gradient(circle self.r at self.cx self.cy, root.a3.with-alpha(0.2 * root.k) 0%, root.a3.with-alpha(0) 100%);
+        }
+        if root.value == "glow": Rectangle {
+            property <length> r: 0.6 * root.big;
+            property <length> cx: 0.5 * root.width;
+            property <length> cy: 1.05 * root.height;
+            background: @radial-gradient(circle self.r at self.cx self.cy, root.a1.with-alpha(0.32 * root.k) 0%, root.a1.with-alpha(0) 100%);
+        }
+        if root.value == "glow": Rectangle {
+            property <length> r: 0.4 * root.big;
+            background: @radial-gradient(circle self.r at 0px 0px, root.a1.with-alpha(0.1 * root.k) 0%, root.a1.with-alpha(0) 100%);
+        }
+    }
+}
+
+// The player bar's spectrum, frozen; under the pointer each bar moves at its
+// own pace (SpectrumMeter: bars 4/7 of their step, brighter towards the top).
+component VisualizerPreview inherits Rectangle {
+    in property <string> value;
+    in property <float> time: -1;
+    property <[float]> still: [0.35, 0.6, 0.95, 0.7, 0.45, 0.8, 0.55, 0.3, 0.5, 0.25];
+    property <length> step: root.width / 10;
+    property <length> bar-w: max(1px, round(root.step * 4 / 7 / 1px) * 1px);
+    property <color> top: Theme.accent.brighter(15%);
+    property <color> low: Theme.accent.with-alpha(0.5);
+    property <color> mid: Theme.accent.with-alpha(0.55);
+    pure function level(i: int) -> float {
+        return root.time < 0 ? root.still[i]
+            : 0.15 + 0.85 * root.still[i] * (0.55 + 0.45 * sin((root.time * (5 + mod(i * 1.7, 4)) + i) * 1rad));
+    }
+    if root.value == "off": Rectangle {
+        y: root.height / 2 - 1px;
+        height: 2px;
+        border-radius: 1px;
+        background: Theme.border;
+    }
+    if root.value == "bars" || root.value == "mirror": Rectangle {
+        for i in 10: Rectangle {
+            property <length> bh: clamp(root.level(i) * root.height, min(2px, root.height), root.height);
+            x: round((i * root.step + (root.step - root.bar-w) / 2) / 1px) * 1px;
+            y: root.value == "mirror" ? (root.height - self.bh) / 2 : root.height - self.bh;
+            width: root.bar-w;
+            height: self.bh;
+            border-radius: min(root.bar-w, self.bh) / 2;
+            // The shade runs over the whole height: each bar takes its part.
+            property <float> t0: self.y / root.height;
+            property <float> t1: (self.y + self.bh) / root.height;
+            background: root.value == "mirror"
+                ? @linear-gradient(180deg, root.shade-mirror(self.t0) 0%, root.shade-mirror((self.t0 + self.t1) / 2) 50%, root.shade-mirror(self.t1) 100%)
+                : @linear-gradient(180deg, root.top.mix(root.low, 1 - self.t0) 0%, root.top.mix(root.low, 1 - self.t1) 100%);
+        }
+    }
+    pure function shade-mirror(t: float) -> color {
+        return t < 0.5 ? root.top.mix(root.mid, 1 - t * 2) : root.mid.mix(root.top, 1 - (t - 0.5) * 2);
+    }
+    if root.value == "dots": dots := Rectangle {
+        property <length> d: min(root.bar-w, root.height / (6 + 5 * 0.25));
+        property <length> gap: (root.height - 6 * self.d) / 5;
+        for i in 10: Rectangle {
+            x: round((i * root.step + (root.step - root.bar-w) / 2) / 1px) * 1px + (root.bar-w - parent.d) / 2;
+            width: parent.d;
+            property <float> lv: root.level(i);
+            for r in 6: Rectangle {
+                property <float> lit: clamp(parent.lv * 6 - r, 0, 1);
+                y: round((root.height - dots.d - r * (dots.d + dots.gap)) / 1px) * 1px;
+                width: dots.d;
+                height: dots.d;
+                border-radius: self.width / 2;
+                background: (r == 5 && self.lit > 0 ? root.top : Theme.accent).with-alpha(0.14 + 0.86 * self.lit);
+            }
+        }
+    }
+    if root.value == "line": Path {
+        width: root.width;
+        height: root.height;
+        viewbox-width: root.width / 1px * 100;
+        viewbox-height: root.height / 1px * 100;
+        stroke: Theme.accent;
+        stroke-width: 1.6px;
+        stroke-line-cap: round;
+        commands: root.curve();
+    }
+    if root.value == "line": Path {
+        width: root.width;
+        height: root.height;
+        viewbox-width: root.width / 1px * 100;
+        viewbox-height: root.height / 1px * 100;
+        fill: @linear-gradient(180deg, Theme.accent.with-alpha(0.32) 0%, Theme.accent.with-alpha(0.04) 100%);
+        commands: root.curve() + " L " + root.n(9.5 * root.step / 1px) + " " + root.n(root.height / 1px) + " L " + root.n(0.5 * root.step / 1px) + " " + root.n(root.height / 1px) + " Z";
+    }
+    // A Catmull-Rom curve through the bands' tops, as Béziers.
+    pure function px(i: int) -> float { return (i + 0.5) * root.step / 1px; }
+    pure function py(i: int) -> float { return root.height / 1px - 1 - root.level(clamp(i, 0, 9)) * (root.height / 1px - 2); }
+    pure function seg(i: int) -> string {
+        return " C " + root.n(root.px(i) + (root.px(i + 1) - root.px(max(i - 1, 0))) / 6) + " " + root.n(clamp(root.py(i) + (root.py(i + 1) - root.py(max(i - 1, 0))) / 6, 0.5, root.height / 1px - 0.5))
+             + " " + root.n(root.px(i + 1) - (root.px(min(i + 2, 9)) - root.px(i)) / 6) + " " + root.n(clamp(root.py(i + 1) - (root.py(min(i + 2, 9)) - root.py(i)) / 6, 0.5, root.height / 1px - 0.5))
+             + " " + root.n(root.px(i + 1)) + " " + root.n(root.py(i + 1));
+    }
+    // A coordinate in hundredths of a pixel (the viewbox is 100× the size), as
+    // an integer: Slint writes fractions with the language's decimal
+    // separator ("4,5" in Spanish), which path commands do not parse.
+    pure function n(v: float) -> string { return round(v * 100); }
+    pure function curve() -> string {
+        return "M " + root.n(root.px(0)) + " " + root.n(root.py(0)) + root.seg(0) + root.seg(1) + root.seg(2) + root.seg(3) + root.seg(4) + root.seg(5) + root.seg(6) + root.seg(7) + root.seg(8);
+    }
+}
+
+// Buttons in a bar: roomy or tight.
+component DensityPreview inherits Frame {
+    in property <string> value;
+    property <bool> compact: root.value == "compact";
+    property <bool> spacious: root.value == "spacious";
+    property <length> h: root.compact ? 15px : root.spacious ? 28px : 22px;
+    property <length> d: root.compact ? 8px : root.spacious ? 14px : 12px;
+    property <length> gap: root.compact ? 4px : root.spacious ? 8px : 7px;
+    bar := Rectangle {
+        x: 1px;
+        y: root.height - 1px - root.h;
+        width: root.width - 2px;
+        height: root.h;
+        border-bottom-left-radius: 4px;
+        border-bottom-right-radius: 4px;
+        background: Appearance.skin-sidebar;
+    }
+    for i in 4: Rectangle {
+        x: bar.x + round((bar.width - (4 * root.d + 3 * root.gap)) / 2px) * 1px + i * (root.d + root.gap);
+        y: bar.y + round((root.h - root.d) / 2px) * 1px;
+        width: root.d;
+        height: root.d;
+        border-radius: root.d / 2;
+        background: i == 1 ? Theme.accent : Theme.text-faint;
+    }
+}
+
+// Rows of a track list as set up: density, covers and alternating colours.
+component ListPreview inherits Frame {
+    in property <string> density;
+    in property <bool> covers;
+    in property <bool> alternate;
+    property <bool> roomy: root.density == "spacious" || root.density == "comfortable";
+    property <bool> show-covers: root.covers && root.roomy;
+    property <int> rows: root.density == "list" ? 7 : root.density == "compact" ? 5 : root.density == "spacious" ? 3 : 4;
+    property <length> row-h: root.density == "list" ? 5px : root.density == "compact" ? 7px : root.density == "spacious" ? 13px : 9px;
+    property <length> h: root.row-h + (root.density == "list" ? 0.5px : 1.5px);
+    property <length> line-h: root.density == "list" ? 2px : 3px;
+    Rectangle {
+        clip: true;
+        for i in root.rows: Rectangle {
+            x: 3px;
+            y: 4px + i * root.h;
+            width: root.width - 6px;
+            height: root.h;
+            border-radius: 2px;
+            background: root.alternate && mod(i, 2) == 1 ? Theme.text.with-alpha(0.14) : transparent;
+            if root.show-covers: Rectangle {
+                x: 3px;
+                y: root.h / 2 - root.row-h / 2;
+                width: root.row-h;
+                height: root.row-h;
+                border-radius: 2px;
+                background: (i == 0 ? Theme.accent : Theme.text-faint).with-alpha(i == 0 ? 0.9 : 0.5);
+            }
+            Rectangle {
+                x: root.show-covers ? 3px + root.row-h + 4px : 3px;
+                y: root.h / 2 - root.line-h / 2;
+                width: (root.show-covers ? 56px - root.row-h : 70px) - mod(i, 2) * 10px;
+                height: root.line-h;
+                border-radius: 1px;
+                background: i == 0 ? Theme.accent : Theme.text-faint;
+            }
+        }
+    }
+}
+
+// The preview of an option of one of the pickers.
+export component Preview inherits Rectangle {
+    in property <string> kind;
+    in property <string> value;
+    in property <float> time: -1;
+    if root.kind == "browser": BrowserPreview { filters: root.value == "true"; }
+    if root.kind == "iconStyle": IconStylePreview { value: root.value; }
+    if root.kind == "transportStyle": TransportPreview { value: root.value; }
+    if root.kind == "sliderStyle": SliderPreview { value: root.value; }
+    if root.kind == "volumeStyle": VolumePreview { value: root.value; }
+    if root.kind == "windowButtons": WindowButtonsPreview { value: root.value; }
+    if root.kind == "windowRadius": CornerPreview { value: root.value; }
+    if root.kind == "windowOutline": OutlinePreview { value: root.value; }
+    if root.kind == "backdrop": BackdropPreview { value: root.value; }
+    if root.kind == "visualizer": VisualizerPreview { value: root.value; time: root.time; }
+    if root.kind == "density": DensityPreview { value: root.value; }
+    if root.kind == "listDensity": ListPreview {
+        density: root.value;
+        covers: Appearance.list-covers;
+        alternate: Appearance.alternate-rows;
+    }
+    if root.kind == "listCovers": ListPreview {
+        density: Appearance.list-density == "compact" || Appearance.list-density == "list" ? "comfortable" : Appearance.list-density;
+        covers: root.value == "true";
+        alternate: Appearance.alternate-rows;
+    }
+    if root.kind == "alternateRows": ListPreview {
+        density: Appearance.list-density;
+        covers: Appearance.list-covers && Appearance.list-density != "compact" && Appearance.list-density != "list";
+        alternate: root.value == "true";
+    }
+}
+
+// --- The pickers -------------------------------------------------------------------
+
+// Under a setting while the mini player is edited (InheritNote): "Same as
+// the full view", or a link back to it when the mini player has its own.
+export component InheritNote inherits UiText {
+    in property <string> key;
+    property <bool> own: root.is-own(root.key);
+    font-size: 11px;
+    text: root.own ? @tr("SettingsPage" => "Use the full view's") : @tr("SettingsPage" => "Same as the full view");
+    color: root.own ? Theme.accent : Theme.text-faint;
+    TouchArea {
+        enabled: root.own;
+        mouse-cursor: root.own ? pointer : default;
+        clicked => { Appearance.inherit(root.key); }
+    }
+    pure function is-own(key: string) -> bool {
+        // Up to 15 keys.
+        return Appearance.own.length > 0 && (Appearance.own[0] == key || root.at(1, key) || root.at(2, key) || root.at(3, key) || root.at(4, key)
+            || root.at(5, key) || root.at(6, key) || root.at(7, key) || root.at(8, key) || root.at(9, key) || root.at(10, key)
+            || root.at(11, key) || root.at(12, key) || root.at(13, key) || root.at(14, key));
+    }
+    pure function at(i: int, key: string) -> bool {
+        return Appearance.own.length > i && Appearance.own[i] == key;
+    }
+}
+
+// One tile of a picker (PickerTile): the drawing centred above the name.
+component PickerTile inherits Rectangle {
+    in property <string> text;
+    in property <string> value;
+    in property <bool> selected;
+    in property <string> kind;
+    in property <length> preview-w;
+    in property <length> preview-h;
+    in property <bool> animated: false;
+    callback clicked();
+    width: 112px;
+    height: 86px;
+    border-radius: Theme.radius-small + 2px;
+    background: root.selected ? Theme.accent-soft : Theme.surface-hi;
+    border-width: root.selected ? 2px : 1px;
+    border-color: root.selected ? Theme.accent : area.has-hover ? Theme.text-faint : Theme.border;
+    property <float> time: 0;
+    name := UiText {
+        property <length> w: min(self.preferred-width, root.width - 10px);
+        x: round((root.width - self.w) / 2px) * 1px;
+        y: root.height - 7px - self.font-line;
+        width: self.w;
+        text: root.text;
+        font-size: 12px;
+        font-weight: root.selected ? 600 : 400;
+        color: root.selected ? Theme.text : Theme.text-dim;
+        overflow: elide;
+    }
+    property <length> area-h: name.y - 4px - 8px;
+    Preview {
+        x: round((root.width / 2 - root.preview-w / 2) / 1px) * 1px;
+        y: round((8px + root.area-h / 2 - root.preview-h / 2) / 1px) * 1px;
+        width: root.preview-w;
+        height: root.preview-h;
+        kind: root.kind;
+        value: root.value;
+        time: area.has-hover && root.animated ? root.time : -1;
+    }
+    area := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { root.clicked(); }
+    }
+    Timer {
+        interval: 16ms;
+        running: root.animated && area.has-hover;
+        triggered => { root.time += 0.016; }
+    }
+    changed animated => { root.time = 0; }
+}
+
+// The title (and a note), then the tiles,
+// as many to a line as fit (8 px apart).
+export component Picker inherits VerticalLayout {
+    in property <string> title;
+    in property <string> description;
+    in property <string> kind;
+    in property <string> key;           // the inherit note's, while the mini player is edited
+    in property <[Opt]> options;
+    in property <string> current;
+    in property <length> preview-w: 84px;
+    in property <length> preview-h: 48px;
+    in property <bool> animated: false;
+    in property <bool> enabled: true;
+    callback picked(string);
+    padding-top: 6px;
+    spacing: 8px;
+    VerticalLayout {
+        spacing: 2px;
+        Label {
+            text: root.title;
+            font-weight: 500;
+            opacity: root.enabled ? 1 : 0.5;
+        }
+        if root.key != "" && Appearance.editing-compact: InheritNote { key: root.key; }
+        if root.description != "": Label {
+            text: root.description;
+            font-size: 12px;
+            color: Theme.text-dim;
+            opacity: root.enabled ? 1 : 0.5;
+        }
+    }
+    flow := Rectangle {
+        property <int> columns: max(1, floor((self.width + 8px) / 120px));
+        height: ceil(root.options.length / self.columns) * 94px - 8px;
+        opacity: root.enabled ? 1 : 0.5;
+        for o[i] in root.options: PickerTile {
+            x: mod(i, flow.columns) * 120px;
+            y: floor(i / flow.columns) * 94px;
+            text: o.text;
+            value: o.value;
+            selected: o.value == root.current;
+            kind: root.kind;
+            preview-w: root.preview-w;
+            preview-h: root.preview-h;
+            animated: root.animated;
+            clicked => {
+                if (root.enabled) { root.picked(o.value); }
+            }
+        }
+    }
+}
+
+// --- The skins, the accent, the view being edited ------------------------------------
+
+component SkinCard inherits Rectangle {
+    in property <SkinTile> skin;
+    in property <bool> selected;
+    height: 136px;
+    border-radius: 10px;
+    background: Theme.surface-hi;
+    border-width: root.selected ? 2px : 1px;
+    border-color: root.selected ? Theme.accent : area.has-hover ? Theme.text-faint : Theme.border;
+    property <length> mw: root.width - 14px;
+    property <length> side: round(self.mw * 0.28 / 1px) * 1px;
+    mini := Rectangle {
+        x: 7px;
+        y: 7px;
+        width: root.mw;
+        height: 74px;
+        border-radius: min(8px, root.skin.radius);
+        background: root.skin.frame;
+        border-width: 1px;
+        border-color: root.skin.border;
+    }
+    Rectangle {
+        x: 7px;
+        y: 7px;
+        width: root.mw;
+        height: 74px;
+        clip: true;
+        for i in 4: Rectangle {
+            x: 7px;
+            y: 12px + i * 8px;
+            width: max(8px, root.side - 14px - i * 3px);
+            height: 3px;
+            border-radius: 1.5px;
+            background: i == 0 ? root.skin.accent : root.skin.text-faint;
+        }
+        Rectangle {
+            x: root.side;
+            y: 7px;
+            width: root.mw - root.side - 1px;
+            height: 74px - 7px - 16px;
+            border-top-left-radius: 5px;
+            background: root.skin.pane;
+            for i in 3: Rectangle {
+                y: 7px + i * 17px;
+                Rectangle {
+                    x: 8px;
+                    width: 10px;
+                    height: 10px;
+                    border-radius: root.skin.radius / 4;
+                    background: root.skin.surface-hi;
+                }
+                Rectangle {
+                    x: 23px;
+                    y: 3px;
+                    width: max(12px, root.mw - root.side - 34px - i * 12px);
+                    height: 4px;
+                    border-radius: 2px;
+                    background: i == 0 ? root.skin.accent : root.skin.text-dim;
+                }
+                height: 10px;
+            }
+        }
+        Rectangle {
+            y: 74px - 16px;
+            height: 16px;
+            background: root.skin.frame;
+        }
+        Rectangle {
+            y: 74px - 16px;
+            height: 1px;
+            background: root.skin.border;
+        }
+        Rectangle {
+            x: root.mw / 2 - 4px;
+            y: 74px - 8px - 4px;
+            width: 8px;
+            height: 8px;
+            border-radius: 4px;
+            background: root.skin.accent;
+        }
+    }
+    // Invert panel colours.
+    invert := Rectangle {
+        x: root.width - 8px - 22px;
+        y: 7px + 74px + 6px;
+        width: 22px;
+        height: 22px;
+        border-radius: 6px;
+        background: root.skin.inverted ? Theme.accent-soft : invert-area.has-hover ? Theme.hover : transparent;
+        Image {
+            x: 4px;
+            y: 4px;
+            width: 14px;
+            height: 14px;
+            source: Icons.contrast;
+            colorize: root.skin.inverted ? Theme.accent : invert-area.has-hover ? Theme.text : Theme.text-faint;
+        }
+    }
+    property <length> check-x: invert.x - 4px - 16px;
+    if root.selected: Image {
+        x: root.check-x;
+        y: 81px + 9px;
+        width: 16px;
+        height: 16px;
+        source: Icons.check;
+        colorize: Theme.accent;
+    }
+    name := UiText {
+        x: 12px;
+        y: 81px + 8px;
+        width: (root.selected ? root.check-x : invert.x) - 6px - 12px;
+        text: root.skin.name;
+        font-size: 13px;
+        font-weight: 600;
+        overflow: elide;
+    }
+    UiText {
+        x: 12px;
+        y: name.y + name.font-line + 1px;
+        width: root.width - 24px;
+        text: root.skin.hint;
+        font-size: 11px;
+        color: Theme.text-faint;
+        overflow: elide;
+    }
+    area := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { Appearance.pick-skin(root.skin.index); }
+    }
+    invert-area := TouchArea {
+        x: invert.x;
+        y: invert.y;
+        width: invert.width;
+        height: invert.height;
+        mouse-cursor: pointer;
+        clicked => { Appearance.invert-skin(root.skin.index); }
+    }
+}
+
+// Every card the same size: as many columns of at least 168 px as fit.
+component SkinGrid inherits Rectangle {
+    property <int> columns: max(2, floor((self.width + 12px) / 180px));
+    property <length> card-w: floor((self.width - (self.columns - 1) * 12px) / self.columns / 1px) * 1px;
+    property <int> rows: ceil(Appearance.skins.length / self.columns);
+    height: self.rows * 136px + (self.rows - 1) * 12px;
+    for s[i] in Appearance.skins: SkinCard {
+        x: mod(i, root.columns) * (root.card-w + 12px);
+        y: floor(i / root.columns) * (136px + 12px);
+        width: root.card-w;
+        skin: s;
+        selected: s.index == Appearance.skin;
+    }
+}
+
+// The accent colours: the skin's own ("A") and ten more.
+component AccentSwatches inherits Rectangle {
+    property <[string]> choices: ["", "#33d6c8", "#1ed760", "#0a84ff", "#5e5ce6", "#bd93f9", "#fa2d48", "#ff6ac1", "#ff9f0a", "#f5c518", "#8e8e93"];
+    property <[color]> colors: [Appearance.skin-accent, #33d6c8, #1ed760, #0a84ff, #5e5ce6, #bd93f9, #fa2d48, #ff6ac1, #ff9f0a, #f5c518, #8e8e93];
+    width: 11 * 24px + 10 * 6px;
+    height: 24px;
+    for c[i] in root.colors: Rectangle {
+        property <bool> active: Appearance.accent-override == root.choices[i];
+        x: i * 30px;
+        width: 24px;
+        height: 24px;
+        border-radius: 12px;
+        background: c;
+        border-width: self.active ? 3px : 1px;
+        border-color: self.active ? Theme.text : Theme.border;
+        if i == 0: UiText {
+            x: round((24px - self.preferred-width) / 2px) * 1px;
+            y: round((24px - self.font-line) / 2px) * 1px;
+            text: "A";
+            font-size: 10px;
+            font-weight: 700;
+            color: Appearance.skin-on-accent;
+        }
+        TouchArea {
+            mouse-cursor: pointer;
+            clicked => { Appearance.edit("accentOverride", root.choices[i]); }
+        }
+    }
+}
+
+component ScopeButton inherits Rectangle {
+    in property <bool> on;
+    in property <string> text;
+    in property <image> icon;
+    callback clicked();
+    y: 3px;
+    height: 28px;
+    width: 14px + 7px + label.preferred-width + 24px;
+    border-radius: Theme.radius-small + 1px;
+    background: root.on ? Theme.accent-soft : area.has-hover ? Theme.hover : transparent;
+    border-width: root.on ? 1px : 0;
+    border-color: Theme.accent;
+    property <length> row-h: max(14px, label.font-line);
+    property <length> x0: round((root.width - (21px + label.preferred-width)) / 2px) * 1px;
+    property <length> y0: round((28px - self.row-h) / 2px) * 1px;
+    Image {
+        x: root.x0;
+        y: round((root.y0 + root.row-h / 2 - 7px) / 1px) * 1px;
+        width: 14px;
+        height: 14px;
+        source: root.icon;
+        colorize: root.on ? Theme.accent : Theme.text-dim;
+    }
+    label := UiText {
+        x: root.x0 + 21px;
+        y: root.y0 + round((root.row-h - self.font-line) / 2px) * 1px;
+        text: root.text;
+        font-size: 13px;
+        font-weight: root.on ? 600 : 400;
+        color: root.on ? Theme.accent : Theme.text-dim;
+    }
+    area := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { root.clicked(); }
+    }
+}
+
+// Which view the settings below change: the full view or the mini player.
+component ScopeSwitch inherits Rectangle {
+    height: 34px;
+    width: ceil((b1.x + b1.width + 3px) / 1px) * 1px;
+    border-radius: Theme.radius-small + 3px;
+    background: Theme.surface-hi;
+    border-width: 1px;
+    border-color: Theme.border;
+    b0 := ScopeButton {
+        x: 3px;
+        on: !Appearance.editing-compact;
+        text: @tr("SettingsPage" => "Full view");
+        icon: Icons.expand;
+        clicked => { Appearance.set-compact(false); }
+    }
+    b1 := ScopeButton {
+        x: b0.x + b0.width + 2px;
+        on: Appearance.editing-compact;
+        text: @tr("SettingsPage" => "Mini player");
+        icon: Icons.mini-player;
+        clicked => { Appearance.set-compact(true); }
+    }
+}
+
+
+// A section's label, 8 px of air above it.
+component SectionHead inherits VerticalLayout {
+    in property <string> text;
+    padding-top: 8px;
+    Section { text: root.text.to-uppercase(); }
+}
+
+// The tab.
+export component AppearanceTab inherits VerticalLayout {
+    spacing: 16px;
+    Card {
+        title: @tr("SettingsPage" => "Appearance");
+        icon: Icons.palette;
+        VerticalLayout {
+            spacing: 6px;
+            HorizontalLayout {
+                alignment: start;
+                ScopeSwitch { }
+            }
+            Label {
+                font-size: 12px;
+                color: Theme.text-dim;
+                text: Appearance.editing-compact
+                    ? @tr("SettingsPage" => "The mini player uses the full view's appearance, except what you change here for it.")
+                    : @tr("SettingsPage" => "Changes here apply to the full view, and to the mini player where it has no setting of its own.");
+            }
+        }
+        SectionHead { text: @tr("SettingsPage" => "Theme"); }
+        if Appearance.editing-compact: InheritNote { key: "skinIndex"; }
+        SkinGrid { }
+        if Appearance.editing-compact: InheritNote { key: "accentOverride"; }
+        Row {
+            title: @tr("SettingsPage" => "Accent colour");
+            AccentSwatches { }
+        }
+        Picker {
+            title: @tr("SettingsPage" => "Icon style");
+            kind: "iconStyle";
+            key: "iconStyle";
+            preview-w: 92px;
+            preview-h: 50px;
+            options: [
+                { text: @tr("SettingsPage" => "Solid"), value: "solid" },
+                { text: @tr("SettingsPage" => "Line"), value: "line" },
+                { text: @tr("SettingsPage" => "Tile"), value: "tile" },
+            ];
+            current: Appearance.icon-style == "line" || Appearance.icon-style == "tile" ? Appearance.icon-style : "solid";
+            picked(v) => { Appearance.edit("iconStyle", v); }
+        }
+        Picker {
+            title: @tr("SettingsPage" => "Player buttons");
+            kind: "transportStyle";
+            key: "transportStyle";
+            preview-w: 92px;
+            preview-h: 44px;
+            options: [
+                { text: "Sonkore", value: "sonkore" },
+                { text: @tr("SettingsPage" => "Round"), value: "round" },
+                { text: @tr("SettingsPage" => "Outline"), value: "outline" },
+            ];
+            current: Appearance.transport-style == "round" || Appearance.transport-style == "outline" ? Appearance.transport-style : "sonkore";
+            picked(v) => { Appearance.edit("transportStyle", v); }
+        }
+        Picker {
+            title: @tr("SettingsPage" => "Progress bar");
+            kind: "sliderStyle";
+            key: "sliderStyle";
+            preview-w: 92px;
+            preview-h: 44px;
+            options: [
+                { text: @tr("SettingsPage" => "Line"), value: "line" },
+                { text: @tr("SettingsPage" => "Pill"), value: "pill" },
+                { text: @tr("SettingsPage" => "Thick"), value: "thick" },
+                { text: @tr("SettingsPage" => "Classic"), value: "classic" },
+                { text: @tr("SettingsPage" => "Glow"), value: "glow" },
+                { text: "LED", value: "led" },
+                { text: @tr("SettingsPage" => "Ring"), value: "ring" },
+                { text: @tr("SettingsPage" => "Waveform"), value: "wave" },
+            ];
+            current: Appearance.slider-style;
+            picked(v) => { Appearance.edit("sliderStyle", v); }
+        }
+        Picker {
+            title: @tr("SettingsPage" => "Volume bar");
+            kind: "volumeStyle";
+            key: "volumeStyle";
+            preview-w: 92px;
+            preview-h: 44px;
+            options: [
+                { text: @tr("SettingsPage" => "Line"), value: "line" },
+                { text: @tr("SettingsPage" => "Pill"), value: "pill" },
+                { text: @tr("SettingsPage" => "Thick"), value: "thick" },
+                { text: @tr("SettingsPage" => "Classic"), value: "classic" },
+                { text: @tr("SettingsPage" => "Glow"), value: "glow" },
+                { text: "LED", value: "led" },
+                { text: @tr("SettingsPage" => "Ring"), value: "ring" },
+            ];
+            current: Appearance.volume-style;
+            picked(v) => { Appearance.edit("volumeStyle", v); }
+        }
+        SectionHead { text: @tr("SettingsPage" => "Window"); }
+        Picker {
+            title: @tr("SettingsPage" => "Window buttons");
+            kind: "windowButtons";
+            key: "windowButtons";
+            preview-w: 92px;
+            preview-h: 44px;
+            options: [
+                { text: "Windows", value: "windows" },
+                { text: "macOS", value: "mac" },
+                { text: "GNOME", value: "gnome" },
+                { text: "KDE Breeze", value: "breeze" },
+                { text: "Cinnamon", value: "cinnamon" },
+                { text: @tr("SettingsPage" => "Minimal"), value: "minimal" },
+            ];
+            current: Appearance.window-buttons;
+            picked(v) => { Appearance.edit("windowButtons", v); }
+        }
+        Picker {
+            title: @tr("SettingsPage" => "Window corners");
+            kind: "windowRadius";
+            key: "windowRadius";
+            preview-w: 64px;
+            preview-h: 44px;
+            options: [
+                { text: @tr("SettingsPage" => "Square"), value: "0" },
+                { text: @tr("SettingsPage" => "Small"), value: "4" },
+                { text: @tr("SettingsPage" => "Rounded"), value: "8" },
+                { text: @tr("SettingsPage" => "Large"), value: "12" },
+                { text: @tr("SettingsPage" => "Extra large"), value: "16" },
+            ];
+            current: Appearance.window-radius;
+            picked(v) => { Appearance.edit("windowRadius", v); }
+        }
+        // The restart a window made square needs (its holder takes a line
+        // even when the button is hidden).
+        HorizontalLayout {
+            alignment: start;
+            if Appearance.restart-for-corners: Pill {
+                has-icon: true;
+                icon: Icons.refresh;
+                text: @tr("SettingsPage" => "Restart");
+                primary: true;
+                clicked => { Appearance.restart(); }
+            }
+        }
+        Picker {
+            title: @tr("SettingsPage" => "Window outline");
+            kind: "windowOutline";
+            key: "windowOutline";
+            preview-w: 88px;
+            preview-h: 54px;
+            options: [
+                { text: @tr("SettingsPage" => "Off"), value: "off" },
+                { text: @tr("SettingsPage" => "Line"), value: "line" },
+                { text: @tr("SettingsPage" => "Bold"), value: "bold" },
+                { text: @tr("SettingsPage" => "Highlight"), value: "highlight" },
+                { text: @tr("SettingsPage" => "Accent"), value: "accent" },
+                { text: @tr("SettingsPage" => "Glow"), value: "glow" },
+            ];
+            current: Appearance.window-outline;
+            picked(v) => { Appearance.edit("windowOutline", v); }
+        }
+        SectionHead { text: @tr("SettingsPage" => "Background and visualizer"); }
+        Picker {
+            title: @tr("SettingsPage" => "Background");
+            kind: "backdrop";
+            key: "backdrop";
+            preview-w: 84px;
+            preview-h: 48px;
+            options: [
+                { text: @tr("SettingsPage" => "Plain"), value: "plain" },
+                { text: @tr("SettingsPage" => "Aurora"), value: "aurora" },
+                { text: @tr("SettingsPage" => "Gradient"), value: "gradient" },
+                { text: @tr("SettingsPage" => "Glow"), value: "glow" },
+            ];
+            current: Appearance.backdrop;
+            picked(v) => { Appearance.edit("backdrop", v); }
+        }
+        Picker {
+            title: @tr("SettingsPage" => "Visualizer");
+            kind: "visualizer";
+            key: "visualizer";
+            preview-w: 70px;
+            preview-h: 30px;
+            animated: true;
+            options: [
+                { text: @tr("SettingsPage" => "Off"), value: "off" },
+                { text: @tr("SettingsPage" => "Bars"), value: "bars" },
+                { text: @tr("SettingsPage" => "Mirror"), value: "mirror" },
+                { text: @tr("SettingsPage" => "Line"), value: "line" },
+                { text: @tr("SettingsPage" => "Dots"), value: "dots" },
+            ];
+            current: Appearance.visualizer;
+            picked(v) => { Appearance.edit("visualizer", v); }
+        }
+        SectionHead { text: @tr("SettingsPage" => "Layout"); }
+        Picker {
+            title: @tr("SettingsPage" => "Interface density");
+            kind: "density";
+            key: "density";
+            preview-w: 84px;
+            preview-h: 44px;
+            options: [
+                { text: @tr("SettingsPage" => "Spacious"), value: "spacious" },
+                { text: @tr("SettingsPage" => "Comfortable"), value: "comfortable" },
+                { text: @tr("SettingsPage" => "Compact"), value: "compact" },
+            ];
+            current: Appearance.density;
+            picked(v) => { Appearance.edit("density", v); }
+        }
+        Picker {
+            title: @tr("SettingsPage" => "List density");
+            kind: "listDensity";
+            key: "listDensity";
+            preview-w: 84px;
+            preview-h: 48px;
+            options: [
+                { text: @tr("SettingsPage" => "Spacious"), value: "spacious" },
+                { text: @tr("SettingsPage" => "Comfortable"), value: "comfortable" },
+                { text: @tr("SettingsPage" => "Compact"), value: "compact" },
+                { text: @tr("SettingsPage" => "List"), value: "list" },
+            ];
+            current: Appearance.list-density;
+            picked(v) => { Appearance.edit("listDensity", v); }
+        }
+        Picker {
+            property <bool> locked: Appearance.shown-list-density == "compact" || Appearance.shown-list-density == "list";
+            title: @tr("SettingsPage" => "Cover art in track lists");
+            description: self.locked ? @tr("SettingsPage" => "Only with the Spacious or Comfortable list density.") : "";
+            enabled: !self.locked;
+            kind: "listCovers";
+            key: "listCovers";
+            preview-w: 84px;
+            preview-h: 48px;
+            options: [
+                { text: @tr("SettingsPage" => "Without covers"), value: "false" },
+                { text: @tr("SettingsPage" => "With covers"), value: "true" },
+            ];
+            current: Appearance.list-covers ? "true" : "false";
+            picked(v) => { Appearance.edit("listCovers", v); }
+        }
+        Picker {
+            title: @tr("SettingsPage" => "Alternating row colours");
+            kind: "alternateRows";
+            key: "alternateRows";
+            preview-w: 84px;
+            preview-h: 48px;
+            options: [
+                { text: @tr("SettingsPage" => "Uniform"), value: "false" },
+                { text: @tr("SettingsPage" => "Alternating"), value: "true" },
+            ];
+            current: Appearance.alternate-rows ? "true" : "false";
+            picked(v) => { Appearance.edit("alternateRows", v); }
+        }
+    }
+}

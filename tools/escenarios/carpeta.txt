@@ -1,0 +1,10 @@
+# Un clic en la carpeta de la que suena la música abre la carpeta con la pista
+# que suena seleccionada y a la vista (pedido del 2026-11-22).
+esperar 1
+dclic 900 341            # fila 5: la segunda pista de «Luz de Norte»
+estado playing=true
+clic 110 452             # «Luz de Norte» en la barra lateral
+esperar 0.5
+estado page=folders
+estado cursor=1
+captura carpeta

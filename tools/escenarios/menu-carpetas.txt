@@ -1,0 +1,16 @@
+# El menú de carpetas del mini con una carpeta elegida: su fila resaltada
+# deja el mismo espacio a la izquierda y a la derecha dentro del borde.
+# (Las filas medían 4 px de más: «parent» dentro de MenuCard es la tarjeta,
+# y las listas sumaban 4 px a su ancho; 2026-11-23.)
+ajuste ui/compactPlaylist=true
+clic 1028 797
+estado mini-on=true
+esperar 0.8
+clic 100 178
+esperar 0.8
+clic 150 327
+esperar 0.8
+clic 100 178
+esperar 0.8
+captura menu
+centrado menu 327 13.4 296.6

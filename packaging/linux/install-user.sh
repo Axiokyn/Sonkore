@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # Registers a locally built Sonkore in the user's desktop (menu entry +
 # icon), so GNOME/KDE show the right icon in the dock/taskbar and the media
-# controls can find the app. Usage: packaging/linux/install-user.sh [path/to/Sonkore]
+# controls can find the app. Usage: packaging/linux/install-user.sh [path/to/sonkore]
 set -euo pipefail
 
 here="$(cd "$(dirname "$0")" && pwd)"
 root="$(cd "$here/../.." && pwd)"
-binary="$(realpath "${1:-$root/build/bin/Sonkore}")"
+binary="$(realpath "${1:-$root/target/release/sonkore}")"
 data="${XDG_DATA_HOME:-$HOME/.local/share}"
 id=com.axiokyn.Sonkore # desktop entry and icons are named after the app ID
 
@@ -29,7 +29,7 @@ install -m 644 "$root/packaging/icons/sonkore.svg" "$data/icons/hicolor/scalable
 install -m 644 "$root/packaging/icons/sonkore-symbolic.svg" "$data/icons/hicolor/symbolic/apps/$id-symbolic.svg"
 
 # Exec/TryExec point at the build; the path is quoted because it may contain spaces.
-sed -e "s|^Exec=Sonkore|Exec=\"$binary\"|" -e "s|^TryExec=Sonkore|TryExec=$binary|" \
+sed -e "s|^Exec=sonkore|Exec=\"$binary\"|" -e "s|^TryExec=sonkore|TryExec=$binary|" \
     "$root/packaging/linux/$id.desktop" > "$data/applications/$id.desktop"
 chmod 644 "$data/applications/$id.desktop"
 

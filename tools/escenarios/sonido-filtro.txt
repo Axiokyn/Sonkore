@@ -1,0 +1,28 @@
+# Ajustes › Audio › Filtro de conversión: a 21,5 kHz el lineal ya atenúa
+# 4 dB y el lineal pronunciado todavía no (08-agudo, a 96 kHz fijos).
+pantalla 2546 4200
+ajuste widgets/windows/settings=@Size(920 2700)
+ajuste appearance/language=es
+preparar python3 {repo}/tools/tonos.py --biblioteca {rt}/p
+ajuste library/rescanOnStartup=true
+ajuste playback/repeat=2
+ajuste playback/fixedRate=96000
+argumentos {repo}/target/ui-live/tonos/08-agudo.flac
+estado playing=true 5
+tecla ctrl+comma
+ventanas 2
+foco last
+esperar 0.8
+clic 578 67
+esperar 0.8
+sonido tasa=96000 nivel-i=-16±0.3 frec-i=21500±5
+clic 807 1072
+esperar 0.4
+clic 807 1211
+guardado playback/resampleFilter=3
+sonido nivel-i=-12±0.2
+clic 807 1072
+esperar 0.4
+clic 807 1115
+guardado playback/resampleFilter=0
+sonido nivel-i=-16±0.3

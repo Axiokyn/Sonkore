@@ -1,0 +1,581 @@
+// The small controls of the interface.
+
+import { Theme, TextMetrics, Visual, Pointer } from "theme.slint";
+import { Icons } from "icons.slint";
+
+// A glyph in a square 16 px larger, a round
+// hover; dim at rest, the text colour under the pointer, the accent when
+// active (or a colour of its own).
+export component IconButton inherits Rectangle {
+    in property <image> icon;
+    in property <length> icon-size: 18px;
+    in property <bool> active: false;
+    in property <bool> enabled: true;
+    in property <color> tint: transparent;
+    in property <string> tooltip;
+    in property <angle> rotation: 0deg;
+    callback clicked();
+    callback right-clicked();
+    out property <bool> hovered: area.has-hover;
+    width: icon-size + 16px;
+    height: icon-size + 16px;
+    // A disc under the pointer; with the Tile icon
+    // style a rounded square 2 px in, always there (the accent's tint when on).
+    property <bool> tile: Theme.icon-style == "tile";
+    Rectangle {
+        x: root.tile ? 2px : 0;
+        y: root.tile ? 2px : 0;
+        width: root.width - (root.tile ? 4px : 0);
+        height: root.height - (root.tile ? 4px : 0);
+        border-radius: root.tile ? round(min(self.width, self.height) / 1px * 0.3) * 1px : min(self.width, self.height) / 2;
+        background: !root.enabled ? transparent : area.pressed ? Theme.border : root.tile && root.active ? Theme.accent-soft
+            : area.has-hover ? Theme.hover : root.tile ? Theme.surface-hi : transparent;
+    }
+    Image {
+        source: icon;
+        width: icon-size;
+        height: icon-size;
+        transform-rotation: rotation;
+        colorize: !enabled ? Theme.text-faint : tint != transparent ? tint : active ? Theme.accent : area.has-hover ? Theme.text : Theme.text-dim;
+    }
+    area := TouchArea {
+        enabled: root.enabled;
+        mouse-cursor: pointer;
+        clicked => { root.clicked(); }
+        pointer-event(e) => {
+            if (e.button == PointerEventButton.right && e.kind == PointerEventKind.up) { root.right-clicked(); }
+        }
+    }
+}
+
+// The round play / pause button of the player bar:
+// a disc in the text colour (or the accent, by the transport style) with
+// the glyph in the background colour.
+export component PlayButton inherits Rectangle {
+    // The face inset 1 px (tile 3, the
+    // round face 1 px in pressed and 1 px out hovered); the glyph +6 px in
+    // the Sonkore style (+2 tile), the play triangle moved right by 8 % of
+    // its size with solid icons; the accent under the pointer.
+    in property <bool> playing;
+    in property <length> diameter: Theme.play-size;
+    in property <length> glyph: Theme.compact ? 16px : Theme.spacious ? 20px : 18px;
+    callback clicked();
+    width: diameter;
+    height: diameter;
+    property <bool> round-face: Theme.transport-style == "round";
+    property <bool> tile: Theme.transport-style == "sonkore" && Theme.icon-style == "tile";
+    property <length> inset: tile ? 2px : round-face && area.pressed ? 1px : round-face && area.has-hover ? -1px : 0px;
+    property <length> size: tile ? glyph + 2px : Theme.transport-style == "sonkore" ? glyph + 6px : glyph;
+    property <length> shift: playing || Theme.icon-style != "solid" ? 0px : round(size * 0.08 / 1px) * 1px;
+    Rectangle {
+        x: root.inset + 1px;
+        y: self.x;
+        width: root.width - 2 * self.x;
+        height: root.height - 2 * self.y;
+        border-radius: root.tile ? round(min(self.width, self.height) * 0.3 / 1px) * 1px : self.width / 2;
+        background: root.round-face ? (Theme.dark ? Theme.text : Theme.accent)
+                  : area.pressed ? Theme.border : area.has-hover ? Theme.hover : root.tile ? Theme.surface-hi : transparent;
+        border-width: Theme.transport-style == "outline" ? 1.5px : 0;
+        border-color: area.has-hover ? Theme.accent : Theme.text;
+    }
+    Image {
+        source: playing ? Icons.pause : Icons.play;
+        width: root.size;
+        height: root.size;
+        // ((width - size) / 2 + shift, (height - size) / 2): integer halves.
+        x: floor((root.width - root.size) / 2 / 1px) * 1px + root.shift;
+        y: floor((root.height - root.size) / 2 / 1px) * 1px;
+        colorize: root.round-face ? (Theme.dark ? Theme.bg : Theme.on-accent) : area.has-hover ? Theme.accent : Theme.text;
+    }
+    area := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { root.clicked(); }
+    }
+}
+
+// A rounded button, the icon 6 px before the text; filled with the accent when
+// primary; 34 px tall (28 compact), 14 px each side (10 compact).
+export component PillButton inherits Rectangle {
+    in property <image> icon;
+    in property <bool> has-icon: false;
+    in property <string> text;
+    in property <bool> primary: false;
+    in property <bool> enabled: true;
+    callback clicked();
+    height: Theme.compact ? 28px : 34px;
+    // Its natural width: the text's hinted advance (13 px semi-bold).
+    property <length> row-width: (has-icon ? 16px + 6px : 0px) + TextMetrics.width(root.text, Theme.font-body, 600);
+    // Its own width, in a layout or not.
+    property <length> own-width: ceil((row-width + (Theme.compact ? 20px : 28px)) / 1px) * 1px;
+    preferred-width: self.own-width;
+    min-width: self.own-width;
+    max-width: self.own-width;
+    border-radius: Theme.radius <= 2px ? Theme.radius-small : self.height / 2;
+    opacity: enabled ? 1 : 0.45;
+    property <bool> hot: area.has-hover && root.enabled;
+    background: primary ? (area.pressed ? Theme.accent.darker(15%) : root.hot ? Theme.accent.brighter(8%) : Theme.accent)
+              : area.pressed ? Theme.border : root.hot ? Theme.hover : Theme.surface-hi;
+    border-width: primary ? 0 : 1px;
+    border-color: Theme.border;
+    property <length> left: round((root.own-width - root.row-width) / 2 / 1px) * 1px;
+    if has-icon: Image {
+        x: root.left;
+        y: round((root.height - 16px) / 2 / 1px) * 1px;
+        source: root.icon;
+        width: 16px;
+        height: 16px;
+        colorize: primary ? Theme.on-accent : Theme.text;
+    }
+    label := Text {
+        x: root.left + (has-icon ? 22px : 0px);
+        width: self.preferred-width;
+        height: root.height;
+        text: root.text;
+        vertical-alignment: center;
+        font-size: Theme.font-body;
+        font-weight: 600;
+        color: primary ? Theme.on-accent : Theme.text;
+    }
+    area := TouchArea {
+        enabled: root.enabled;
+        mouse-cursor: pointer;
+        clicked => { root.clicked(); }
+    }
+}
+
+// The format as a badge: 10 px semi-bold text in a
+// rounded box, the tone at 14 % with a 35 % border; the accent for what
+// stands out (hi-res, DSD).
+export component Badge inherits Rectangle {
+    in property <string> text;
+    in property <color> tone: Theme.text-dim;
+    in property <bool> filled: false;
+    in property <length> border: 1px;
+    // The most it may take (the player bar's track side): the text elided past it.
+    in property <length> limit: 100000px;
+    height: 18px;
+    width: min(label.preferred-width + 12px, root.limit);
+    border-radius: Theme.radius <= 2px ? 2px : 9px;
+    background: filled ? tone : tone.with-alpha(0.14);
+    border-width: filled ? 0 : root.border;
+    border-color: tone.with-alpha(0.35);
+    label := Text {
+        x: 6px;
+        width: root.width - 12px;
+        text: root.text;
+        overflow: elide;
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 0.4px;
+        color: filled ? Theme.on-accent : root.tone;
+        vertical-alignment: center;
+        horizontal-alignment: center;
+    }
+}
+
+// A rounded field, the magnifier inside it,
+// a clear button while there is text; Escape clears it.
+export component SearchField inherits Rectangle {
+    in property <string> placeholder;
+    in-out property <string> text;
+    callback edited(string);
+    callback escaped();                     // Esc: cleared, the keyboard goes back
+    in property <int> focus-request;        // bumped: focused, all selected (Ctrl+F)
+    changed focus-request => { input.focus(); input.select-all(); }
+    in property <bool> focus-on-create;     // made by Ctrl+F while hidden
+    init => { if (root.focus-on-create) { input.focus(); } }
+    // A click elsewhere in the window takes the keyboard away (the text stays).
+    property <int> presses: Pointer.presses;
+    changed presses => {
+        if (input.has-focus && !(Pointer.x >= self.absolute-position.x && Pointer.x < self.absolute-position.x + self.width
+                && Pointer.y >= self.absolute-position.y && Pointer.y < self.absolute-position.y + self.height)) {
+            input.clear-focus();
+            root.escaped();
+        }
+    }
+    height: Theme.search-height;
+    border-radius: self.height / 2;
+    background: Theme.surface-hi;
+    border-width: input.has-focus ? 1.5px : 1px;
+    border-color: input.has-focus ? Theme.accent : Theme.border;
+    Image {
+        x: 12px;
+        width: 15px;
+        height: 15px;
+        source: Icons.search;
+        colorize: Theme.text-faint;
+    }
+    input := TextInput {
+        x: 34px;
+        width: parent.width - 34px - (root.text != "" ? 30px : 12px);
+        vertical-alignment: center;
+        font-size: Theme.font-body;
+        color: Theme.text;
+        text <=> root.text;
+        single-line: true;
+        selection-background-color: Theme.accent;
+        selection-foreground-color: Theme.on-accent;
+        edited => { root.edited(self.text); }
+        key-pressed(e) => {
+            if (e.text == Key.Escape) {
+                self.text = "";
+                root.edited("");
+                self.clear-focus();
+                root.escaped();
+                return accept;
+            }
+            reject
+        }
+    }
+    if root.text == "": Text {
+        x: 34px;
+        text: root.placeholder;
+        font-size: Theme.font-body;
+        color: Theme.text-faint;
+        vertical-alignment: center;
+        height: parent.height;
+    }
+    if root.text != "": IconButton {
+        x: parent.width - self.width - 4px;
+        icon: Icons.close;
+        icon-size: 12px;
+        clicked => {
+            root.text = "";
+            root.edited("");
+        }
+    }
+}
+
+// The groove, the part done, the knob kept inside,
+// in each look of Settings › Appearance (line, pill, thick, classic, glow,
+// led, ring, wave). Drawn by FlatSlider and the mini player's slider.
+export component SliderFace inherits Rectangle {
+    in property <float> shown;              // 0..1
+    in property <string> look: "line";
+    in property <bool> quiet;               // the volume: a dimmer fill
+    in property <bool> enabled: true;
+    in property <bool> active;              // hovered or dragged
+    in property <bool> down;                // dragged
+    // Which waveform pictures the "wave" look shows (Visual: "bar" or
+    // "mini"); "" for a bar that never shows one.
+    in property <string> wave-slot;
+    property <image> wave-rest: wave-slot == "bar" ? Visual.seek-rest : Visual.mini-seek-rest;
+    property <image> wave-played: wave-slot == "bar" ? Visual.seek-played : Visual.mini-seek-played;
+    property <length> wave-width: look == "wave" && wave-slot != "" ? self.width : -1px;
+    changed wave-width => { root.report-wave(); }
+    init => { root.report-wave(); }
+    function report-wave() {
+        if (root.wave-width < 0) {
+            return;
+        }
+        if (root.wave-slot == "bar") {
+            Visual.seek-width = root.width;
+        } else {
+            Visual.mini-seek-width = root.width;
+        }
+        Visual.wave-changed();
+    }
+    property <color> fill: !enabled ? Theme.text-faint : active ? Theme.accent : quiet ? Theme.text-dim : Theme.accent.darker(Theme.dark ? 5% : 0%);
+    property <color> groove: Theme.text.with-alpha(Theme.dark ? 0.08 : 0.13);
+    property <length> th: look == "pill" ? 6px : look == "thick" ? 10px : look == "classic" ? 8px : look == "led" ? 10px
+                         : look == "ring" ? 3px : look == "line" && active ? 5px : 4px;
+    property <length> track-y: (root.height - th) / 2;
+    property <length> pos: shown * root.width;
+    property <length> radius: look == "classic" ? 2px : th / 2;
+    property <bool> knob: look == "pill" || look == "classic" || look == "glow" || look == "ring" || (look == "line" && active);
+    opacity: !enabled && look != "wave" ? 0.45 : 1;
+    if root.look != "led" && root.look != "wave": Rectangle {
+        y: root.track-y;
+        height: root.th;
+        border-radius: root.radius;
+        background: root.groove;
+        border-width: root.look == "classic" ? 1px : 0;
+        border-color: #000000.with-alpha(Theme.dark ? 0.45 : 0.12);
+    }
+    if root.look != "led" && root.look != "wave" && root.pos > 0: Rectangle {
+        x: 0;
+        y: root.track-y;
+        width: root.pos;
+        height: root.th;
+        border-radius: root.radius;
+        background: root.look == "glow" ? @linear-gradient(90deg, root.fill.with-alpha(0.12) 0%, root.fill 100%) : root.fill;
+    }
+    // LED segments: 2 px apart, about 6 px a step.
+    if root.look == "led": Rectangle {
+        property <int> count: max(1, floor((root.width / 1px + 2) / 6));
+        property <length> seg: (root.width - 2px * (self.count - 1)) / self.count;
+        for i in self.count: Rectangle {
+            x: i * (parent.seg + 2px);
+            y: root.track-y;
+            width: parent.seg;
+            height: root.th;
+            border-radius: 1px;
+            background: root.groove;
+            Rectangle {
+                x: 0;
+                width: clamp(root.pos - parent.x, 0, parent.width);
+                border-radius: 1px;
+                background: root.fill;
+            }
+        }
+    }
+    // The wave: a 1 px line every 2 px both ways from the middle (Rust
+    // paints them), the lines left of the position in the accent; a cursor
+    // under the pointer.
+    if root.look == "wave": Rectangle {
+        y: (root.height - 20px) / 2;
+        height: 20px;
+        Image {
+            width: root.width;
+            height: 20px;
+            source: root.wave-rest;
+            image-fit: ImageFit.fill;
+        }
+        Rectangle {
+            x: 0;
+            width: clamp(ceil(root.pos / 2px) * 2px, 0, root.width);
+            clip: true;
+            Image {
+                x: 0;
+                width: root.width;
+                height: 20px;
+                source: root.wave-played;
+                image-fit: ImageFit.fill;
+            }
+        }
+        if root.active: Rectangle {
+            x: root.pos - 1px;
+            y: -2px;
+            width: 2px;
+            height: 24px;
+            background: Theme.text;
+        }
+    }
+    if root.knob && root.enabled && root.look == "classic": Rectangle {
+        x: root.shown * (root.width - 8px);
+        y: root.height / 2 - 8px;
+        width: 8px;
+        height: 16px;
+        border-radius: 2px;
+        background: Theme.surface-hi.brighter(30%);
+        border-width: 1px;
+        border-color: #000000.with-alpha(Theme.dark ? 0.5 : 0.2);
+    }
+    if root.knob && root.enabled && root.look == "ring": Rectangle {
+        x: root.shown * (root.width - 12px);
+        y: root.height / 2 - 6px;
+        width: 12px;
+        height: 12px;
+        border-radius: 6px;
+        background: Theme.bg;
+        border-width: 2px;
+        border-color: root.fill;
+    }
+    if root.knob && root.enabled && root.look == "glow": Rectangle {
+        property <length> halo: 10px + (root.active ? 10px : 6px);
+        x: root.shown * (root.width - 10px) + 5px - self.halo / 2;
+        y: root.height / 2 - self.halo / 2;
+        width: self.halo;
+        height: self.halo;
+        border-radius: self.halo / 2;
+        background: root.fill.with-alpha(0.25);
+        Rectangle {
+            x: (parent.width - 10px) / 2;
+            y: (parent.height - 10px) / 2;
+            width: 10px;
+            height: 10px;
+            border-radius: 5px;
+            background: root.fill;
+        }
+    }
+    if root.knob && root.enabled && (root.look == "line" || root.look == "pill"): Rectangle {
+        property <length> d: root.down ? 15px : 13px;
+        x: root.shown * (root.width - self.d);
+        y: root.height / 2 - self.d / 2;
+        width: self.d;
+        height: self.d;
+        border-radius: self.d / 2;
+        background: Theme.dark ? white : Theme.surface;
+        border-width: Theme.dark ? 0 : 1px;
+        border-color: Theme.border;
+    }
+}
+
+// A flat slider: a track, the part played in the
+// text colour (accent under the pointer), a knob while hovered.
+export component FlatSlider inherits Rectangle {
+    // 0..1, bound from outside (never written here: an assignment would cut
+    // the binding and the slider would stop following it).
+    in property <float> value;
+    in property <float> buffered: 0;
+    in property <bool> quiet: false;        // the volume: dimmer fill
+    callback moved(float);                  // while dragging
+    callback released(float);
+    // A wheel notch (+1 up, -1 down): the owner decides the step.
+    callback scrolled(int);
+    callback right-clicked();
+    out property <bool> dragging: area.pressed;
+    // Where the pointer put it, shown until `value` follows (-1: none).
+    property <float> held: -1;
+    out property <float> shown: root.held >= 0 ? root.held : root.value;
+    changed value => { if (!area.pressed) { root.held = -1; } }
+    // 22 px tall, the look from the
+    // theme: the seek bar's Slider style, the volume's Volume style.
+    in property <string> look: quiet ? Theme.volume-style == "wave" ? "line" : Theme.volume-style : Theme.slider-style;
+    in property <bool> enabled: true;
+    in property <string> wave-slot;
+    height: 22px;
+    property <bool> hot: area.has-hover || area.pressed;
+    SliderFace {
+        width: root.width;
+        height: root.height;
+        shown: clamp(root.shown, 0, 1);
+        look: root.look;
+        quiet: root.quiet;
+        enabled: root.enabled;
+        active: root.hot;
+        down: area.pressed;
+        wave-slot: root.wave-slot;
+    }
+    // The knob's centre stays half a knob (13 px) in
+    // from each end, so a click maps on the width less a knob.
+    pure function at(x: length) -> float {
+        return clamp((x - 6.5px) / max(1px, root.width - 13px), 0, 1);
+    }
+    area := TouchArea {
+        enabled: root.enabled;
+        mouse-cursor: pointer;
+        pointer-event(e) => {
+            if (e.kind == PointerEventKind.down && e.button == PointerEventButton.left) {
+                root.held = root.at(self.mouse-x);
+                root.moved(root.held);
+            } else if (e.kind == PointerEventKind.up && e.button == PointerEventButton.left && root.held >= 0) {
+                root.released(root.held);
+            } else if (e.kind == PointerEventKind.up && e.button == PointerEventButton.right) {
+                root.right-clicked();
+            }
+        }
+        moved => {
+            if (self.pressed) {
+                root.held = root.at(self.mouse-x);
+                root.moved(root.held);
+            }
+        }
+        scroll-event(e) => {
+            root.scrolled(e.delta-y > 0 ? 1 : -1);
+            accept
+        }
+    }
+}
+
+// Small, bold, upper case, faint.
+export component SectionLabel inherits Text {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1.2px;
+    color: Theme.text-faint;
+}
+
+// A 38 × 22 track, the accent when on, a white
+// knob sliding across.
+export component Switch inherits Rectangle {
+    in-out property <bool> checked;
+    in property <bool> enabled: true;
+    callback toggled(bool);
+    width: 50px;
+    height: 34px;
+    opacity: enabled ? 1 : 0.5;
+    Rectangle {
+        x: 6px;
+        y: (parent.height - 22px) / 2;
+        width: 38px;
+        height: 22px;
+        border-radius: Theme.radius <= 2px ? 3px : 11px;
+        background: root.checked ? Theme.accent : Theme.border;
+        animate background { duration: 140ms; }
+        Rectangle {
+            x: root.checked ? parent.width - self.width - 3px : 3px;
+            y: 3px;
+            width: 16px;
+            height: 16px;
+            border-radius: Theme.radius <= 2px ? 2px : 8px;
+            background: white;
+            animate x { duration: 140ms; easing: ease-out; }
+        }
+    }
+    TouchArea {
+        enabled: root.enabled;
+        mouse-cursor: pointer;
+        clicked => {
+            root.checked = !root.checked;
+            root.toggled(root.checked);
+        }
+    }
+}
+
+// The overlay scroll bar (every scrolling list and pane): a thumb at the right edge while the list scrolls and a moment after, wider with a faint track
+// under the pointer; dragged, or a click on the track pages.
+export component OverlayScrollBar inherits Rectangle {
+    in property <length> position;
+    in property <length> page;
+    in property <length> range;
+    // Shown while it scrolls and 900 ms after.
+    property <bool> recent;
+    property <duration> last-scroll;
+    changed position => { root.recent = true; root.last-scroll = animation-tick(); }
+    Timer {
+        interval: 100ms;
+        running: root.recent;
+        triggered => { if (animation-tick() - root.last-scroll > 900ms) { root.recent = false; } }
+    }
+    callback scroll-to(length);
+    property <bool> lit: area.has-hover;
+    property <bool> pressed: area.pressed;
+    property <bool> shown: lit || pressed || recent;
+    property <length> track-top: 6px;
+    property <length> track-h: root.height - 12px;
+    property <float> size: max(0.05, root.page / max(1px, root.range + root.page));
+    property <length> length: max(root.track-h * root.size, 24px);
+    property <float> f: root.range > 0 ? root.position / root.range : 0;
+    property <length> thumb-w: lit || pressed ? 8px : 6px;
+    property <length> thumb-y: root.track-top + root.f * (root.track-h - root.length);
+    property <length> grab: -1px;
+    if root.lit || root.pressed: Rectangle {
+        x: 0;
+        y: 4px;
+        width: root.width;
+        height: root.height - 8px;
+        border-radius: 5px;
+        background: Theme.text.with-alpha(0.07);
+    }
+    if root.shown: Rectangle {
+        x: root.width - 2px - root.thumb-w;
+        y: root.thumb-y;
+        width: root.thumb-w;
+        height: root.length;
+        border-radius: self.width / 2;
+        background: root.pressed ? Theme.accent : root.lit ? Theme.text-dim : Theme.text-faint;
+    }
+    area := TouchArea {
+        pointer-event(e) => {
+            if (e.kind == PointerEventKind.down && e.button == PointerEventButton.left) {
+                if (self.mouse-y >= root.thumb-y && self.mouse-y < root.thumb-y + root.length) {
+                    root.grab = self.mouse-y - root.thumb-y;
+                } else {
+                    root.grab = -1px;
+                    root.scroll-to(root.position + (self.mouse-y < root.thumb-y ? -root.page : root.page));
+                }
+            }
+        }
+        moved => {
+            if (self.pressed && root.grab >= 0 && root.track-h - root.length > 0) {
+                let f = clamp((self.mouse-y - root.grab - root.track-top) / (root.track-h - root.length), 0, 1);
+                root.scroll-to(f * root.range);
+            }
+        }
+        scroll-event(e) => {
+            root.scroll-to(root.position - e.delta-y);
+            accept
+        }
+    }
+}

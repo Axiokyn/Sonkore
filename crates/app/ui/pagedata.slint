@@ -1,0 +1,146 @@
+// What the pages, menus, dialogs and popups show and ask for (set and
+// handled in Rust: src/pages.rs, src/menus.rs, src/dialogs.rs).
+
+// An album of the grid: its name, "artist · year", the cover.
+export struct AlbumTile {
+    key: string,
+    title: string,
+    subtitle: string,
+    cover: image,
+    has-cover: bool,
+}
+
+// An artist or a genre of the browse pages: the name
+// over "3 albums · 41 tracks"; the unknown one dim.
+export struct BrowseEntry {
+    key: string,
+    name: string,
+    detail: string,
+    unknown: bool,
+}
+
+// A stage of the signal path.
+export struct PathStage {
+    stage: string,
+    detail: string,
+    quality: string,   // lossless | high | enhanced | warning | low
+    label: string,     // the quality's name
+    action: string,    // a one-click fix it offers ("headroomAuto")
+}
+
+// A row of a menu.
+export struct MenuEntry {
+    id: string,        // what Rust runs when it is picked
+    text: string,
+    separator: bool,
+    checkable: bool,
+    checked: bool,
+    enabled: bool,
+    submenu: bool,     // opens Menus.sub-items beside it
+    // The subfolder levels: the text, "− N +" (1 … maximum) and a switch; its
+    // buttons act at once (Menus.kept with id + "-", "+", "t") and the menu stays.
+    levels: bool,
+    on: bool,
+    value: int,
+    maximum: int,
+}
+
+export global Pages {
+    // --- Albums (AlbumsPage).
+    in property <[AlbumTile]> albums;
+    in property <bool> album-open;          // one album shown (its tracks are App.rows)
+    in property <string> album-title;
+    in property <string> album-artist;
+    in property <string> album-info;
+    in property <image> album-cover;
+    in property <bool> album-has-cover;
+    callback open-album(string);
+    callback play-album(string);
+    callback close-album();
+    callback album-play();
+    callback album-shuffle();
+    callback album-more();                  // the ⋯ button (Menus.anchor set)
+
+    // --- Artists / genres (BrowsePage).
+    in property <[BrowseEntry]> entries;
+    in property <string> selected;          // "" = all
+    in property <string> browse-name;
+    in property <string> browse-count;
+    in property <bool> browse-playable;
+    callback browse-select(string);
+    callback browse-activate(string);       // double click: select and play
+    callback browse-play();
+    callback browse-shuffle();
+
+    // --- The queue (QueuePage, Now playing).
+    in property <bool> queue-has-tracks;
+    callback save-queue();
+    callback clear-queue();
+
+    // --- Now playing (NowPlayingPage).
+    in property <bool> now-has;
+    in property <string> now-title;
+    in property <string> now-artist;
+    in property <string> now-format;
+    in property <string> now-output;
+    in property <bool> now-output-good;     // bit-perfect: the output badge in "good"
+    in property <string> verdict;           // "BIT-PERFECT", "LOSSLESS"…
+    in property <string> verdict-quality;
+    in property <image> now-cover;
+    in property <bool> now-has-cover;
+    in property <[PathStage]> stages;
+    callback show-in-library();
+    callback stage-action(string);          // a stage's one-click fix
+
+    // --- A playlist (PlaylistPage).
+    in property <string> playlist-name;
+    in property <string> playlist-subtitle;
+    in property <bool> playlist-empty;
+    callback playlist-play();
+    callback playlist-shuffle();
+    callback playlist-action(string);       // add-folder | add-files | rename | export | delete
+}
+
+// The menu shown (one at a time): its rows, where it is, its sub-menu.
+// Rust lays it out (src/menus.rs): sizes from the text, the
+// place from the anchor the button left in anchor-*.
+export global Menus {
+    in property <bool> open;
+    in property <[MenuEntry]> items;
+    in property <length> x;
+    in property <length> y;
+    in property <length> width: 220px;
+    in property <[MenuEntry]> sub-items;
+    in property <length> sub-x;
+    in property <length> sub-y;
+    in property <length> sub-width: 220px;
+    in-out property <bool> sub-open;
+    // What asked for the menu, in window coordinates (set by the button).
+    in-out property <length> anchor-x;
+    in-out property <length> anchor-y;
+    in-out property <length> anchor-width;
+    in-out property <length> anchor-height;
+    callback activated(string);
+    callback kept(string);                    // a control in a row: done, the menu stays
+    callback dismissed();
+
+    // The signal path popup.
+    in property <bool> path-open;
+    in property <length> path-x;
+    in property <length> path-bottom;   // its bottom edge (it grows upwards)
+    callback path-dismissed();
+}
+
+// A card over the window, the rest dimmed.
+export global Dialogs {
+    in property <string> kind;          // "" | "name" | "confirm"
+    in property <string> title;
+    in property <string> text;          // confirm: the question's text
+    in property <string> placeholder;
+    in property <string> note;          // name: a line under the field
+    in property <string> accept-text;
+    in-out property <string> value;     // name: the field's text
+    pure callback valid(string) -> bool;   // name: not blank
+    callback accepted(string);          // name: the text (Rust trims it)
+    callback cancelled();
+}

@@ -3,7 +3,7 @@
 (SIL OFL 1.1, no Reserved Font Name; https://github.com/rsms/inter).
 
 Inter's own shapes, unchanged. Each weight (400-700) is the text cut
-(opsz 14, which Qt cannot pick by size on its own), hinted with ttfautohint
+(opsz 14), hinted with ttfautohint
 (a slightly taller x-height and whole-pixel stems at list sizes) and cut down
 to Latin with Vietnamese, Greek and Cyrillic.
 

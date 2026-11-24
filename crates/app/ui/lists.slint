@@ -1,0 +1,179 @@
+// The play queue and a playlist.
+
+import { Theme } from "theme.slint";
+import { Icons } from "icons.slint";
+import { IconButton, PillButton, SectionLabel } from "controls.slint";
+import { App } from "data.slint";
+import { Pages } from "pagedata.slint";
+import { TrackTable } from "tracks.slint";
+
+// Save and clear on the right, the list under them from
+// 8 px in out to the panel's edge. The title and count are in the top bar.
+export component QueuePage inherits Rectangle {
+    buttons := HorizontalLayout {
+        x: 8px;
+        y: 6px;
+        width: root.width - 8px;
+        height: 34px;
+        padding-left: 20px;
+        padding-right: 16px;
+        spacing: 8px;
+        alignment: end;
+        PillButton {
+            has-icon: true;
+            icon: Icons.save;
+            text: @tr("QueuePage" => "Save as playlist");
+            enabled: Pages.queue-has-tracks;
+            clicked => { Pages.save-queue(); }
+        }
+        PillButton {
+            has-icon: true;
+            icon: Icons.trash;
+            text: @tr("QueuePage" => "Clear");
+            enabled: Pages.queue-has-tracks;
+            clicked => { Pages.clear-queue(); }
+        }
+    }
+    TrackTable {
+        x: 8px;
+        y: 6px + 34px + 8px;
+        width: root.width - 8px;
+        height: root.height - self.y;
+        joined: false;
+        sortable: false;
+    }
+}
+
+// The playlist's tile (PlaylistTile): the accent fading darker, the
+// playlist glyph on it in the colour on the accent.
+component PlaylistTile inherits Rectangle {
+    border-radius: Theme.radius;
+    background: @linear-gradient(180deg, Theme.accent 0%, Theme.accent.darker(120%) 100%);
+    Image {
+        property <length> side: floor(root.width * 0.38 / 1px) * 1px;
+        x: round((root.width - self.side) / 2 / 1px) * 1px;
+        y: round((root.height - self.side) / 2 / 1px) * 1px;
+        width: self.side;
+        height: self.side;
+        source: Icons.playlist;
+        colorize: Theme.on-accent;
+    }
+}
+
+// An action of the playlist: a 34 px round icon button.
+component Action inherits IconButton {
+    in property <string> action;
+    icon-size: 18px;
+    clicked => { Pages.playlist-action(root.action); }
+}
+
+// A playlist: its tile, name and length, play
+// and shuffle and the playlist's own buttons, then its tracks. Short pages
+// (under 560 px, or compact) get the smaller header.
+export component PlaylistPage inherits Rectangle {
+    property <bool> short: Theme.compact || root.height < 560px;
+    property <length> side: root.short ? 104px : 160px;
+    property <length> top: 6px + (root.short ? 2px : 8px);
+    tile := PlaylistTile {
+        x: 8px + 20px;
+        y: root.top;
+        width: root.side;
+        height: root.side;
+    }
+    names := VerticalLayout {
+        x: tile.x + root.side + (root.short ? 16px : 22px);
+        y: root.top + max(0px, (root.side - self.preferred-height) / 2);
+        width: max(0px, root.width - self.x - 20px);
+        height: self.preferred-height;
+        spacing: 6px;
+        SectionLabel {
+            text: @tr("PlaylistPage" => "Playlist").to-uppercase();
+            height: 12px;
+            vertical-alignment: center;
+        }
+        Text {
+            text: Pages.playlist-name;
+            font-size: root.short ? 24px : 34px;
+            font-weight: 700;
+            color: Theme.text;
+            overflow: elide;
+        }
+        Text {
+            text: Pages.playlist-subtitle;
+            font-size: 13px;
+            color: Theme.text-dim;
+            height: 16px;
+            vertical-alignment: center;
+        }
+        HorizontalLayout {
+            padding-top: root.short ? 4px : 10px;
+            spacing: 8px;
+            alignment: start;
+            PillButton {
+                has-icon: true;
+                icon: Icons.play;
+                text: @tr("PlaylistPage" => "Play");
+                primary: true;
+                enabled: !Pages.playlist-empty;
+                clicked => { Pages.playlist-play(); }
+            }
+            PillButton {
+                has-icon: true;
+                icon: Icons.shuffle;
+                text: @tr("PlaylistPage" => "Shuffle");
+                enabled: !Pages.playlist-empty;
+                clicked => { Pages.playlist-shuffle(); }
+            }
+            Action { icon: Icons.folder-plus; action: "add-folder"; tooltip: @tr("PlaylistPage" => "Add a folder…"); }
+            Action { icon: Icons.file-plus; action: "add-files"; tooltip: @tr("PlaylistPage" => "Add files…"); }
+            Action { icon: Icons.edit; action: "rename"; tooltip: @tr("PlaylistPage" => "Rename"); }
+            Action { icon: Icons.download; action: "export"; tooltip: @tr("PlaylistPage" => "Export as M3U"); }
+            Action { icon: Icons.trash; action: "delete"; tooltip: @tr("PlaylistPage" => "Delete playlist"); }
+        }
+    }
+    table := TrackTable {
+        x: 8px;
+        y: root.top + root.side + (root.short ? 12px : 18px);
+        width: root.width - 8px;
+        height: root.height - self.y;
+        joined: false;
+        sortable: false;
+    }
+    // Empty: what to do, in the middle of the list.
+    if Pages.playlist-empty: empty := VerticalLayout {
+        x: table.x + (table.width - self.preferred-width) / 2;
+        y: table.y + (table.height - self.preferred-height) / 2;
+        width: self.preferred-width;
+        height: self.preferred-height;
+        spacing: 14px;
+        // The text wraps at word boundaries (~320 px), centred.
+        HorizontalLayout {
+            alignment: center;
+            Text {
+                text: @tr("PlaylistPage" => "This playlist is empty.\nDrag tracks here from your library, or drop files and folders.");
+                font-size: 14px;
+                color: Theme.text-dim;
+                horizontal-alignment: center;
+                wrap: word-wrap;
+                width: min(320px, self.preferred-width);
+            }
+        }
+        HorizontalLayout {
+            spacing: 8px;
+            alignment: center;
+            PillButton {
+                has-icon: true;
+                icon: Icons.folder-plus;
+                text: @tr("PlaylistPage" => "Add a folder…");
+                primary: true;
+                clicked => { Pages.playlist-action("add-folder"); }
+            }
+            PillButton {
+                has-icon: true;
+                icon: Icons.file-plus;
+                text: @tr("PlaylistPage" => "Add files…");
+                clicked => { Pages.playlist-action("add-files"); }
+            }
+        }
+    }
+}

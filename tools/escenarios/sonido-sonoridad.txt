@@ -1,0 +1,24 @@
+# Ajustes › Audio › ReplayGain con una pista sin etiquetas (01-izquierda: 1 kHz
+# a −12 dBFS en un canal, unos −15,7 LUFS): al elegir «Pista» la biblioteca la
+# mide en segundo plano (sin tocar el archivo) y se le aplica la ganancia hasta
+# −18 LUFS: −3 dB, que la fila «Análisis de sonoridad» muestra.
+pantalla 2546 4200
+ajuste widgets/windows/settings=@Size(920 2700)
+ajuste appearance/language=es
+preparar python3 {repo}/tools/tonos.py --biblioteca {rt}/p
+ajuste library/rescanOnStartup=true
+ajuste playback/repeat=2
+argumentos {repo}/target/ui-live/tonos/01-izquierda.flac
+estado playing=true 5
+tecla ctrl+comma
+ventanas 2
+foco last
+esperar 0.8
+clic 578 67
+esperar 0.8
+sonido nivel-i=-12±0.2
+clic 807 1841
+esperar 0.4
+clic 807 1916
+guardado playback/replayGain=1
+sonido nivel-i=-15±0.2 10s

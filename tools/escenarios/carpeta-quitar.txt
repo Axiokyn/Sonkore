@@ -1,0 +1,32 @@
+# Quitar una carpeta desde el menú del mini (su tacho): la que suena y está
+# elegida como fuente. Después de cerrar con × y volver a abrir (re-escaneo al
+# arrancar y vigilancia de carpetas encendidos) tiene que seguir afuera.
+ajuste library/rescanOnStartup=true
+ajuste library/watchFolders=true
+ajuste ui/compactPlaylist=true
+estado tracks=12 8
+dclic 900 113
+estado playing=true
+clic 1028 797
+estado mini-on=true
+esperar 0.8
+clic 100 178
+esperar 0.8
+clic 150 327
+esperar 0.8
+clic 100 178
+esperar 0.8
+mover 282 327
+esperar 0.3
+clic 282 327
+esperar 0.8
+captura dialogo
+clic 370 277
+estado tracks=9 3
+esperar 0.5
+captura quitada
+clic 460 13
+reiniciar
+esperar 3
+estado tracks=9 5
+captura reabierta

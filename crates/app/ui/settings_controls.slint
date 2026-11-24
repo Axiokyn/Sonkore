@@ -1,0 +1,534 @@
+// The controls of the settings window: their sizes, colours and line
+// heights (the ascent and the descent each rounded).
+
+import { Theme, TextMetrics } from "theme.slint";
+import { Icons } from "icons.slint";
+
+// An option of a combo box, a segmented control or a picker: its text and
+// the value it stands for (as text; Rust reads it back).
+export struct Opt {
+    text: string,
+    value: string,
+}
+
+// What the window shows above everything: the explanation of an "i" and the
+// confirmation card.
+export global SettingsOverlay {
+    in-out property <string> tip-text;
+    in-out property <length> tip-x;
+    in-out property <length> tip-y;
+    in-out property <int> tip-owner: -1;
+    in-out property <int> next-owner: 0;
+    in-out property <length> window-height: 760px;
+    in-out property <bool> confirm-shown: false;
+    in-out property <string> confirm-title;
+    in-out property <string> confirm-text;
+    in-out property <string> confirm-accept;
+    in-out property <string> confirm-action;
+    in-out property <string> confirm-arg;
+}
+
+// Text on a whole-pixel line height (ascent and descent each rounded to
+// the pixel), so stacked labels land on whole pixels.
+export component UiText inherits Text {
+    // The line height with full hinting; the vendored parley lays
+    // every text out with these metrics already (Cargo.toml).
+    out property <length> font-line: round(self.font-metrics.ascent / 1px) * 1px + round(-self.font-metrics.descent / 1px) * 1px;
+    color: Theme.text;
+}
+
+// A wrapping label: a size, a colour, a weight.
+// Its height whole lines of that height (Slint's own is a fraction more).
+export component Label inherits UiText {
+    wrap: word-wrap;
+    font-size: 13px;
+    property <int> lines: max(1, round(self.preferred-height / self.font-line));
+    height: self.lines * self.font-line;
+}
+
+// Small, bold, upper case, faint.
+export component Section inherits UiText {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1.2px;
+    color: Theme.text-faint;
+}
+
+// The icon (16 px) 6 px before the text, centred; the
+// accent when primary; half-transparent when disabled.
+export component Pill inherits Rectangle {
+    in property <image> icon;
+    in property <bool> has-icon: false;
+    in property <string> text;
+    in property <bool> primary: false;
+    in property <bool> enabled: true;
+    callback clicked();
+    property <bool> hovered: area.has-hover && root.enabled;
+    property <length> row-w: (root.has-icon ? 22px : 0px) + TextMetrics.width(root.text, 13px, 600);
+    width: ceil((self.row-w + (Theme.compact ? 20px : 28px)) / 1px) * 1px;
+    height: Theme.compact ? 28px : 34px;
+    border-radius: Theme.radius <= 2px ? Theme.radius-small : self.height / 2;
+    opacity: root.enabled ? 1 : 0.45;
+    background: root.primary ? (area.pressed ? Theme.accent.darker(15%) : root.hovered ? Theme.accent.brighter(8%) : Theme.accent)
+              : area.pressed ? Theme.border : root.hovered ? Theme.hover : Theme.surface-hi;
+    border-width: root.primary ? 0 : 1px;
+    border-color: Theme.border;
+    property <length> row-h: max(16px, label.font-line);
+    property <length> x0: round((self.width - self.row-w) / 2px) * 1px;
+    property <length> y0: round((self.height - self.row-h) / 2px) * 1px;
+    if root.has-icon: Image {
+        x: root.x0;
+        y: root.y0 + round((root.row-h - 16px) / 2px) * 1px;
+        width: 16px;
+        height: 16px;
+        source: root.icon;
+        colorize: root.primary ? Theme.on-accent : Theme.text;
+    }
+    label := UiText {
+        x: root.x0 + (root.has-icon ? 22px : 0px);
+        y: root.y0 + round((root.row-h - self.font-line) / 2px) * 1px;
+        text: root.text;
+        font-size: 13px;
+        font-weight: 600;
+        color: root.primary ? Theme.on-accent : Theme.text;
+    }
+    area := TouchArea {
+        enabled: root.enabled;
+        mouse-cursor: pointer;
+        clicked => { root.clicked(); }
+    }
+}
+
+// A glyph in a square 16 px larger, a round hover.
+export component IconBtn inherits Rectangle {
+    in property <image> icon;
+    in property <length> icon-size: 18px;
+    in property <bool> enabled: true;
+    callback clicked();
+    width: self.icon-size + 16px;
+    height: self.icon-size + 16px;
+    border-radius: self.height / 2;
+    background: !root.enabled ? transparent : area.pressed ? Theme.border : area.has-hover ? Theme.hover : transparent;
+    Image {
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+        width: root.icon-size;
+        height: root.icon-size;
+        source: root.icon;
+        image-rendering: smooth;
+        colorize: !root.enabled ? Theme.text-faint : area.has-hover ? Theme.text : Theme.text-dim;
+    }
+    area := TouchArea {
+        enabled: root.enabled;
+        mouse-cursor: pointer;
+        clicked => { root.clicked(); }
+    }
+}
+
+// 6 px of padding around the 38 × 22 track; the knob
+// slides, the colour follows it.
+export component Toggle inherits Rectangle {
+    in-out property <bool> checked;
+    in property <bool> enabled: true;
+    callback toggled(bool);
+    width: 50px;
+    height: 34px;
+    opacity: root.enabled ? 1 : 0.5;
+    property <bool> square: Theme.radius <= 2px;
+    Rectangle {
+        x: 6px;
+        y: (parent.height - 22px) / 2;
+        width: 38px;
+        height: 22px;
+        border-radius: root.square ? 3px : 11px;
+        background: root.checked ? Theme.accent : Theme.border;
+        animate background { duration: 140ms; }
+        Rectangle {
+            x: root.checked ? 38px - 16px - 3px : 3px;
+            y: 3px;
+            width: 16px;
+            height: 16px;
+            border-radius: root.square ? 2px : 8px;
+            background: white;
+            animate x { duration: 140ms; easing: ease-out; }
+        }
+    }
+    TouchArea {
+        enabled: root.enabled;
+        mouse-cursor: pointer;
+        clicked => {
+            root.checked = !root.checked;
+            root.toggled(root.checked);
+        }
+    }
+}
+
+// An 18 px rounded square, the text 10 px after it.
+export component Check inherits Rectangle {
+    in-out property <bool> checked;
+    in property <bool> enabled: true;
+    in property <string> text;
+    callback toggled(bool);
+    height: max(18px, label.font-line) + 12px;
+    opacity: root.enabled ? 1 : 0.45;
+    property <bool> hovered: area.has-hover && root.enabled;
+    Rectangle {
+        x: 6px;
+        y: 6px + (root.height - 12px - 18px) / 2;
+        width: 18px;
+        height: 18px;
+        border-radius: 5px;
+        background: root.checked ? Theme.accent : root.hovered ? Theme.hover : transparent;
+        border-width: root.checked ? 0 : 2px;
+        border-color: root.hovered ? Theme.text-dim : Theme.text-faint;
+        if root.checked: Image {
+            x: 2px;
+            y: 2px;
+            width: 14px;
+            height: 14px;
+            source: @image-url("../icons/check.svg");
+            colorize: Theme.on-accent;
+        }
+    }
+    label := UiText {
+        x: 34px;
+        y: 6px + (root.height - 12px - self.font-line) / 2;
+        width: max(0px, root.width - 34px - 6px);
+        text: root.text;
+        font-size: 13px;
+        color: root.checked ? Theme.text : Theme.text-dim;
+        overflow: elide;
+    }
+    area := TouchArea {
+        enabled: root.enabled;
+        mouse-cursor: pointer;
+        clicked => {
+            root.checked = !root.checked;
+            root.toggled(root.checked);
+        }
+    }
+}
+
+// A rounded field, the chevron at the right; its list
+// in a rounded card under it (above when there is no room).
+export component Combo inherits Rectangle {
+    in property <[Opt]> options;
+    in property <string> current;
+    in property <length> preferred: 120px;
+    in property <bool> enabled: true;
+    callback activated(string);
+    width: root.preferred;
+    height: Theme.compact ? 28px : Theme.spacious ? 38px : 34px;
+    border-radius: Theme.radius <= 2px ? Theme.radius-small : min(self.height / 2, Theme.radius);
+    opacity: root.enabled ? 1 : 0.5;
+    property <bool> open: popup.is-open;
+    background: root.open ? Theme.border : area.has-hover ? Theme.hover : Theme.surface-hi;
+    border-width: 1px;
+    border-color: Theme.border;
+    property <length> row-h: Theme.compact ? 26px : Theme.spacious ? 36px : 32px;
+    for o in root.options: UiText {
+        visible: o.value == root.current;
+        x: 12px;
+        y: round((root.height - self.font-line) / 2px) * 1px;
+        width: root.width - 12px - 30px;
+        text: o.text;
+        font-size: 13px;
+        overflow: elide;
+    }
+    Image {
+        x: root.width - 24px;
+        y: floor((root.height - 14px) / 2px) * 1px;
+        width: 14px;
+        height: 14px;
+        source: Icons.chevron-down;
+        colorize: Theme.text-dim;
+    }
+    area := TouchArea {
+        enabled: root.enabled;
+        mouse-cursor: pointer;
+        clicked => { popup.show(); }
+    }
+    property <length> list-h: min(root.options.length * root.row-h + 12px, 360px);
+    popup := PopupWindow {
+        x: 0;
+        y: root.absolute-position.y + root.height + 4px + root.list-h > SettingsOverlay.window-height ? -4px - root.list-h : root.height + 4px;
+        width: max(root.width, 160px);
+        height: root.list-h;
+        close-policy: close-on-click-outside;
+        Rectangle {
+            border-radius: Theme.radius;
+            background: Theme.surface;
+            border-width: 1px;
+            border-color: Theme.border;
+            Flickable {
+                x: 6px;
+                y: 6px;
+                width: parent.width - 12px;
+                height: parent.height - 12px;
+                content-height: root.options.length * root.row-h;
+                for o[i] in root.options: Rectangle {
+                    y: i * root.row-h;
+                    height: root.row-h;
+                    border-radius: Theme.radius-small;
+                    background: row-area.has-hover ? Theme.hover : transparent;
+                    UiText {
+                        x: 6px;
+                        y: round((root.row-h - self.font-line) / 2px) * 1px;
+                        width: parent.width - 12px;
+                        text: o.text;
+                        font-size: 13px;
+                        font-weight: o.value == root.current ? 600 : 400;
+                        color: o.value == root.current ? Theme.accent : Theme.text;
+                        overflow: elide;
+                    }
+                    row-area := TouchArea {
+                        mouse-cursor: pointer;
+                        // Answer first: closing the popup drops this row,
+                        // and nothing after close() runs.
+                        clicked => {
+                            root.activated(o.value);
+                            popup.close();
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// A right-aligned number (fixed decimals) with a faint
+// unit, re-formatted when it loses focus.
+export component NumField inherits Rectangle {
+    in property <float> value;
+    in property <float> from: -24;
+    in property <float> to: 0;
+    in property <int> decimals: 1;
+    in property <string> suffix: "dB";
+    callback edited(float);
+    width: 84px;
+    height: Theme.compact ? 26px : 32px;
+    border-radius: Theme.radius-small;
+    background: Theme.surface-hi;
+    border-width: 1px;
+    border-color: input.has-focus ? Theme.accent : Theme.border;
+    property <bool> acceptable: input.text.is-float() && input.text.to-float() >= root.from && input.text.to-float() <= root.to;
+    if root.suffix != "": unit := UiText {
+        x: root.width - 8px - self.preferred-width;
+        y: round((root.height - self.font-line) / 2px) * 1px;
+        text: root.suffix;
+        font-size: 11px;
+        color: Theme.text-faint;
+    }
+    input := TextInput {
+        x: 4px;
+        width: root.width - 4px - (root.suffix == "" ? 8px : 30px) + 2px;
+        height: root.height;
+        horizontal-alignment: right;
+        vertical-alignment: center;
+        font-family: Theme.tnum-family; // tabular figures ("tnum")
+        font-size: 13px;
+        single-line: true;
+        color: root.acceptable ? Theme.text : Theme.warn;
+        selection-background-color: Theme.accent;
+        selection-foreground-color: Theme.on-accent;
+        text: root.format(root.value);
+        accepted => {
+            if (root.acceptable) { root.edited(clamp(self.text.to-float(), root.from, root.to)); }
+            self.text = root.format(root.value);
+            self.clear-focus();
+        }
+        changed has-focus => {
+            if (!self.has-focus) {
+                if (root.acceptable) { root.edited(clamp(self.text.to-float(), root.from, root.to)); }
+                self.text = root.format(root.value);
+            }
+        }
+    }
+    // Fixed-point, with 0 or 1 decimals (the fields here).
+    pure function format(v: float) -> string {
+        return root.decimals == 0 ? round(v) : (v < 0 && round(v * 10) == 0 ? (0).to-fixed(1) : (round(v * 10) / 10).to-fixed(1));
+    }
+}
+
+// A row of buttons, the chosen one filled with the
+// accent (the text bold), 6 px apart.
+export component Segmented inherits HorizontalLayout {
+    in property <[Opt]> options;
+    in property <string> current;
+    callback picked(string);
+    spacing: 6px;
+    alignment: start;
+    for o in root.options: Rectangle {
+        property <bool> active: o.value == root.current;
+        width: ceil(label.preferred-width / 1px) * 1px + 24px;
+        height: 30px;
+        border-radius: Theme.radius-small;
+        background: self.active ? Theme.accent : seg-area.has-hover ? Theme.hover : Theme.surface-hi;
+        border-width: 1px;
+        border-color: self.active ? Theme.accent : Theme.border;
+        label := UiText {
+            x: round((parent.width - self.preferred-width) / 2px) * 1px;
+            y: round((30px - self.font-line) / 2px) * 1px;
+            text: o.text;
+            font-size: 13px;
+            font-weight: parent.active ? 600 : 400;
+            color: parent.active ? Theme.on-accent : Theme.text;
+        }
+        seg-area := TouchArea {
+            mouse-cursor: pointer;
+            clicked => { root.picked(o.value); }
+        }
+    }
+}
+
+// A small "i"; its explanation under it while the
+// pointer rests on it (or after a click), drawn by the window.
+export component InfoTip inherits Rectangle {
+    in property <string> text;
+    width: 14px;
+    height: 14px;
+    property <int> me: -1;
+    property <bool> shown: root.me >= 0 && SettingsOverlay.tip-owner == root.me;
+    Image {
+        width: 14px;
+        height: 14px;
+        source: Icons.info;
+        colorize: tip-area.has-hover || root.shown ? Theme.text : Theme.text-faint;
+    }
+    function show() {
+        if (root.me < 0) {
+            root.me = SettingsOverlay.next-owner;
+            SettingsOverlay.next-owner += 1;
+        }
+        SettingsOverlay.tip-text = root.text;
+        SettingsOverlay.tip-x = root.absolute-position.x - 8px;
+        SettingsOverlay.tip-y = root.absolute-position.y + root.height + 6px;
+        SettingsOverlay.tip-owner = root.me;
+    }
+    tip-area := TouchArea {
+        mouse-cursor: help;
+        clicked => {
+            if (root.shown) { SettingsOverlay.tip-owner = -1; } else { root.show(); }
+        }
+        changed has-hover => {
+            if (!self.has-hover && root.shown) { SettingsOverlay.tip-owner = -1; }
+        }
+    }
+    Timer {
+        interval: 250ms;
+        running: tip-area.has-hover && !root.shown;
+        triggered => {
+            if (tip-area.has-hover) { root.show(); }
+        }
+    }
+}
+
+// A rounded surface, the icon and the title
+// (and a subtitle) at the top, the settings under it, 6 px apart.
+export component Card inherits Rectangle {
+    in property <string> title;
+    in property <image> icon;
+    in property <string> subtitle;
+    background: Theme.surface;
+    border-radius: Theme.radius;
+    border-width: 1px;
+    border-color: Theme.border;
+    VerticalLayout {
+        padding: 16px;
+        spacing: 12px;
+        HorizontalLayout {
+            spacing: 10px;
+            VerticalLayout {
+                alignment: center;
+                Image {
+                    width: 20px;
+                    height: 20px;
+                    source: root.icon;
+                    colorize: Theme.accent;
+                }
+            }
+            VerticalLayout {
+                spacing: 1px;
+                alignment: center;
+                horizontal-stretch: 1;
+                UiText {
+                    text: root.title;
+                    font-size: 15px;
+                    font-weight: 600;
+                }
+                if root.subtitle != "": Label {
+                    text: root.subtitle;
+                    font-size: 12px;
+                    color: Theme.text-dim;
+                }
+            }
+        }
+        VerticalLayout {
+            spacing: 6px;
+            @children
+        }
+    }
+}
+
+// The title (an "i" 6 px after it with the
+// long text) and a description on the left, the control on the right,
+// vertically centred; half-transparent when it does not apply.
+export component Row inherits Rectangle {
+    in property <string> title;
+    in property <string> description;
+    in property <string> details;
+    in property <bool> dimmed: false;
+    opacity: root.dimmed ? 0.5 : 1;
+    // A grid row as tall as the taller side; the
+    // text between two stretches (the odd pixel goes to the one
+    // above: ceil), the control centred (floor). Whole pixels.
+    property <length> row-h: max(block.preferred-height, control.preferred-height);
+    HorizontalLayout {
+        spacing: 16px;
+        VerticalLayout {
+            horizontal-stretch: 1;
+            alignment: start;
+            padding-top: ceil((root.row-h - block.preferred-height) / 2px) * 1px;
+          block := VerticalLayout {
+            spacing: 2px;
+            HorizontalLayout {
+                spacing: 6px;
+                alignment: start;
+                title-text := Label {
+                    text: root.title;
+                    font-weight: 500;
+                    min-width: 40px;
+                    // Disabled, the title takes the palette's disabled colour.
+                    color: root.dimmed ? Theme.text-faint : Theme.text;
+                }
+                if root.details != "": VerticalLayout {
+                    padding-top: 2px;
+                    alignment: start;
+                    InfoTip {
+                        text: root.details;
+                    }
+                }
+            }
+            if root.description != "": Label {
+                text: root.description;
+                font-size: 12px;
+                color: Theme.text-dim;
+            }
+          }
+        }
+        VerticalLayout {
+            alignment: start;
+            padding-top: floor((root.row-h - control.preferred-height) / 2px) * 1px;
+            control := HorizontalLayout {
+                alignment: end;
+                @children
+            }
+        }
+    }
+}
+
+// A row of controls 8 px apart, at their own sizes.
+export component Line inherits HorizontalLayout {
+    spacing: 8px;
+    alignment: start;
+}

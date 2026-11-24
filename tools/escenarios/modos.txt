@@ -1,0 +1,21 @@
+# Ctrl+M va y vuelve entre la vista completa y el mini todas las veces, y los
+# atajos siguen andando (error del 2026-11-22: el teclado quedaba en la vista
+# que se iba y el segundo Ctrl+M no hacía nada). Al entrar al mini, la lista
+# muestra la pista que suena.
+ajuste ui/compactPlaylist=true
+esperar 1
+dclic 900 626            # fila 10
+estado playing=true
+tecla ctrl+m
+estado mini-on=true
+esperar 1
+estado mini-first>0      # la lista bajó hasta la pista que suena
+captura mini
+tecla ctrl+m
+estado mini-on=false
+esperar 0.8
+tecla ctrl+m
+estado mini-on=true
+esperar 0.8
+tecla space
+estado playing=false

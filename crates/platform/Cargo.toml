@@ -1,0 +1,32 @@
+[package]
+name = "sonkore-platform"
+description = "Desktop integration: MPRIS, ALSA mixer, device reservation, rtkit"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+sonkore-core = { path = "../core" }
+sha1_smol = "1"
+# The tray icon's pixmaps, decoded from the PNGs in packaging/icons.
+image = { version = "0.25", default-features = false, features = ["png"] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+# The same zbus the interface already pulls in (one copy in the binary).
+zbus = { version = "5.19", default-features = false, features = ["async-io", "blocking-api"] }
+alsa-sys = "0.6"
+libc = "0.2"
+# Awaiting the watcher's NameOwnerChanged (already in the tree through zbus).
+futures-lite = { version = "2.6", default-features = false, features = ["std"] }
+
+# Single instance (a named pipe), media keys and the tray icon.
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.62", features = ["Win32_Foundation", "Win32_Security", "Win32_Storage_FileSystem", "Win32_System_Pipes", "Win32_System_IO", "Win32_System_Threading", "Win32_UI_WindowsAndMessaging", "Win32_UI_Shell", "Win32_UI_Input_KeyboardAndMouse", "Win32_Graphics_Gdi", "Win32_System_LibraryLoader", "Win32_System_Com", "Win32_System_WinRT", "Foundation", "Media"] }
+
+[target.'cfg(target_os = "linux")'.dev-dependencies]
+# Peer-to-peer connections: the D-Bus objects are tested without a bus daemon.
+zbus = { version = "5.19", default-features = false, features = ["async-io", "blocking-api", "p2p"] }
+serde = "1"

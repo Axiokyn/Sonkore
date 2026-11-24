@@ -1,0 +1,14 @@
+# Doble clic en cualquier lugar de la fila reproduce, y el audio sale
+# (llega al sink de prueba: la posición avanza). Ventana 1320x840 lógica.
+estado page=tracks
+estado tracks=12
+latencia doble-clic 150
+dclic 900 113            # fila 1, en una zona vacía (no sobre el título)
+estado playing=true
+estado path~/01\.flac$
+estado device~^pipewire\|test-sink$
+estado position>1.0 5    # la salida consume: el audio corre de verdad
+captura sonando
+latencia espacio 150
+tecla space
+estado playing=false

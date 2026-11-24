@@ -1,0 +1,32 @@
+# Ajustes › Audio › Dither: con el DSP activo (volumen digital al 50 %), una
+# constante sale constante sin dither y con ruido de medio LSB con TPDF.
+# 03-constante: 0,25 en los dos canales (tools/tonos.py). La salida de PipeWire
+# es de 24 bits: el conformado de ruido solo actúa hasta 20 bits y ahí es TPDF.
+pantalla 2546 4200
+ajuste widgets/windows/settings=@Size(920 2700)
+ajuste appearance/language=es
+preparar python3 {repo}/tools/tonos.py --biblioteca {rt}/p
+ajuste library/rescanOnStartup=true
+ajuste playback/repeat=2
+ajuste playback/volumeMode=0
+ajuste playback/volume=0.5
+ajuste playback/ditherMode=0
+argumentos {repo}/target/ui-live/tonos/03-constante.flac
+estado playing=true 5
+tecla ctrl+comma
+ventanas 2
+foco last
+esperar 0.8
+clic 578 67
+esperar 0.8
+sonido desvio-i=0 desvio-d=0 pico-i=-18.1±0.1
+clic 796 1687
+esperar 0.4
+clic 796 1762
+guardado playback/ditherMode=1
+sonido desvio-i=0.5±0.1 desvio-d=0.5±0.1
+clic 796 1687
+esperar 0.4
+clic 796 1730
+guardado playback/ditherMode=0
+sonido desvio-i=0 desvio-d=0

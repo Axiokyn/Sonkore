@@ -1,0 +1,3 @@
+A fixed /proc/asound (SONKORE_ASOUND_ROOT) so the views that list sound
+cards (tools/ui-tour.sh "salidas") look the same whatever cards the machine
+has and in whatever order the kernel numbered them.

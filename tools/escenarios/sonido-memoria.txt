@@ -1,0 +1,25 @@
+# Ajustes › Audio › Reproducir desde memoria: la pista se lee entera a la RAM
+# y el archivo no queda abierto; apagado, se lee del disco mientras suena.
+pantalla 2546 4200
+ajuste widgets/windows/settings=@Size(920 2700)
+ajuste appearance/language=es
+preparar python3 {repo}/tools/tonos.py --biblioteca {rt}/p
+ajuste library/rescanOnStartup=true
+ajuste playback/repeat=2
+argumentos {repo}/target/ui-live/tonos/01-izquierda.flac
+estado playing=true 5
+tecla ctrl+comma
+ventanas 2
+foco last
+esperar 0.8
+clic 578 67
+esperar 0.8
+sh ! ls -l /proc/{pid}/fd | grep -q 01-izquierda
+clic 851 824
+guardado playback/playFromMemory=false
+sonido salidas=2 nivel-i=-12±0.2
+sh ls -l /proc/{pid}/fd | grep -q 01-izquierda
+clic 851 824
+guardado playback/playFromMemory=true
+sonido salidas=3 nivel-i=-12±0.2
+sh ! ls -l /proc/{pid}/fd | grep -q 01-izquierda

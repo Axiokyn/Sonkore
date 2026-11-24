@@ -1,0 +1,2210 @@
+// The mini player (Ctrl+M): the whole window becomes a small player — cover,
+// clock and spectrum, title and stream; the transport, seek and volume laid
+// out by the width; a strip of buttons and, when opened, a list (the play
+// queue or a library folder) under it. MainWindow shows it instead of the
+// full view while `Mini.on`; src/mini_ui.rs fills `Mini` and sizes the
+// window.
+
+import { Theme, Visual, Pointer } from "theme.slint";
+import { Icons } from "icons.slint";
+import { App } from "data.slint";
+import { WindowButtons, WindowActions } from "chrome.slint";
+import { SliderFace } from "controls.slint";
+
+export struct MiniCell {
+    text: string,
+    special: bool,   // a hi-res / DSD badge
+    badge-width: length,  // the format's badge (metrics::badge_width)
+}
+
+// A column of the list, laid out in Rust (layout_columns): its left
+// edge in the head and the rows, its width.
+export struct MiniColumn {
+    key: string,
+    title: string,
+    x: length,
+    width: length,
+}
+
+export struct MiniRow {
+    number: string,
+    cover: image,
+    has-cover: bool,
+    cells: [MiniCell],   // one per shown column
+    current: bool,
+    missing: bool,
+    favorite: bool,
+}
+
+// A folder of the source menu's tree (FolderRow).
+export struct MiniFolder {
+    path: string,
+    name: string,
+    depth: int,
+    count: string,
+    last: bool,
+    selected: bool,
+    holds-selected: bool,
+    playing-here: bool,
+    holds-playing: bool,
+}
+
+// A field of the sort menu, or a column of the columns menu.
+export struct MiniChoice {
+    key: string,
+    title: string,
+    on: bool,
+    locked: bool,
+}
+
+export global Mini {
+    // --- The window.
+    in property <bool> on;                    // compact mode (ui/compactMode)
+    in property <bool> list-shown;            // ui/compactPlaylist
+    in property <bool> always-on-top;         // ui/alwaysOnTop
+    in property <bool> stop-button;           // ui/stopButton
+    in property <length> least-height: 160px; // the window's least height (the player, or with the list)
+    in property <length> most-height: 160px;  // without the list: the player's height
+    callback full-view();
+    callback toggle-list();
+    callback set-always-on-top(bool);
+    callback clear-queue();
+    callback resized(length, length);         // the window's size, to keep once settled
+    callback player-height-changed(length);   // the player's height changed with the width: the window refits
+
+    // --- The display.
+    in property <bool> has-track;
+    in property <string> title;
+    in property <string> artist;
+    in property <string> stream;              // codec · rate · depth · bitrate
+    in property <string> place;               // "2 / 5" in the queue
+    in property <int> channels;
+    in property <float> seconds;              // the position
+    in property <float> duration;
+    in property <float> progress;             // 0..1, the seek bars
+    in property <bool> live-seek: true;       // ui/liveSeek: the music follows a drag
+    callback seek(float);                     // 0..1
+    in-out property <bool> remaining;         // the clock counts down
+    in property <bool> queue-empty: true;
+
+    // --- The volume.
+    in property <float> gain: 1;              // the volume as a gain (the speaker glyph)
+    in property <bool> volume-fixed;          // at 100 %, set on the DAC: a padlock pill
+    in property <int> volume-mode: 2;         // 0 digital, 1 DAC, 2 automatic
+    in property <bool> hardware-volume;       // the DAC's own volume can be used
+    in property <string> volume-tooltip;
+    callback step-volume(int);                // the wheel: a dB up or down
+    callback set-volume-mode(int);
+
+    // --- The list.
+    in property <bool> showing-queue: true;
+    in property <string> source-name;
+    in property <[MiniColumn]> columns;
+    in property <length> number-width: 22px;
+    in property <[MiniRow]> rows;             // the rows in sight, from first-row
+    in property <int> first-row;
+    in property <int> rows-total;
+    in-out property <bool> bar-recent;        // the scroll bar shows a moment after a scroll
+    callback list-scrolled(length);           // the rows' viewport scrolled to y
+    in-out property <length> scrolled-to;     // kept while the list is away (the full view)
+    in property <bool> scrollable;
+    in property <string> sort-key: "path";
+    in property <bool> sort-desc;
+    in property <bool> sort-active;           // the sort button lit: not the folder's order
+    in property <[MiniChoice]> sort-fields;
+    in property <[MiniChoice]> column-choices;
+    in property <string> search-placeholder;
+    in-out property <bool> search-open;
+    in-out property <string> search-text;
+    in property <bool> empty-library;         // nothing in the library: the way to add music
+    in property <string> empty-text;          // else why the list is empty ("" = not empty)
+    in property <int> reveal-row: -1;         // scrolled to when reveal-serial changes
+    in property <bool> reveal-centre;
+    in property <int> reveal-serial;
+    in property <[MiniFolder]> folders;       // the source menu's tree
+    in property <bool> subfolders: true;
+    in property <int> folder-levels: 2;
+    in property <int> folder-depth: 1;        // the deepest subfolder level there is
+    callback list-resized(length, length);    // the rows' viewport
+    callback list-look-changed();             // covers or density changed: the columns again
+    callback play-row(int);
+    callback remove-row(int);
+    callback enqueue-row(int);
+    callback toggle-favorite(int);
+    callback head-clicked(string);
+    callback sort-by(string);
+    callback reverse();
+    callback move-column(string, int);
+    callback set-column(string, bool);
+    callback reset-columns();
+    callback pick-source(string);             // "" for the queue
+    callback add-folder();
+    callback remove-folder(string);
+    callback set-subfolders(bool);
+    callback set-folder-levels(int);
+    callback search-edited(string);
+    callback search-accepted();
+    callback search-opened();
+    callback search-closed();
+    callback show-playing();
+    // The head's hit tests, from the columns' layout: the column under x
+    // (-1 for none), and where a column dragged to x would go.
+    pure callback column-at(length) -> int;
+    pure callback target-at(length) -> int;
+    in property <length> favorite-x: -1px;   // the heart's centre in the rows (-1 without that column)
+}
+
+// Font metrics for Inter (ascent and descent rounded).
+export global MiniFont {
+    public pure function height(px: length) -> length {
+        return round(px / 1px * 1984 / 2048) * 1px + round(px / 1px * 494 / 2048) * 1px;
+    }
+    public pure function ascent(px: length) -> length {
+        return px * 1984 / 2048;
+    }
+    public pure function descent(px: length) -> length {
+        return px * 494 / 2048;
+    }
+    // m:ss, or h:mm:ss from an hour.
+    public pure function time(seconds: float) -> string {
+        let s = max(0, floor(seconds));
+        let m = floor(s / 60);
+        let ss = mod(s, 60);
+        if (s >= 3600) {
+            let mm = mod(m, 60);
+            return floor(s / 3600) + ":" + (mm < 10 ? "0" : "") + mm + ":" + (ss < 10 ? "0" : "") + ss;
+        }
+        return m + ":" + (ss < 10 ? "0" : "") + ss;
+    }
+}
+
+// The clock ("tnum"): one text in Inter's
+// tabular figures, the "1" with its foot and the colon raised between figures
+// (Inter's "calt").
+component TabularClock inherits Text {
+    in property <float> seconds;
+    in property <bool> minus;
+    in property <length> size;
+    property <int> t: max(0, floor(seconds));
+    property <int> h: floor(t / 3600);
+    property <int> m: h > 0 ? mod(floor(t / 60), 60) : floor(t / 60);
+    property <int> s: mod(t, 60);
+    // m:ss, or h:mm:ss from an hour.
+    text: (root.minus ? "−" : "") + (root.h > 0 ? root.h + ":" + (root.m < 10 ? "0" : "") + root.m : root.m) + ":" + (root.s < 10 ? "0" : "") + root.s;
+    font-size: root.size;
+    font-weight: 500;
+    font-family: Theme.tnum-family;
+    vertical-alignment: center;
+}
+
+// --- Controls ------------------------------------------------------------------------
+
+// An icon button: the glyph centred on whole pixels, a round hover.
+component MiniButton inherits Rectangle {
+    in property <image> icon;
+    in property <length> icon-size: 15px;
+    in property <bool> active;
+    in property <color> tint: transparent;
+    in property <bool> enabled: true;
+    in property <string> tooltip;
+    callback clicked();
+    callback right-clicked();
+    out property <bool> hovered: area.has-hover;
+    property <bool> tile: false;
+    width: 30px;
+    height: 28px;
+    // The Tile icon style keeps a rounded square
+    // 2 px in under every button (the accent's tint when on).
+    property <bool> tiled: Theme.icon-style == "tile";
+    Rectangle {
+        x: root.tiled ? 2px : 0;
+        y: root.tiled ? 2px : 0;
+        width: root.width - (root.tiled ? 4px : 0);
+        height: root.height - (root.tiled ? 4px : 0);
+        border-radius: root.tiled ? round(min(self.width, self.height) / 1px * 0.3) * 1px : min(self.width, self.height) / 2;
+        background: !root.enabled ? transparent : area.pressed ? Theme.border : root.tiled && root.active ? Theme.accent-soft
+            : area.has-hover ? Theme.hover : root.tiled ? Theme.surface-hi : transparent;
+    }
+    Image {
+        x: floor((root.width - root.icon-size) / 2 / 1px) * 1px;
+        y: floor((root.height - root.icon-size) / 2 / 1px) * 1px;
+        width: root.icon-size;
+        height: root.icon-size;
+        source: root.icon;
+        colorize: !root.enabled ? Theme.text-faint : root.tint != transparent ? root.tint
+                : root.active ? Theme.accent : area.has-hover ? Theme.text : Theme.text-dim;
+    }
+    area := TouchArea {
+        enabled: root.enabled;
+        mouse-cursor: pointer;
+        clicked => { root.clicked(); }
+        pointer-event(e) => {
+            if (e.button == PointerEventButton.right && e.kind == PointerEventKind.up) {
+                root.right-clicked();
+            }
+        }
+    }
+}
+
+// PlayButton: the round button of the transport; in Sonkore's style a
+// hover disc and the glyph 6 px larger, the play triangle nudged right.
+component MiniPlay inherits Rectangle {
+    in property <bool> playing;
+    in property <length> diameter: 32px;
+    in property <length> glyph: 14px;
+    callback clicked();
+    property <string> style: Theme.transport-style;
+    property <bool> is-round: style == "round";
+    property <color> face: Theme.dark ? Theme.text : Theme.accent;
+    // The Tile icon style puts the Sonkore button on
+    // a rounded square 3 px in, the glyph 2 px larger.
+    property <bool> tile: style == "sonkore" && Theme.icon-style == "tile";
+    property <length> inset: tile ? 2px : is-round && area.pressed ? 1px : is-round && area.has-hover ? -1px : 0;
+    property <length> size: tile ? glyph + 2px : style == "sonkore" ? glyph + 6px : glyph;
+    width: diameter;
+    height: diameter;
+    Rectangle {
+        x: root.inset + 1px;
+        y: root.inset + 1px;
+        width: root.width - 2 * (root.inset + 1px);
+        height: self.width;
+        border-radius: root.tile ? round(self.width / 1px * 0.3) * 1px : self.width / 2;
+        background: root.is-round ? root.face : area.pressed ? Theme.border : area.has-hover ? Theme.hover : root.tile ? Theme.surface-hi : transparent;
+        border-width: root.style == "outline" ? 1.5px : 0;
+        border-color: area.has-hover ? Theme.accent : Theme.text;
+    }
+    Image {
+        x: floor((root.width - root.size) / 2 / 1px) * 1px + (root.playing || !Theme.solid-icons ? 0 : round(root.size / 1px * 0.08) * 1px);
+        y: floor((root.height - root.size) / 2 / 1px) * 1px;
+        width: root.size;
+        height: root.size;
+        source: root.playing ? Icons.pause : Icons.play;
+        colorize: root.is-round ? (Theme.dark ? Theme.bg : Theme.on-accent) : area.has-hover ? Theme.accent : Theme.text;
+    }
+    area := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { root.clicked(); }
+    }
+}
+
+// The mini player's slider: SliderFace with the
+// mini's own drag (the knob's centre from half a knob in).
+component MiniSlider inherits Rectangle {
+    in property <float> value;              // 0..1, shown while not dragged
+    in property <string> look: "line";
+    in property <bool> quiet;               // the volume: a dimmer fill
+    in property <bool> enabled: true;
+    callback moved(float);
+    callback released(float);
+    out property <bool> down: area.pressed;
+    out property <float> shown: area.pressed ? drag : clamp(value, 0, 1);
+    property <float> drag;
+    property <bool> active: area.has-hover || area.pressed;
+    in property <string> wave-slot;
+    SliderFace {
+        width: root.width;
+        height: root.height;
+        shown: root.shown;
+        look: root.look;
+        quiet: root.quiet;
+        enabled: root.enabled;
+        active: root.active;
+        down: area.pressed;
+        wave-slot: root.wave-slot;
+    }
+    area := TouchArea {
+        enabled: root.enabled;
+        mouse-cursor: pointer;
+        pointer-event(e) => {
+            if (e.button == PointerEventButton.left) {
+                if (e.kind == PointerEventKind.down) {
+                    root.drag = clamp((self.mouse-x - 6.5px) / max(1px, root.width - 13px), 0, 1);
+                    root.moved(root.drag);
+                } else if (e.kind == PointerEventKind.up) {
+                    root.released(root.drag);
+                }
+            }
+        }
+        moved => {
+            if (self.pressed) {
+                root.drag = clamp((self.mouse-x - 6.5px) / max(1px, root.width - 13px), 0, 1);
+                root.moved(root.drag);
+            }
+        }
+    }
+}
+
+// LockedPill: the volume fixed at 100 %, a padlock and "100 %".
+component LockedPill inherits Rectangle {
+    callback clicked();
+    height: 22px;
+    border-radius: self.height / 2;
+    background: area.has-hover ? Theme.surface-hi : transparent;
+    border-width: 1px;
+    border-color: area.has-hover ? Theme.text-faint : Theme.border;
+    property <length> row-w: 12px + 5px + label.preferred-width;
+    Image {
+        x: round((root.width - root.row-w) / 2 / 1px) * 1px;
+        y: round((root.height - 12px) / 2 / 1px) * 1px;
+        width: 12px;
+        height: 12px;
+        source: Icons.lock;
+        colorize: Theme.text-dim;
+    }
+    label := Text {
+        x: round((root.width - root.row-w) / 2 / 1px) * 1px + 17px;
+        text: "100 %";
+        font-size: 11px;
+        font-family: Theme.tnum-family;
+        color: Theme.text-dim;
+        vertical-alignment: center;
+    }
+    area := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { root.clicked(); }
+    }
+}
+
+// The spectrum (SpectrumMeter, "bars"): bars on whole pixels, 62 % of a step.
+component MiniSpectrum inherits Rectangle {
+    init => {
+        Visual.mini-width = self.width;
+        Visual.mini-height = self.height;
+    }
+    changed width => { Visual.mini-width = self.width; }
+    changed height => { Visual.mini-height = self.height; }
+    Image {
+        width: root.width;
+        height: root.height;
+        source: Visual.mini;
+        image-fit: ImageFit.fill;
+    }
+}
+
+// The three bars of the playing folder.
+component PlayingBarsStill inherits Rectangle {
+    in property <float> time;
+    width: 13px;
+    height: 12px;
+    for i in 3: Rectangle {
+        property <float> level: (3 + 9 * (0.5 - 0.5 * cos(2 * 3.14159265 * root.time / (0.56 + i * 0.16) * 1rad))) / 12;
+        x: i * 5px;
+        width: 3px;
+        height: max(3px, 12px * self.level);
+        y: 12px - self.height;
+        border-radius: 1px;
+        background: Theme.accent;
+    }
+}
+
+// --- Menus (the card and rows) -------------------------------------------------------
+
+component MenuCard inherits Rectangle {
+    background: Theme.surface;
+    border-radius: Theme.radius;
+    // The rows inside the two rings, the corners rounded: a list scrolled
+    // under the edge does not run over the border.
+    Rectangle {
+        x: 2px;
+        y: 2px;
+        width: parent.width - 4px;
+        height: parent.height - 4px;
+        border-radius: max(0, Theme.radius - 2px);
+        clip: true;
+        @children
+    }
+    Rectangle {
+        border-radius: Theme.radius;
+        border-width: 1px;
+        border-color: #000000.with-alpha(Theme.dark ? 0.85 : 0.3);
+    }
+    Rectangle {
+        x: 1px;
+        y: 1px;
+        width: parent.width - 2px;
+        height: parent.height - 2px;
+        border-radius: max(0, Theme.radius - 1px);
+        border-width: 1px;
+        border-color: Theme.dark ? #ffffff12 : #ffffff99;
+    }
+}
+
+// The subfolder levels: "Subfolders", how many levels deep (− N +, from 1 to
+// the deepest there is) and a switch to show them; the menu stays open.
+component LevelsRow inherits Rectangle {
+    in property <string> text;
+    in property <bool> on;
+    in property <int> value;
+    in property <int> maximum;
+    callback stepped(int);
+    callback toggled();
+    height: Theme.compact ? 28px : Theme.spacious ? 36px : 32px;
+    min-width: 210px;
+    Text {
+        x: 10px;
+        width: root.width - 10px - 110px;
+        text: root.text;
+        font-size: 13px;
+        color: Theme.text-dim;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+    if root.on && root.maximum > 1: HorizontalLayout {
+        x: root.width - 10px - 30px - 8px - 62px;
+        y: (root.height - 22px) / 2;
+        width: 62px;
+        height: 22px;
+        Rectangle {
+            width: 22px;
+            opacity: root.value > 1 ? 1 : 0.35;
+            border-radius: 11px;
+            background: less.has-hover && root.value > 1 ? Theme.hover : transparent;
+            Image { width: 10px; height: 10px; source: Icons.win-min; colorize: Theme.text-dim; }
+            less := TouchArea {
+                enabled: root.value > 1;
+                mouse-cursor: pointer;
+                clicked => { root.stepped(root.value - 1); }
+            }
+        }
+        Text {
+            width: 18px;
+            text: root.value;
+            font-size: 12px;
+            font-weight: 600;
+            color: Theme.text;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+        }
+        Rectangle {
+            width: 22px;
+            opacity: root.value < root.maximum ? 1 : 0.35;
+            border-radius: 11px;
+            background: more.has-hover && root.value < root.maximum ? Theme.hover : transparent;
+            Image { width: 10px; height: 10px; source: Icons.plus; colorize: Theme.text-dim; }
+            more := TouchArea {
+                enabled: root.value < root.maximum;
+                mouse-cursor: pointer;
+                clicked => { root.stepped(root.value + 1); }
+            }
+        }
+    }
+    Rectangle {
+        x: root.width - 10px - 30px;
+        y: (root.height - 18px) / 2;
+        width: 30px;
+        height: 18px;
+        border-radius: 9px;
+        background: root.on ? Theme.accent : Theme.border;
+        Rectangle {
+            x: root.on ? parent.width - self.width - 2px : 2px;
+            y: 2px;
+            width: 14px;
+            height: 14px;
+            border-radius: 7px;
+            background: white;
+        }
+        TouchArea {
+            mouse-cursor: pointer;
+            clicked => { root.toggled(); }
+        }
+    }
+}
+
+component MenuRow inherits Rectangle {
+    in property <string> text;
+    in property <bool> checkable;
+    in property <bool> checked;
+    in property <bool> enabled: true;
+    callback activated();
+    height: Theme.compact ? 28px : Theme.spacious ? 36px : 32px;
+    property <length> left: 10px + (checkable ? 24px : 0);
+    min-width: max(210px, self.left + label.preferred-width + 10px);
+    Rectangle {
+        border-radius: Theme.radius-small;
+        background: area.has-hover && root.enabled ? Theme.hover : transparent;
+    }
+    if root.checkable && root.checked: Image {
+        x: 11px;
+        y: round((root.height - 16px) / 2 / 1px) * 1px + 1px;
+        width: 14px;
+        height: 14px;
+        source: Icons.check;
+        colorize: Theme.accent;
+    }
+    label := Text {
+        x: root.left;
+        width: root.width - root.left - 10px;
+        text: root.text;
+        font-size: 13px;
+        font-weight: root.checkable && root.checked ? 600 : 400;
+        color: !root.enabled ? Theme.text-faint : root.checkable && root.checked ? Theme.accent : Theme.text;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+    area := TouchArea {
+        enabled: root.enabled;
+        clicked => { root.activated(); }
+    }
+}
+
+component MenuSeparator inherits Rectangle {
+    height: 9px;
+    Rectangle {
+        x: 8px;
+        y: 4px;
+        width: parent.width - 16px;
+        height: 1px;
+        background: Theme.border;
+    }
+}
+
+// A folder in the source menu (FolderRow): tree guides, the folder (or the
+// playing bars), the name, the count; a remove button under the pointer.
+component FolderEntry inherits Rectangle {
+    in property <MiniFolder> node;
+    in property <bool> playing;
+    callback picked();
+    callback remove();
+    height: 26px;
+    property <length> left: 8px;
+    property <length> indent: node.depth * 16px;
+    property <length> icon-size: node.depth == 0 ? 14px : 12px;
+    property <length> right: root.width - 10px;
+    property <bool> hover: area.has-hover;
+    property <bool> on-trash: area.has-hover && area.mouse-x >= root.width - 26px && area.mouse-x < root.width - 4px;
+    Rectangle {
+        border-radius: Theme.radius-small;
+        background: root.node.selected ? Theme.accent-soft : root.hover ? Theme.hover : transparent;
+    }
+    if root.node.depth > 0: Rectangle {
+        x: root.left + root.indent - 10px;
+        width: 1px;
+        height: root.node.last ? root.height / 2 : root.height;
+        y: 0;
+        background: Theme.border;
+    }
+    if root.node.depth > 0: Rectangle {
+        x: root.left + root.indent - 10px;
+        y: round(root.height / 2 / 1px) * 1px;
+        width: 7px;
+        height: 1px;
+        background: Theme.border;
+    }
+    if root.node.playing-here: PlayingBarsStill {
+        x: root.left + root.indent + root.icon-size / 2 - 6.5px;
+        y: round((root.height - root.icon-size) / 2 / 1px) * 1px + root.icon-size / 2 - 6px;
+        // Moving, as in the full view's lists.
+        time: root.playing ? App.bars-time : 0;
+    }
+    if !root.node.playing-here: Image {
+        x: root.left + root.indent;
+        y: round((root.height - root.icon-size) / 2 / 1px) * 1px;
+        width: root.icon-size;
+        height: root.icon-size;
+        source: Icons.folder;
+        colorize: root.node.selected || root.node.holds-selected || root.node.holds-playing ? Theme.accent
+                : root.node.depth == 0 ? Theme.text-dim : Theme.text-faint;
+    }
+    count := Text {
+        x: root.right - self.width;
+        width: self.preferred-width;
+        text: root.node.count;
+        font-size: 11px;
+        font-family: Theme.tnum-family;
+        color: root.node.selected ? Theme.accent : Theme.text-faint;
+        vertical-alignment: center;
+        visible: !root.hover;
+    }
+    if root.hover && root.on-trash: Rectangle {
+        x: root.width - 26px;
+        y: (root.height - 22px) / 2;
+        width: 22px;
+        height: 22px;
+        border-radius: 11px;
+        background: Theme.hover;
+    }
+    if root.hover: Image {
+        x: root.width - 21px;
+        y: round(root.height / 2 / 1px) * 1px - 6px;
+        width: 12px;
+        height: 12px;
+        source: Icons.trash;
+        colorize: root.on-trash ? Theme.text : Theme.text-dim;
+    }
+    Text {
+        x: root.left + root.indent + root.icon-size + 7px;
+        width: max(0, root.right - count.preferred-width - 10px - self.x);
+        text: root.node.name;
+        font-size: 12px;
+        font-weight: root.node.depth == 0 || root.node.selected ? 600 : 400;
+        color: root.node.selected || root.node.playing-here ? Theme.accent : root.node.depth == 0 ? Theme.text : Theme.text-dim;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+    area := TouchArea {
+        mouse-cursor: pointer;
+        clicked => {
+            if (root.on-trash) {
+                root.remove();
+            } else {
+                root.picked();
+            }
+        }
+    }
+}
+
+// A column in the columns menu (ColumnBox): a small box and its name.
+component ColumnBox inherits Rectangle {
+    in property <MiniChoice> choice;
+    callback toggled();
+    width: 150px;
+    height: 24px;
+    Rectangle {
+        border-radius: Theme.radius-small;
+        background: area.has-hover ? Theme.hover : transparent;
+    }
+    Rectangle {
+        x: 6px;
+        y: round((root.height - 13px) / 2 / 1px) * 1px;
+        width: 13px;
+        height: 13px;
+        border-radius: 3px;
+        background: root.choice.on ? Theme.accent : transparent;
+        border-width: root.choice.on ? 0 : 1px;
+        border-color: Theme.text-faint;
+        if root.choice.on: Image {
+            x: 1.5px;
+            y: 1.5px;
+            width: 10px;
+            height: 10px;
+            source: Icons.check;
+            colorize: Theme.on-accent;
+        }
+    }
+    Text {
+        x: 25px;
+        width: root.width - 31px;
+        text: root.choice.title;
+        font-size: 12px;
+        color: root.choice.locked ? Theme.text-faint : root.choice.on ? Theme.text : Theme.text-dim;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+    area := TouchArea {
+        enabled: !root.choice.locked;
+        mouse-cursor: pointer;
+        clicked => { root.toggled(); }
+    }
+}
+
+// --- The list --------------------------------------------------------------------------
+
+// The source: an icon, the name, a chevron; hovered, the name and chevron light up.
+component SourceButton inherits Rectangle {
+    callback clicked();
+    out property <length> implicit-width: ceil((6px + 14px + 8px + name.preferred-width + 4px + 13px + 6px) / 1px) * 1px;
+    property <length> room: max(0, root.width - 28px - 4px - 13px - 6px);
+    opacity: area.pressed ? 0.7 : 1;
+    Image {
+        x: 6px;
+        y: round((root.height - 14px) / 2 / 1px) * 1px;
+        width: 14px;
+        height: 14px;
+        source: Mini.showing-queue ? Icons.queue : Icons.folder;
+        colorize: Theme.accent;
+    }
+    name := Text {
+        x: 28px;
+        width: min(self.preferred-width, root.room);
+        text: Mini.showing-queue ? @tr("MiniPlayer" => "Play queue") : Mini.source-name;
+        font-size: 12px;
+        font-weight: 600;
+        color: area.has-hover ? Theme.accent : Theme.text;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+    Image {
+        x: 28px + name.width + 4px;
+        y: round((root.height - 13px) / 2 / 1px) * 1px;
+        width: 13px;
+        height: 13px;
+        source: Icons.chevron-down;
+        colorize: area.has-hover ? Theme.accent : Theme.text-dim;
+    }
+    area := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { root.clicked(); }
+    }
+}
+
+// The column heads (MiniHead): a click sorts, a drag moves a column, a
+// right-click chooses them.
+component MiniHead inherits Rectangle {
+    callback columns-menu(length, length);
+    height: 26px;
+    property <int> hover: -1;
+    property <int> press: -1;
+    property <length> press-x;
+    property <string> drag-key;
+    property <length> drag-x;
+    property <int> target: -1;
+    Text {
+        x: 6px;
+        width: Mini.number-width;
+        text: "#";
+        font-size: 11px;
+        font-weight: 500;
+        color: Theme.text-dim;
+        horizontal-alignment: right;
+        vertical-alignment: center;
+    }
+    for c[i] in Mini.columns: Rectangle {
+        property <bool> sorted: !Mini.showing-queue && Mini.sort-key == c.key;
+        property <color> tone: self.sorted ? Theme.accent : i == root.hover && root.drag-key == "" ? Theme.text : Theme.text-dim;
+        x: c.x;
+        width: c.width;
+        opacity: root.drag-key == c.key ? 0.3 : 1;
+        if c.key == "favorite": Image {
+            x: round((c.width / 2 - 5.5px) / 1px) * 1px;
+            y: round((root.height / 2 - 5.5px) / 1px) * 1px;
+            width: 11px;
+            height: 11px;
+            source: Icons.heart-filled;
+            colorize: parent.tone;
+        }
+        if c.key != "favorite": Text {
+            x: 0;
+            width: parent.width;
+            height: root.height;
+            text: c.title + (parent.sorted ? (Mini.sort-desc ? "  ↓" : "  ↑") : "");
+            font-size: 11px;
+            font-weight: 500;
+            color: parent.tone;
+            vertical-alignment: center;
+            overflow: elide;
+        }
+    }
+    if root.drag-key != "": Rectangle {
+        property <length> w: root.drag-width + 12px;
+        x: root.drag-x - 6px;
+        y: 2px;
+        width: self.w;
+        height: root.height - 4px;
+        border-radius: Theme.radius-small;
+        background: Theme.surface-hi;
+        border-width: 1px;
+        border-color: Theme.accent;
+        opacity: 0.95;
+        Text {
+            x: 6px;
+            width: parent.width - 12px;
+            text: root.drag-title;
+            font-size: 11px;
+            font-weight: 500;
+            color: Theme.text;
+            vertical-alignment: center;
+            overflow: elide;
+            visible: root.drag-key != "favorite";
+        }
+        if root.drag-key == "favorite": Image {
+            x: (parent.width - 11px) / 2;
+            width: 11px;
+            height: 11px;
+            source: Icons.heart-filled;
+            colorize: Theme.text;
+        }
+    }
+    if root.drag-key != "" && root.target >= 0: Rectangle {
+        x: (root.target < Mini.columns.length ? Mini.columns[root.target].x
+            : Mini.columns[Mini.columns.length - 1].x + Mini.columns[Mini.columns.length - 1].width + 8px) - 4px - 1.5px;
+        width: 3px;
+        border-radius: 1.5px;
+        background: Theme.accent;
+    }
+    property <length> drag-width: root.press >= 0 ? Mini.columns[root.press].width : 0;
+    property <string> drag-title: root.press >= 0 ? Mini.columns[root.press].title : "";
+    area := TouchArea {
+        mouse-cursor: root.drag-key != "" ? MouseCursor.grabbing : root.hover >= 0 ? MouseCursor.pointer : MouseCursor.default;
+        moved => {
+            if (self.pressed && root.press >= 0) {
+                if (root.drag-key == "" && abs(self.mouse-x - root.press-x) > 8px) {
+                    root.drag-key = Mini.columns[root.press].key;
+                }
+                if (root.drag-key != "") {
+                    root.drag-x = self.mouse-x - (root.press-x - Mini.columns[root.press].x);
+                    root.target = Mini.target-at(self.mouse-x);
+                }
+            }
+        }
+        changed has-hover => {
+            if (!self.has-hover) {
+                root.hover = -1;
+            }
+        }
+        changed mouse-x => {
+            if (!self.pressed) {
+                root.hover = Mini.column-at(self.mouse-x);
+            }
+        }
+        pointer-event(e) => {
+            if (e.kind == PointerEventKind.down) {
+                if (e.button == PointerEventButton.right) {
+                    root.columns-menu(self.mouse-x, self.mouse-y);
+                } else if (e.button == PointerEventButton.left) {
+                    root.press = Mini.column-at(self.mouse-x);
+                    root.press-x = self.mouse-x;
+                }
+            } else if (e.kind == PointerEventKind.up && e.button == PointerEventButton.left) {
+                if (root.drag-key != "") {
+                    Mini.move-column(root.drag-key, root.target);
+                } else if (root.press >= 0) {
+                    Mini.head-clicked(Mini.columns[root.press].key);
+                }
+                root.press = -1;
+                root.drag-key = "";
+                root.target = -1;
+            }
+        }
+    }
+}
+
+// A row of the list.
+component MiniListRow inherits Rectangle {
+    in property <MiniRow> data;
+    in property <int> index;
+    in property <length> line-width;
+    in property <length> row-height;
+    in property <length> cover-side;
+    callback menu(int, length, length);
+    height: row-height;
+    property <bool> list-mode: Theme.list-density == "list";
+    property <bool> hovered: area.has-hover;
+    property <bool> artist-shown: false;
+    Rectangle {
+        x: 0;
+        width: root.line-width;
+        border-radius: root.list-mode ? 0 : Theme.radius-small;
+        background: root.data.current ? Theme.accent-soft : root.hovered ? Theme.hover
+                  : Theme.alternate-rows && mod(root.index, 2) == 1 ? Theme.text.with-alpha(Theme.dark ? 0.025 : 0.03) : transparent;
+    }
+    Text {
+        x: 6px;
+        width: Mini.number-width;
+        text: root.data.number;
+        font-size: 11px;
+        font-family: Theme.tnum-family;
+        color: root.data.current ? Theme.accent : Theme.text-faint;
+        horizontal-alignment: right;
+        vertical-alignment: center;
+    }
+    if root.cover-side > 0: Rectangle {
+        x: 6px + Mini.number-width + 8px;
+        y: round((root.height / 2 - root.cover-side / 2) / 1px) * 1px;
+        width: root.cover-side;
+        height: root.cover-side;
+        border-radius: 3px;
+        background: root.data.has-cover ? transparent : Theme.surface-hi;
+        border-width: root.data.has-cover ? 0 : 1px;
+        border-color: Theme.border;
+        clip: true;
+        if root.data.has-cover: Image {
+            x: 0;
+            y: 0;
+            source: root.data.cover;
+            width: parent.width;
+            height: parent.height;
+            image-fit: cover;
+        }
+        if !root.data.has-cover: Image {
+            property <length> s: max(14px, round(root.cover-side / 1px * 0.32) * 1px);
+            x: round((parent.width - self.s) / 2 / 1px) * 1px;
+            y: round((parent.height - self.s) / 2 / 1px) * 1px;
+            width: self.s;
+            height: self.s;
+            source: Icons.music;
+            colorize: Theme.text-faint;
+        }
+    }
+    for c[i] in Mini.columns: col := Rectangle {
+        x: c.x;
+        width: c.width;
+        property <MiniCell> cell: root.data.cells[i];
+        if c.key == "favorite": Image {
+            x: round((c.width / 2 - 6px) / 1px) * 1px;
+            y: round((root.height / 2 - 6px) / 1px) * 1px;
+            width: 12px;
+            height: 12px;
+            source: root.data.favorite ? Icons.heart-filled : Icons.heart-empty;
+            colorize: root.data.favorite ? Theme.accent : root.hovered ? Theme.text-dim : Theme.text-faint;
+            opacity: root.data.favorite || root.hovered ? 1 : 0.6;
+        }
+        if c.key == "format" && !root.list-mode && col.cell.text != "": Rectangle {
+            property <color> tone: col.cell.special ? Theme.accent : Theme.text-dim;
+            x: 0;
+            y: round((root.height / 2 - 9px) / 1px) * 1px;
+            width: min(col.cell.badge-width, c.width);
+            height: 18px;
+            border-radius: Theme.radius <= 2px ? 2px : 9px;
+            border-width: 1px;
+            border-color: self.tone.with-alpha(0.35);
+            Rectangle {
+                x: 1px;
+                y: 1px;
+                width: parent.width - 2px;
+                height: parent.height - 2px;
+                border-radius: max(0, parent.border-radius - 1px);
+                background: parent.tone.with-alpha(0.14);
+            }
+            badge := Text {
+                x: round((parent.width - min(self.preferred-width, parent.width - 10px)) / 2 / 1px) * 1px;
+                width: min(self.preferred-width, parent.width - 10px);
+                text: col.cell.text;
+                font-size: 10px;
+                font-weight: 600;
+                letter-spacing: 0.4px;
+                color: parent.tone;
+                vertical-alignment: center;
+                overflow: elide;
+            }
+        }
+        cell-text := Text {
+            x: 0;
+            width: c.width;
+            height: root.height;
+            visible: c.key != "favorite" && !(c.key == "format" && !root.list-mode);
+            text: col.cell.text;
+            font-size: i == 0 ? 12px : 11px;
+            // (Every cell with tabular figures.)
+            font-family: Theme.tnum-family;
+            font-weight: root.data.current && i == 0 ? 600 : 400;
+            color: root.data.missing ? Theme.text-faint : root.data.current ? Theme.accent : i == 0 ? Theme.text : Theme.text-dim;
+            vertical-alignment: center;
+            overflow: elide;
+        }
+        // Missing: struck out.
+        if c.key != "favorite" && i == 0 && root.data.missing: Rectangle {
+            x: 0;
+            y: round(root.height / 2 / 1px) * 1px;
+            height: 1px;
+            width: min(c.width, cell-text.preferred-width);
+            background: Theme.text-faint;
+        }
+    }
+    area := TouchArea {
+        pointer-event(e) => {
+            if (e.kind == PointerEventKind.down && e.button == PointerEventButton.right) {
+                root.menu(root.index, self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y);
+            }
+        }
+        clicked => {
+            // The heart: the favourite on / off.
+            if (Mini.favorite-x >= 0 && self.mouse-x >= Mini.favorite-x - 12px && self.mouse-x <= Mini.favorite-x + 12px) {
+                Mini.toggle-favorite(root.index);
+            }
+        }
+        double-clicked => { Mini.play-row(root.index); }
+    }
+}
+
+// The overlay scroll bar: a thumb at the right
+// edge while the list scrolls and a moment after, wider with a faint track
+// under the pointer; dragged, or a click on the track pages.
+component OverlayBar inherits Rectangle {
+    in property <length> position;
+    in property <length> page;
+    in property <length> range;
+    callback scroll-to(length);
+    property <bool> lit: area.has-hover;
+    property <bool> pressed: area.pressed;
+    property <bool> shown: lit || pressed || Mini.bar-recent;
+    property <length> track-top: 6px;
+    property <length> track-h: root.height - 12px;
+    property <float> size: max(0.05, root.page / max(1px, root.range + root.page));
+    property <length> length: max(root.track-h * root.size, 24px);
+    property <float> f: root.range > 0 ? root.position / root.range : 0;
+    property <length> thumb-w: lit || pressed ? 8px : 6px;
+    property <length> thumb-y: root.track-top + root.f * (root.track-h - root.length);
+    property <length> grab: -1px;
+    if root.lit || root.pressed: Rectangle {
+        x: 0;
+        y: 4px;
+        width: root.width;
+        height: root.height - 8px;
+        border-radius: 5px;
+        background: Theme.text.with-alpha(0.07);
+    }
+    if root.shown: Rectangle {
+        x: root.width - 2px - root.thumb-w;
+        y: root.thumb-y;
+        width: root.thumb-w;
+        height: root.length;
+        border-radius: self.width / 2;
+        background: root.pressed ? Theme.accent : root.lit ? Theme.text-dim : Theme.text-faint;
+    }
+    area := TouchArea {
+        pointer-event(e) => {
+            if (e.kind == PointerEventKind.down && e.button == PointerEventButton.left) {
+                if (self.mouse-y >= root.thumb-y && self.mouse-y < root.thumb-y + root.length) {
+                    root.grab = self.mouse-y - root.thumb-y;
+                } else {
+                    root.grab = -1px;
+                    root.scroll-to(root.position + (self.mouse-y < root.thumb-y ? -root.page : root.page));
+                }
+            }
+        }
+        moved => {
+            if (self.pressed && root.grab >= 0 && root.track-h - root.length > 0) {
+                let f = clamp((self.mouse-y - root.grab - root.track-top) / (root.track-h - root.length), 0, 1);
+                root.scroll-to(f * root.range);
+            }
+        }
+        scroll-event(e) => {
+            root.scroll-to(root.position - e.delta-y);
+            accept
+        }
+    }
+}
+
+// The list under the player (MiniList): the source and its tools on a band,
+// the column heads, the rows, or why there are none.
+component MiniList inherits Rectangle {
+    in property <length> outer-corner;
+    callback source-menu(length, length);
+    callback sort-menu(length, length);
+    callback columns-menu(length, length);
+    callback row-menu(int, length, length);
+    property <length> rh: Theme.list-density == "list" ? 22px : Theme.list-density == "compact" ? 26px : Theme.list-density == "spacious" ? 44px : 34px;
+    property <length> cover-side: Theme.list-covers ? rh - 8px : 0; // list covers: on, and rows of 40 px or more
+    property <length> r: Theme.radius-small;
+    property <bool> head: Mini.columns.length > 1 && Mini.rows-total > 0;
+    property <length> band-bottom: (head ? 58px : 32px) + 2px;
+    property <length> top: (head ? 58px : 32px) + 2px;
+    property <bool> locate: Mini.has-track;
+    property <length> sort-x: root.width - 4px - 28px;
+    property <length> search-x: (locate ? sort-x - 28px : sort-x) - 28px;
+    // The frame: the lists' darker panel, its top a band, a hairline under it.
+    property <length> rb: max(root.r, root.outer-corner - 6px);
+    Rectangle {
+        border-top-left-radius: root.r;
+        border-top-right-radius: root.r;
+        border-bottom-left-radius: root.rb;
+        border-bottom-right-radius: root.rb;
+        border-width: 1px;
+        border-color: Theme.text.with-alpha(Theme.dark ? 0.045 : 0.07);
+    }
+    Rectangle {
+        x: 1px;
+        y: 1px;
+        width: root.width - 2px;
+        height: root.height - 2px;
+        border-top-left-radius: root.r - 1px;
+        border-top-right-radius: root.r - 1px;
+        border-bottom-left-radius: root.rb - 1px;
+        border-bottom-right-radius: root.rb - 1px;
+        background: Theme.pane-shown;
+    }
+    Rectangle {
+        x: 1px;
+        y: 1px;
+        width: root.width - 2px;
+        height: root.band-bottom - 1px;
+        border-top-left-radius: root.r - 1px;
+        border-top-right-radius: root.r - 1px;
+        background: Theme.surface;
+    }
+    Rectangle {
+        x: 1px;
+        y: root.band-bottom - 1px;
+        width: root.width - 2px;
+        height: 1px;
+        background: Theme.border;
+    }
+    source := SourceButton {
+        x: 4px;
+        y: 4px;
+        width: max(0, min(self.implicit-width, root.search-x - 2px - 4px));
+        height: 28px;
+        visible: !Mini.search-open;
+        clicked => { root.source-menu(4px, 4px + 28px + 2px); }
+    }
+    if Mini.search-open: Rectangle {
+        x: 5px;
+        y: 5px;
+        width: max(0, root.search-x - 2px - 5px);
+        height: 26px;
+        border-radius: Theme.radius <= 2px ? Theme.radius-small : self.height / 2;
+        background: Theme.surface-hi;
+        border-width: input.has-focus ? 1.5px : 1px;
+        border-color: input.has-focus ? Theme.accent : Theme.border;
+        // A click elsewhere in the window takes the keyboard away (an empty
+        // field then closes, as on Escape); the shortcuts get it back.
+        property <int> presses: Pointer.presses;
+        changed presses => {
+            if (input.has-focus && !(Pointer.x >= self.absolute-position.x && Pointer.x < self.absolute-position.x + self.width
+                    && Pointer.y >= self.absolute-position.y && Pointer.y < self.absolute-position.y + self.height)) {
+                input.clear-focus();
+                App.focus-request += 1;
+            }
+        }
+        Image {
+            x: 12px;
+            y: floor((parent.height - 15px) / 2 / 1px) * 1px;
+            width: 15px;
+            height: 15px;
+            source: Icons.search;
+            colorize: Theme.text-faint;
+        }
+        input := TextInput {
+            x: 34px;
+            width: parent.width - 34px - (Mini.search-text != "" ? 30px : 12px);
+            height: parent.height;
+            text: Mini.search-text;
+            font-size: 12px;
+            color: Theme.text;
+            vertical-alignment: center;
+            single-line: true;
+            selection-background-color: Theme.accent;
+            selection-foreground-color: Theme.on-accent;
+            init => {
+                self.focus();
+                self.select-all();
+            }
+            edited => {
+                Mini.search-text = self.text;
+                Mini.search-edited(self.text);
+            }
+            accepted => { Mini.search-accepted(); }
+            key-pressed(e) => {
+                if (e.text == Key.Escape) {
+                    Mini.search-text = "";
+                    Mini.search-edited("");
+                    Mini.search-closed();
+                    return accept;
+                }
+                reject
+            }
+            changed has-focus => {
+                if (!self.has-focus && Mini.search-text == "") {
+                    Mini.search-closed();
+                }
+            }
+        }
+        if Mini.search-text == "": Text {
+            x: 34px;
+            text: Mini.search-placeholder;
+            font-size: 12px;
+            color: Theme.text-faint;
+            vertical-alignment: center;
+        }
+        if Mini.search-text != "": MiniButton {
+            x: parent.width - 4px - 28px;
+            y: (parent.height - 28px) / 2;
+            width: 28px;
+            height: 28px;
+            icon: Icons.close;
+            icon-size: 12px;
+            clicked => {
+                Mini.search-text = "";
+                Mini.search-edited("");
+                input.focus();
+            }
+        }
+    }
+    MiniButton {
+        x: root.search-x;
+        y: 4px;
+        width: 28px;
+        height: 28px;
+        icon: Icons.search;
+        icon-size: 14px;
+        active: Mini.search-text != "";
+        tooltip: Mini.search-open ? @tr("MiniPlayer" => "Close the search") : @tr("MiniPlayer" => "Search in the list (Ctrl+F)");
+        clicked => {
+            if (Mini.search-open) {
+                Mini.search-closed();
+            } else {
+                Mini.search-opened();
+            }
+        }
+    }
+    if root.locate: MiniButton {
+        x: root.sort-x - 28px;
+        y: 4px;
+        width: 28px;
+        height: 28px;
+        icon: Icons.locate;
+        icon-size: 14px;
+        tooltip: @tr("MiniPlayer" => "Go to the playing track");
+        clicked => { Mini.show-playing(); }
+    }
+    MiniButton {
+        x: root.sort-x;
+        y: 4px;
+        width: 28px;
+        height: 28px;
+        icon: Icons.sort;
+        icon-size: 14px;
+        active: Mini.sort-active;
+        tooltip: @tr("MiniPlayer" => "Sort by");
+        clicked => { root.sort-menu(root.sort-x + 28px, 4px + 28px + 2px); }
+    }
+    if root.head: MiniHead {
+        x: 4px;
+        y: 32px;
+        width: root.width - 8px;
+        columns-menu(x, y) => { root.columns-menu(self.x + x, self.y + y); }
+    }
+    // The rows: only those in sight are made
+    // (Mini.rows is the window from Mini.first-row); the overlay scroll
+    // bar over them.
+    property <length> content-h: Mini.rows-total * root.rh;
+    view := Flickable {
+        x: 4px;
+        y: root.top;
+        width: root.width - 8px;
+        height: max(0, root.height - root.top - 4px);
+        content-width: self.width;
+        content-height: max(self.height, root.content-h);
+        changed width => { Mini.list-resized(self.width, self.height); }
+        changed height => { Mini.list-resized(self.width, self.height); }
+        // Made again (back from the full view): where it was, as a list
+        // that stays would be; Rust told, so the rows in sight are there.
+        init => {
+            Mini.list-resized(self.width, self.height);
+            self.content-y = -min(Mini.scrolled-to, max(0px, self.content-height - self.height));
+            Mini.list-scrolled(-self.content-y);
+        }
+        // A new density or the covers switched (Settings, with the mini player
+        // open): the columns laid out again, the cover column with them.
+        property <bool> look-covers: Theme.list-covers;
+        property <string> look-density: Theme.list-density;
+        changed look-covers => { Mini.list-look-changed(); }
+        changed look-density => { Mini.list-look-changed(); }
+        changed content-y => {
+            Mini.scrolled-to = -self.content-y;
+            Mini.list-scrolled(-self.content-y);
+        }
+        for row[i] in Mini.rows: MiniListRow {
+            x: 0;
+            y: (Mini.first-row + i) * root.rh;
+            width: view.width;
+            data: row;
+            index: Mini.first-row + i;
+            row-height: root.rh;
+            line-width: view.width - (Mini.scrollable ? 12px : 0);
+            cover-side: root.cover-side;
+            menu(index, x, y) => { root.row-menu(index, x, y); }
+        }
+    }
+    if root.content-h > view.height: OverlayBar {
+        x: view.x + view.width - 10px;
+        y: view.y;
+        width: 10px;
+        height: view.height;
+        position: -view.content-y;
+        page: view.height;
+        range: max(0, root.content-h - view.height);
+        scroll-to(y) => { view.content-y = -clamp(y, 0, max(0, root.content-h - view.height)); }
+    }
+    // Scrolled to the playing track.
+    property <int> reveal: Mini.reveal-serial;
+    changed reveal => {
+        if (Mini.reveal-row >= 0) {
+            let row-top = Mini.reveal-row * root.rh;
+            if (Mini.reveal-centre) {
+                view.content-y = -clamp(row-top - (view.height - root.rh) / 2, 0, max(0, root.content-h - view.height));
+            } else if (row-top < -view.content-y) {
+                view.content-y = -row-top;
+            } else if (row-top + root.rh > -view.content-y + view.height) {
+                view.content-y = -(row-top + root.rh - view.height);
+            }
+        }
+    }
+    // Empty: the way to add music, or why the list is empty.
+    if Mini.rows-total == 0 && Mini.empty-library: VerticalLayout {
+        x: view.x + (view.width - self.preferred-width) / 2;
+        y: view.y + (view.height - self.preferred-height) / 2;
+        width: self.preferred-width;
+        height: self.preferred-height;
+        spacing: 10px;
+        alignment: center;
+        Text {
+            text: @tr("MiniPlayer" => "Your library is empty");
+            font-size: 12px;
+            color: Theme.text-dim;
+            horizontal-alignment: center;
+        }
+        HorizontalLayout {
+            alignment: center;
+            Rectangle {
+                property <length> row-w: 16px + 6px + add-label.preferred-width;
+                width: ceil((self.row-w + (Theme.compact ? 20px : 28px)) / 1px) * 1px;
+                height: Theme.compact ? 28px : 34px;
+                border-radius: Theme.radius <= 2px ? Theme.radius-small : self.height / 2;
+                background: add-area.pressed ? Theme.accent.darker(15%) : add-area.has-hover ? Theme.accent.brighter(8%) : Theme.accent;
+                Image {
+                    x: round((parent.width - parent.row-w) / 2 / 1px) * 1px;
+                    width: 16px;
+                    height: 16px;
+                    source: Icons.folder-plus;
+                    colorize: Theme.on-accent;
+                }
+                add-label := Text {
+                    x: round((parent.width - parent.row-w) / 2 / 1px) * 1px + 22px;
+                    text: @tr("MiniPlayer" => "Add music folder");
+                    font-size: 13px;
+                    font-weight: 600;
+                    color: Theme.on-accent;
+                    vertical-alignment: center;
+                }
+                add-area := TouchArea {
+                    mouse-cursor: pointer;
+                    clicked => { Mini.add-folder(); }
+                }
+            }
+        }
+    }
+    if Mini.rows-total == 0 && !Mini.empty-library && Mini.empty-text != "": Text {
+        x: 12px;
+        width: max(0, root.width - 24px);
+        y: view.y + (view.height - self.preferred-height) / 2;
+        text: Mini.empty-text;
+        font-size: 12px;
+        color: Theme.text-dim;
+        horizontal-alignment: center;
+        wrap: word-wrap;
+    }
+}
+
+// --- The player ------------------------------------------------------------------------
+
+export component MiniPlayer inherits Rectangle {
+    in property <length> corner;
+    // Theme density.
+    property <float> u: Theme.compact ? 0.88 : Theme.spacious ? 1.14 : 1;
+    // Everything in its place, by width.
+    property <bool> wide: root.width >= 640px;
+    property <bool> show-spectrum: root.width >= 500px && Theme.visualizer != "off";
+    property <bool> show-cover: root.width >= 400px;
+    property <bool> show-strip: root.width >= 470px;
+    property <bool> narrow: root.width < 430px;
+    property <bool> inline-seek: root.width >= 560px;
+    property <length> display-h: round((wide ? 80 : 72) * u) * 1px;
+    property <length> sw: round(30 * u) * 1px;
+    property <length> sh: round(28 * u) * 1px;
+    property <length> seek-h: 20px; // max(20, the look's groove + 10): 20 for every look
+    property <length> content-bottom: 12px + display-h;
+    property <length> toolbar-h: max(sh, round(32 * u) * 1px, 28px, inline-seek ? seek-h : 0);
+    property <length> toolbar-y: inline-seek ? content-bottom + 12px : content-bottom + 6px + seek-h + 6px;
+    out property <length> player-height: ceil((toolbar-y + toolbar-h + 12px) / 1px) * 1px;
+    property <length> button-edge: Theme.window-buttons == "windows" ? 0 : 6px;
+    property <length> volume-w: wide ? 96px : 72px;
+    // The seek bars' value while one is dragged: the clock follows it.
+    property <bool> scrubbing;
+    property <float> scrub;
+    property <float> shown-seconds: scrubbing ? scrub * Mini.duration : Mini.seconds;
+    property <bool> drag-pending;
+    changed player-height => { Mini.player-height-changed(self.player-height); }
+    changed width => { Mini.resized(self.width, self.height); }
+    changed height => { Mini.resized(self.width, self.height); }
+
+    background: Theme.frame-shown;
+    border-radius: root.corner;
+
+    // Ctrl+M: the full view again; Ctrl+F: the list with its search field.
+    keys := FocusScope {
+        x: 0;
+        y: 0;
+        width: 0;
+        height: 0;
+        init => { self.focus(); }
+        key-pressed(e) => {
+            if (e.modifiers.control && (e.text == "m" || e.text == "M")) {
+                Mini.full-view();
+                return accept;
+            }
+            if (e.modifiers.control && (e.text == "f" || e.text == "F")) {
+                Mini.search-opened();
+                return accept;
+            }
+            reject
+        }
+    }
+
+    // The player's empty space moves the window; the wheel sets the volume.
+    // y: 0, or Slint centres it in the window when the list makes it taller.
+    TouchArea {
+        y: 0;
+        height: root.player-height;
+        pointer-event(e) => {
+            if (e.kind == PointerEventKind.down && e.button == PointerEventButton.left) {
+                WindowActions.start-move();
+            }
+        }
+        scroll-event(e) => {
+            if (e.delta-y != 0) {
+                Mini.step-volume(e.delta-y > 0 ? 1 : -1);
+            }
+            accept
+        }
+    }
+
+    // --- The display: cover, clock and spectrum, title and stream.
+    display := Rectangle {
+        x: 12px;
+        y: 12px;
+        width: max(0, root.width - 24px);
+        height: root.display-h;
+        property <length> h: self.height - 8px;
+        property <length> time-px: round((root.wide ? 30 : 26) * root.u) * 1px;
+        property <length> label-h: MiniFont.height(self.time-px);
+        property <length> x0: root.show-cover ? 4px + self.h + 14px : 7px;
+        property <length> row-w: 10px + 6px + clock.preferred-width;
+        property <length> column-w: max(self.row-w, root.show-spectrum ? 96px : 0);
+        property <length> time-y: root.show-spectrum ? 4px : 4px + round((self.h - self.label-h) / 2 / 1px) * 1px;
+        property <length> info-x: self.x0 + self.column-w + 14px;
+        property <length> info-w: max(0, self.width - 4px - self.info-x);
+        property <length> title-right: max(0, buttons.width + root.button-edge - 16px + 8px);
+        if root.show-cover: Rectangle {
+            x: 4px;
+            y: 4px;
+            width: display.h;
+            height: display.h;
+            property <length> r: max(2px, Theme.radius - 4px);
+            border-radius: self.r;
+            background: App.has-cover ? transparent : Theme.surface-hi;
+            border-width: App.has-cover ? 0 : 1px;
+            border-color: Theme.border;
+            clip: true;
+            if App.has-cover: Image {
+                x: 0;
+                y: 0;
+                width: parent.width;
+                height: parent.height;
+                source: App.cover;
+                image-fit: cover;
+            }
+            if !App.has-cover: Image {
+                property <length> s: max(14px, round(parent.width / 1px * 0.32) * 1px);
+                x: round((parent.width - self.s) / 2 / 1px) * 1px;
+                y: round((parent.height - self.s) / 2 / 1px) * 1px;
+                width: self.s;
+                height: self.s;
+                source: Icons.music;
+                colorize: Theme.text-faint;
+            }
+        }
+        // The clock: a click on it counts down instead.
+        Image {
+            x: display.x0;
+            y: display.time-y + round((display.label-h - 10px) / 2 / 1px) * 1px;
+            width: 10px;
+            height: 10px;
+            source: App.playing ? Icons.play : Mini.has-track ? Icons.pause : Icons.music;
+            colorize: App.playing ? Theme.accent : Theme.text-faint;
+        }
+        clock := TabularClock {
+            x: display.x0 + 16px;
+            y: display.time-y;
+            width: self.preferred-width;
+            height: display.label-h;
+            seconds: !Mini.has-track ? 0 : Mini.remaining ? max(0, Mini.duration - root.shown-seconds) : root.shown-seconds;
+            minus: Mini.has-track && Mini.remaining;
+            size: display.time-px;
+            color: Mini.has-track ? Theme.accent : Theme.text-faint;
+        }
+        TouchArea {
+            x: clock.x;
+            y: clock.y;
+            width: clock.preferred-width;
+            height: clock.height;
+            mouse-cursor: pointer;
+            clicked => { Mini.remaining = !Mini.remaining; }
+        }
+        if root.show-spectrum: MiniSpectrum {
+            x: display.x0;
+            y: 4px + display.label-h + 2px;
+            width: min(display.column-w, round(220 * root.u) * 1px);
+            height: max(10px, display.h - display.label-h - 2px);
+        }
+        // Title, artist and the stream, down at the bottom; the last line's
+        // baseline on the cover's bottom edge.
+        property <length> title-px: (13 + (root.wide ? 2 : 1)) * 1px;
+        property <length> title-h: MiniFont.height(self.title-px);
+        property <length> artist-h: MiniFont.height(12px);
+        property <length> stream-h: MiniFont.height(11px);
+        property <length> total: self.title-h + 2px + self.artist-h + (Mini.has-track ? 4px + self.stream-h : 0);
+        property <length> descent: round((Mini.has-track ? MiniFont.descent(11px) : MiniFont.descent(12px)) / 1px) * 1px;
+        property <length> title-y: 4px + self.h - self.total + self.descent;
+        property <length> title-w: self.info-w - self.title-right;
+        // The title scrolls while it does not fit and music plays.
+        property <string> title: Mini.title != "" ? Mini.title : @tr("MiniPlayer" => "Nothing playing");
+        property <bool> overflow: title-text.preferred-width > self.title-w + 1px;
+        property <bool> lap: self.overflow && App.playing;
+        property <duration> lap-start;
+        property <string> title-seen: self.title;
+        changed lap => { self.lap-start = animation-tick(); }
+        changed title-seen => { self.lap-start = animation-tick(); }
+        property <length> travel: title-text.preferred-width + 48px;
+        property <float> cycle: 2500 + self.travel / 1px * 28;
+        property <float> phase: self.lap ? mod((animation-tick() - self.lap-start) / 1ms, self.cycle) : 0;
+        property <length> offset: self.phase < 2500 ? 0 : (self.phase - 2500) / (self.travel / 1px * 28) * self.travel;
+        Rectangle {
+            x: display.info-x;
+            y: display.title-y;
+            width: max(0, display.title-w);
+            height: display.title-h;
+            clip: true;
+            title-text := Text {
+                x: display.lap ? -round(display.offset / 1px) * 1px : 0;
+                width: display.lap ? self.preferred-width : parent.width;
+                height: parent.height;
+                text: display.title;
+                font-size: display.title-px;
+                font-weight: 600;
+                color: Theme.text;
+                vertical-alignment: center;
+                overflow: elide;
+            }
+            if display.lap: Text {
+                x: title-text.x + display.travel;
+                height: parent.height;
+                text: display.title;
+                font-size: display.title-px;
+                font-weight: 600;
+                color: Theme.text;
+                vertical-alignment: center;
+            }
+        }
+        Text {
+            x: display.info-x;
+            y: display.title-y + display.title-h + 2px;
+            width: display.info-w;
+            height: display.artist-h;
+            text: !Mini.has-track ? @tr("MiniPlayer" => "Pick something from your library")
+                : Mini.artist != "" ? Mini.artist : @tr("MiniPlayer" => "Unknown artist");
+            font-size: 12px;
+            color: Theme.text-dim;
+            vertical-alignment: center;
+            overflow: elide;
+        }
+        // Codec · rate · depth · bitrate, the place in the queue, mono / stereo lights.
+        property <length> baseline: display.title-y + display.title-h + 2px + display.artist-h + 4px + MiniFont.ascent(11px);
+        property <bool> lights: root.wide && Mini.channels > 0;
+        property <length> lights-w: self.lights ? stereo.preferred-width + 6px + mono.preferred-width + 8px : 0;
+        property <length> place-w: Mini.place != "" ? place.preferred-width + 8px : 0;
+        property <length> right: display.info-x + display.info-w;
+        if Mini.has-track: Text {
+            x: display.info-x;
+            y: display.baseline - MiniFont.ascent(11px);
+            width: max(0, display.right - display.lights-w - display.place-w - self.x);
+            text: Mini.stream;
+            font-size: 11px;
+            font-family: Theme.tnum-family;
+            color: Theme.text-faint;
+            overflow: elide;
+        }
+        place := Text {
+            x: display.right - display.lights-w - self.preferred-width;
+            y: display.baseline - MiniFont.ascent(11px);
+            text: Mini.place;
+            font-size: 11px;
+            font-family: Theme.tnum-family;
+            color: Theme.text-faint;
+            visible: Mini.has-track && Mini.place != "";
+        }
+        stereo := Text {
+            x: display.right - self.preferred-width;
+            y: display.baseline - MiniFont.ascent(9px);
+            text: @tr("TrackColumns" => "Stereo").to-uppercase();
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: 0.6px;
+            color: Mini.channels >= 2 ? Theme.accent : Theme.text-faint;
+            opacity: Mini.channels >= 2 ? 1 : 0.45;
+            visible: Mini.has-track && display.lights;
+        }
+        mono := Text {
+            x: display.right - stereo.preferred-width - 6px - self.preferred-width;
+            y: display.baseline - MiniFont.ascent(9px);
+            text: @tr("TrackColumns" => "Mono").to-uppercase();
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: 0.6px;
+            color: Mini.channels == 1 ? Theme.accent : Theme.text-faint;
+            opacity: Mini.channels == 1 ? 1 : 0.45;
+            visible: Mini.has-track && display.lights;
+        }
+    }
+
+    // --- The seek bar under the display (narrow), or in the row (wide).
+    seek := MiniSlider {
+        x: 10px;
+        y: root.content-bottom + 6px;
+        width: max(0, root.width - 20px);
+        height: root.seek-h;
+        visible: !root.inline-seek;
+        look: Theme.slider-style;
+        wave-slot: root.inline-seek ? "" : "mini";
+        enabled: Mini.has-track;
+        value: Mini.progress;
+        moved(v) => { root.live-seek(v); }
+        released(v) => { root.scrubbing = false; Mini.seek(v); }
+    }
+    property <duration> last-scrub;
+    function live-seek(v: float) {
+        root.scrubbing = true;
+        root.scrub = v;
+        if (Mini.live-seek && animation-tick() - root.last-scrub > 45ms) {
+            root.last-scrub = animation-tick();
+            Mini.seek(v);
+        }
+    }
+
+    // --- The controls' row.
+    toolbar := HorizontalLayout {
+        x: 10px;
+        y: root.toolbar-y;
+        width: max(0, root.width - 20px);
+        height: root.toolbar-h;
+        spacing: 0;
+        Rectangle {
+            width: root.sw;
+            MiniButton {
+                y: floor((parent.height - self.height) / 2 / 1px) * 1px;
+                width: root.sw;
+                height: root.sh;
+                icon: Icons.shuffle;
+                icon-size: round(15 * root.u) * 1px;
+                active: App.shuffle;
+                tooltip: @tr("MiniPlayer" => "Shuffle");
+                clicked => { App.toggle-shuffle(); }
+            }
+        }
+        Rectangle {
+            width: root.sw;
+            MiniButton {
+                y: floor((parent.height - self.height) / 2 / 1px) * 1px;
+                width: root.sw;
+                height: root.sh;
+                icon: Icons.prev;
+                icon-size: round(16 * root.u) * 1px;
+                tooltip: @tr("MiniPlayer" => "Previous");
+                clicked => { App.previous(); }
+            }
+        }
+        Rectangle { width: 2px; }
+        Rectangle {
+            width: round(32 * root.u) * 1px;
+            MiniPlay {
+                y: floor((parent.height - self.height) / 2 / 1px) * 1px;
+                diameter: round(32 * root.u) * 1px;
+                glyph: round(14 * root.u) * 1px;
+                playing: App.playing;
+                clicked => { App.toggle-play(); }
+            }
+        }
+        Rectangle { width: 2px; }
+        if Mini.stop-button: Rectangle {
+            width: root.sw;
+            MiniButton {
+                y: floor((parent.height - self.height) / 2 / 1px) * 1px;
+                width: root.sw;
+                height: root.sh;
+                icon: Icons.stop;
+                icon-size: round(15 * root.u) * 1px;
+                tooltip: @tr("MiniPlayer" => "Stop");
+                clicked => { App.stop(); }
+            }
+        }
+        Rectangle {
+            width: root.sw;
+            MiniButton {
+                y: floor((parent.height - self.height) / 2 / 1px) * 1px;
+                width: root.sw;
+                height: root.sh;
+                icon: Icons.next;
+                icon-size: round(16 * root.u) * 1px;
+                tooltip: @tr("MiniPlayer" => "Next");
+                clicked => { App.next(); }
+            }
+        }
+        Rectangle {
+            width: root.sw;
+            MiniButton {
+                y: floor((parent.height - self.height) / 2 / 1px) * 1px;
+                width: root.sw;
+                height: root.sh;
+                icon: App.repeat == 2 ? Icons.repeat-one : Icons.repeat;
+                icon-size: round(15 * root.u) * 1px;
+                active: App.repeat != 0;
+                tooltip: App.repeat == 2 ? @tr("MiniPlayer" => "Repeat one") : App.repeat == 1 ? @tr("MiniPlayer" => "Repeat all") : @tr("MiniPlayer" => "Repeat off");
+                clicked => { App.cycle-repeat(); }
+            }
+        }
+        if root.inline-seek: Rectangle { width: 8px; }
+        if root.inline-seek: Rectangle {
+            horizontal-stretch: 1;
+            MiniSlider {
+                y: floor((parent.height - self.height) / 2 / 1px) * 1px;
+                width: parent.width;
+                height: root.seek-h;
+                look: Theme.slider-style;
+                wave-slot: root.inline-seek ? "mini" : "";
+                enabled: Mini.has-track;
+                value: Mini.progress;
+                moved(v) => { root.live-seek(v); }
+                released(v) => { root.scrubbing = false; Mini.seek(v); }
+            }
+        }
+        if root.inline-seek: Rectangle { width: 8px; }
+        if !root.inline-seek: Rectangle { width: 6px; }
+        if !root.inline-seek: Rectangle {
+            width: 1px;
+            Rectangle {
+                x: 0;
+                y: floor((parent.height - self.height) / 2 / 1px) * 1px;
+                width: 1px;
+                height: 16px;
+                background: Theme.border;
+            }
+        }
+        if !root.inline-seek: Rectangle { width: 6px; }
+        if root.show-strip: Rectangle {
+            width: root.sw;
+            MiniButton {
+                y: floor((parent.height - self.height) / 2 / 1px) * 1px;
+                width: root.sw;
+                height: root.sh;
+                icon: Icons.wave;
+                icon-size: round(15 * root.u) * 1px;
+                active: App.pitch-on;
+                tooltip: @tr("MiniPlayer" => "Pitch / tempo (SoundTouch)");
+                clicked => { App.open-pitch(); }
+            }
+        }
+        if root.show-strip: Rectangle {
+            width: root.sw;
+            MiniButton {
+                y: floor((parent.height - self.height) / 2 / 1px) * 1px;
+                width: root.sw;
+                height: root.sh;
+                icon: Icons.eq;
+                icon-size: round(15 * root.u) * 1px;
+                active: App.eq-on;
+                tooltip: App.eq-on ? @tr("MiniPlayer" => "Equalizer on — click to open") : @tr("MiniPlayer" => "Equalizer off — click to open");
+                clicked => { App.open-equalizer(); }
+            }
+        }
+        Rectangle {
+            width: root.sw;
+            MiniButton {
+                y: floor((parent.height - self.height) / 2 / 1px) * 1px;
+                width: root.sw;
+                height: root.sh;
+                icon: Icons.queue;
+                icon-size: round(15 * root.u) * 1px;
+                active: Mini.list-shown;
+                tooltip: Mini.list-shown ? @tr("MiniPlayer" => "Hide play queue") : @tr("MiniPlayer" => "Show play queue");
+                clicked => { Mini.toggle-list(); }
+            }
+        }
+        if !root.inline-seek: Rectangle { horizontal-stretch: 1; }
+        Rectangle {
+            width: 28px;
+            mute := MiniButton {
+                y: floor((parent.height - self.height) / 2 / 1px) * 1px;
+                width: 28px;
+                height: 28px;
+                icon: Mini.gain == 0 ? Icons.volume-mute : Mini.gain < 0.5 ? Icons.volume-low : Icons.volume;
+                icon-size: 15px;
+                tint: Mini.volume-fixed ? Theme.text-faint : transparent;
+                tooltip: Mini.volume-tooltip;
+                clicked => {
+                    if (Mini.volume-fixed) {
+                        root.open-volume-modes(self.absolute-position.x + self.width, self.absolute-position.y);
+                    } else {
+                        App.toggle-mute();
+                    }
+                }
+                right-clicked => { root.open-volume-modes(self.absolute-position.x + self.width, self.absolute-position.y); }
+            }
+        }
+        if !root.narrow && Mini.volume-fixed: Rectangle {
+            width: root.volume-w;
+            LockedPill {
+                y: floor((parent.height - self.height) / 2 / 1px) * 1px;
+                width: root.volume-w;
+                clicked => { root.open-volume-modes(self.absolute-position.x + self.width, self.absolute-position.y); }
+            }
+        }
+        if !root.narrow && !Mini.volume-fixed: Rectangle {
+            width: root.volume-w;
+            MiniSlider {
+                y: floor((parent.height - self.height) / 2 / 1px) * 1px;
+                width: root.volume-w;
+                height: 20px;
+                look: Theme.volume-style == "wave" ? "line" : Theme.volume-style;
+                quiet: true;
+                value: App.volume;
+                moved(v) => { App.set-volume(v); }
+                released(v) => { App.set-volume(v); }
+            }
+        }
+        Rectangle { width: 4px; }
+        Rectangle {
+            width: root.sw;
+            MiniButton {
+                y: floor((parent.height - self.height) / 2 / 1px) * 1px;
+                width: root.sw;
+                height: root.sh;
+                icon: Icons.expand;
+                icon-size: 14px;
+                tooltip: @tr("MiniPlayer" => "Full view (Ctrl+M)");
+                clicked => { Mini.full-view(); }
+            }
+        }
+        Rectangle {
+            width: root.sw;
+            options := MiniButton {
+                y: floor((parent.height - self.height) / 2 / 1px) * 1px;
+                width: root.sw;
+                height: root.sh;
+                icon: Icons.more;
+                icon-size: round(15 * root.u) * 1px;
+                tooltip: @tr("MiniPlayer" => "Options");
+                clicked => { root.open-options(self.absolute-position.x + self.width, self.absolute-position.y + self.height + 4px); }
+            }
+        }
+    }
+
+    // --- The list: shown by the room there is.
+    property <length> room: root.height - root.player-height;
+    if root.room >= 48px: MiniList {
+        x: 6px;
+        y: root.player-height;
+        width: max(0, root.width - 12px);
+        height: max(0, root.room - 6px);
+        outer-corner: root.corner;
+        source-menu(x, y) => { root.open-source(self.x + x, self.y + y); }
+        sort-menu(x, y) => { root.open-sort(self.x + x, self.y + y); }
+        columns-menu(x, y) => { root.open-columns(self.x + x, self.y + y); }
+        row-menu(index, x, y) => { root.open-row-menu(index, x, y); }
+    }
+
+    // --- The window's buttons, in the corner.
+    buttons := WindowButtons {
+        x: root.width - self.preferred-width - root.button-edge;
+        y: root.button-edge;
+        width: self.preferred-width;
+        height: self.preferred-height;
+        corner: root.corner;
+    }
+
+    // --- Menus: cards inside the window, kept in it.
+    property <length> menu-x;
+    property <length> menu-y;
+    property <int> menu-row;
+    pure function fit-x(x: length, w: length) -> length {
+        return clamp(x, 4px, max(4px, root.width - w - 4px));
+    }
+    pure function fit-y(y: length, h: length) -> length {
+        return clamp(y, 4px, max(4px, root.height - h - 4px));
+    }
+    pure function fit-h(h: length) -> length {
+        return min(h, root.height - 8px);
+    }
+
+    function open-options(right: length, top: length) {
+        root.menu-x = right;
+        root.menu-y = top;
+        options-menu.show();
+    }
+    function open-volume-modes(right: length, top: length) {
+        root.menu-x = right;
+        root.menu-y = top;
+        volume-menu.show();
+    }
+    function open-source(x: length, y: length) {
+        root.menu-x = x;
+        root.menu-y = y;
+        source-menu.show();
+    }
+    function open-sort(right: length, y: length) {
+        root.menu-x = right;
+        root.menu-y = y;
+        sort-menu.show();
+    }
+    function open-columns(x: length, y: length) {
+        root.menu-x = x;
+        root.menu-y = y;
+        columns-menu.show();
+    }
+    function open-row-menu(row: int, x: length, y: length) {
+        root.menu-row = row;
+        root.menu-x = x;
+        root.menu-y = y;
+        row-menu.show();
+    }
+
+    options-menu := PopupWindow {
+        property <length> w: max(220px, options-col.preferred-width + 10px);
+        property <length> h: options-col.preferred-height;
+        x: root.fit-x(root.menu-x - self.w, self.w);
+        y: root.fit-y(root.menu-y, root.fit-h(self.h));
+        width: self.w;
+        height: root.fit-h(self.h);
+        MenuCard {
+            Flickable {
+                x: -2px;
+                y: -2px;
+                width: parent.width;
+                height: parent.height;
+                content-width: self.width;
+                content-height: options-menu.h;
+                options-col := VerticalLayout {
+                    padding: 5px;
+                    MenuRow {
+                        text: @tr("MiniPlayer" => "Always on top");
+                        checkable: true;
+                        checked: Mini.always-on-top;
+                        activated => { Mini.set-always-on-top(!Mini.always-on-top); options-menu.close(); }
+                    }
+                    MenuRow {
+                        text: Mini.list-shown ? @tr("MiniPlayer" => "Hide play queue") : @tr("MiniPlayer" => "Show play queue");
+                        activated => { Mini.toggle-list(); options-menu.close(); }
+                    }
+                    MenuRow {
+                        text: @tr("MiniPlayer" => "Clear queue");
+                        enabled: !Mini.queue-empty;
+                        activated => { Mini.clear-queue(); options-menu.close(); }
+                    }
+                    MenuSeparator { }
+                    MenuRow {
+                        text: @tr("MiniPlayer" => "Pitch / tempo");
+                        activated => { App.open-pitch(); options-menu.close(); }
+                    }
+                    MenuRow {
+                        text: @tr("MiniPlayer" => "Equalizer");
+                        activated => { App.open-equalizer(); options-menu.close(); }
+                    }
+                    MenuRow {
+                        text: @tr("MiniPlayer" => "Settings");
+                        activated => { App.open-settings(); options-menu.close(); }
+                    }
+                    MenuSeparator { }
+                    MenuRow {
+                        text: @tr("MiniPlayer" => "Full view (Ctrl+M)");
+                        activated => { options-menu.close(); Mini.full-view(); }
+                    }
+                }
+            }
+        }
+    }
+
+    // Where the volume acts: automatic, digital, or the DAC; above the button.
+    volume-menu := PopupWindow {
+        property <length> w: max(220px, volume-col.preferred-width + 10px);
+        property <length> h: volume-col.preferred-height;
+        x: root.fit-x(root.menu-x - self.w, self.w);
+        y: root.fit-y(root.menu-y - self.h - 6px, root.fit-h(self.h));
+        width: self.w;
+        height: root.fit-h(self.h);
+        MenuCard {
+            Flickable {
+                x: -2px;
+                y: -2px;
+                width: parent.width;
+                height: parent.height;
+                content-width: self.width;
+                content-height: volume-menu.h;
+                volume-col := VerticalLayout {
+                    padding: 5px;
+                    MenuRow {
+                        text: @tr("SettingsPage" => "Automatic");
+                        checkable: true;
+                        checked: Mini.volume-mode == 2;
+                        activated => { Mini.set-volume-mode(2); volume-menu.close(); }
+                    }
+                    MenuRow {
+                        text: @tr("SettingsPage" => "Digital");
+                        checkable: true;
+                        checked: Mini.volume-mode == 0;
+                        activated => { Mini.set-volume-mode(0); volume-menu.close(); }
+                    }
+                    MenuRow {
+                        text: @tr("SettingsPage" => "DAC");
+                        checkable: true;
+                        checked: Mini.volume-mode == 1;
+                        enabled: Mini.hardware-volume;
+                        activated => { Mini.set-volume-mode(1); volume-menu.close(); }
+                    }
+                }
+            }
+        }
+    }
+
+    // What the list shows: the queue, or a folder of the tree.
+    source-menu := PopupWindow {
+        // Its rows close it themselves; the levels' buttons keep it open.
+        close-policy: close-on-click-outside;
+        property <length> w: 290px;
+        property <length> h: source-col.preferred-height;
+        x: root.fit-x(root.menu-x, self.w);
+        y: root.fit-y(root.menu-y, root.fit-h(self.h));
+        width: self.w;
+        height: root.fit-h(self.h);
+        MenuCard {
+            Flickable {
+                x: -2px;
+                y: -2px;
+                width: parent.width;
+                height: parent.height;
+                content-width: self.width;
+                content-height: source-menu.h;
+                source-col := VerticalLayout {
+                    padding: 5px;
+                    MenuRow {
+                        text: @tr("MiniPlayer" => "Play queue");
+                        checkable: true;
+                        checked: Mini.showing-queue;
+                        activated => { Mini.pick-source(""); source-menu.close(); }
+                    }
+                    MenuRow {
+                        text: @tr("MiniPlayer" => "Add music folder…");
+                        activated => { source-menu.close(); Mini.add-folder(); }
+                    }
+                    MenuSeparator { }
+                    LevelsRow {
+                        text: @tr("SubfolderLevels" => "Subfolders");
+                        on: Mini.subfolders;
+                        value: Mini.folder-levels;
+                        maximum: Mini.folder-depth;
+                        stepped(n) => { Mini.set-folder-levels(n); }
+                        toggled => { Mini.set-subfolders(!Mini.subfolders); }
+                    }
+                    MenuSeparator { }
+                    for f in Mini.folders: FolderEntry {
+                        node: f;
+                        playing: App.playing;
+                        picked => { Mini.pick-source(f.path); source-menu.close(); }
+                        remove => { Mini.remove-folder(f.path); source-menu.close(); }
+                    }
+                }
+            }
+        }
+    }
+
+    sort-menu := PopupWindow {
+        property <length> w: max(220px, sort-col.preferred-width + 10px);
+        property <length> h: sort-col.preferred-height;
+        x: root.fit-x(root.menu-x - self.w, self.w);
+        y: root.fit-y(root.menu-y, root.fit-h(self.h));
+        width: self.w;
+        height: root.fit-h(self.h);
+        MenuCard {
+            Flickable {
+                x: -2px;
+                y: -2px;
+                width: parent.width;
+                height: parent.height;
+                content-width: self.width;
+                content-height: sort-menu.h;
+                sort-col := VerticalLayout {
+                    padding: 5px;
+                    for f in Mini.sort-fields: MenuRow {
+                        text: f.title;
+                        checkable: !Mini.showing-queue;
+                        checked: f.on;
+                        activated => { Mini.sort-by(f.key); sort-menu.close(); }
+                    }
+                    MenuSeparator { }
+                    MenuRow {
+                        text: @tr("MiniPlayer" => "Reverse order");
+                        checkable: !Mini.showing-queue;
+                        checked: Mini.sort-desc;
+                        activated => { Mini.reverse(); sort-menu.close(); }
+                    }
+                    MenuSeparator { }
+                    MenuRow {
+                        text: @tr("MiniPlayer" => "Columns…");
+                        activated => {
+                            sort-menu.close();
+                            root.open-columns(root.menu-x - 2 * 150px - 14px, root.menu-y);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // The columns to show: two columns of check boxes.
+    columns-menu := PopupWindow {
+        property <length> w: 2 * 150px + 2px + 10px;
+        property <length> h: columns-col.preferred-height;
+        x: root.fit-x(root.menu-x, self.w);
+        y: root.fit-y(root.menu-y, root.fit-h(self.h));
+        width: self.w;
+        height: root.fit-h(self.h);
+        MenuCard {
+            Flickable {
+                x: -2px;
+                y: -2px;
+                width: parent.width;
+                height: parent.height;
+                content-width: self.width;
+                content-height: columns-menu.h;
+                columns-col := VerticalLayout {
+                    padding: 5px;
+                    Rectangle {
+                        height: ceil(Mini.column-choices.length / 2) * 24px;
+                        for c[i] in Mini.column-choices: ColumnBox {
+                            x: mod(i, 2) * 152px;
+                            y: floor(i / 2) * 24px;
+                            choice: c;
+                            toggled => { Mini.set-column(c.key, !c.on); columns-menu.close(); }
+                        }
+                    }
+                    MenuSeparator { }
+                    MenuRow {
+                        text: @tr("TrackColumns" => "Reset columns");
+                        activated => { Mini.reset-columns(); columns-menu.close(); }
+                    }
+                }
+            }
+        }
+    }
+
+    row-menu := PopupWindow {
+        property <length> w: max(220px, row-col.preferred-width + 10px);
+        property <length> h: row-col.preferred-height;
+        x: root.fit-x(root.menu-x, self.w);
+        y: root.fit-y(root.menu-y, root.fit-h(self.h));
+        width: self.w;
+        height: root.fit-h(self.h);
+        MenuCard {
+            row-col := VerticalLayout {
+                x: -2px;
+                y: -2px;
+                width: parent.width;
+                height: parent.height;
+                padding: 5px;
+                MenuRow {
+                    text: @tr("MiniPlayer" => "Play");
+                    activated => { Mini.play-row(root.menu-row); row-menu.close(); }
+                }
+                MenuRow {
+                    text: Mini.showing-queue ? @tr("MiniPlayer" => "Remove from queue") : @tr("MiniPlayer" => "Add to queue");
+                    activated => {
+                        if (Mini.showing-queue) {
+                            Mini.remove-row(root.menu-row);
+                        } else {
+                            Mini.enqueue-row(root.menu-row);
+                        }
+                        row-menu.close();
+                    }
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,18 @@
+[package]
+name = "sonkore-ui"
+description = "Sonkore's interface: the Rust code Slint generates from crates/app/ui"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+# A crate of its own so that a change to the app's Rust code does not compile
+# again the ~290,000 lines Slint generates (incremental builds took ~13 s).
+
+[lints]
+workspace = true
+
+[dependencies]
+slint = { version = "1.19", default-features = false, features = ["std", "compat-1-2", "backend-winit-wayland", "backend-winit-x11", "renderer-software", "renderer-femtovg", "unstable-winit-030", "accessibility"] }
+
+[build-dependencies]
+slint-build = "1.19"

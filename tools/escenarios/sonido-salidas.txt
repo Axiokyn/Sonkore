@@ -1,0 +1,30 @@
+# Ajustes › Audio › Salida de audio: un clic en la lista cambia la salida y la
+# pista sigue sonando ahí (la DX1 de tests/asound va al ALSA nulo).
+pantalla 2546 4200
+ajuste widgets/windows/settings=@Size(920 2700)
+ajuste appearance/language=es
+preparar python3 {repo}/tools/tonos.py --biblioteca {rt}/p
+ajuste library/rescanOnStartup=true
+ajuste playback/repeat=2
+argumentos {repo}/target/ui-live/tonos/01-izquierda.flac
+estado playing=true 5
+tecla ctrl+comma
+ventanas 2
+foco last
+esperar 0.8
+clic 578 67
+esperar 0.8
+sonido salida=pipewire|test-sink nivel-i=-12±0.2
+# Topping DX1.
+clic 62 645
+guardado playback/device=alsa|hw:CARD=DX1,DEV=0
+estado device=alsa|hw:CARD=DX1,DEV=0
+estado playing=true
+sonido salida~DX1 bits=32 flotante=false nivel-i=-12±0.2
+# Predeterminado del sistema (PipeWire), y Test Sink.
+clic 62 257
+guardado playback/device=
+sonido salida!=alsa|hw:CARD=DX1 nivel-i=-12±0.2
+clic 62 303
+guardado playback/device=pipewire|test-sink
+sonido salida=pipewire|test-sink nivel-i=-12±0.2

@@ -1,0 +1,11 @@
+[package]
+name = "sonkore-soundtouch"
+description = "SoundTouch (pitch, tempo, rate) ported from SoundTouch 2.3.3"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]

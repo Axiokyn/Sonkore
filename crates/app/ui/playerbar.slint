@@ -1,0 +1,395 @@
+// The player bar at the bottom:
+// the track (cover, title, artist · album, format, the visualizer), the
+// transport and the seek bar, then pitch, equalizer, the signal path, the
+// output, the mini player, settings and the volume.
+
+import { Theme, Visual, TextMetrics } from "theme.slint";
+import { Icons } from "icons.slint";
+import { IconButton, PlayButton, FlatSlider, Badge } from "controls.slint";
+import { App } from "data.slint";
+import { Menus } from "pagedata.slint";
+
+// The signal path in short (PathPill): a pill in the path's tone (good
+// when bit-perfect), the chip and the summary centred as one row.
+component PathPill inherits Rectangle {
+    in property <bool> brief;              // a bar under 940 px: the chip alone
+    callback clicked();
+    property <color> tone: App.bit-perfect ? Theme.good : Theme.text-dim;
+    property <length> text-w: label.preferred-width;
+    height: 24px;
+    width: ceil((13px + 5px + self.text-w + 18px) / 1px) * 1px;
+    border-radius: Theme.radius <= 2px ? 3px : self.height / 2;
+    background: root.tone.with-alpha(area.has-hover ? 0.2 : 0.1);
+    border-width: 1px;
+    border-color: root.tone.with-alpha(0.4);
+    property <length> left: round((root.width - (13px + 5px + root.text-w)) / 2 / 1px) * 1px;
+    Image {
+        x: root.left;
+        y: round((root.height - 13px) / 2 / 1px) * 1px;
+        width: 13px;
+        height: 13px;
+        source: Icons.chip;
+        colorize: root.tone;
+    }
+    label := Text {
+        x: root.left + 18px;
+        text: root.brief ? "" : App.path-summary;
+        font-family: Theme.tnum-family;
+        font-size: 11px;
+        font-weight: 600;
+        color: root.tone;
+        vertical-alignment: center;
+    }
+    area := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { root.clicked(); }
+    }
+}
+
+// The visualizer beside the track (hidden while paused):
+// Rust paints it (Visual.bar) at the size it is given here.
+component Spectrum inherits Rectangle {
+    init => {
+        Visual.bar-width = self.width;
+        Visual.bar-height = self.height;
+    }
+    changed width => { Visual.bar-width = self.width; }
+    changed height => { Visual.bar-height = self.height; }
+    if App.playing: Image {
+        width: root.width;
+        height: root.height;
+        source: Visual.bar;
+        image-fit: ImageFit.fill;
+    }
+}
+
+// LockedPill: the volume fixed at 100 %, a padlock and "Fixed · 100 %"
+// ("100 %" when narrow); a click offers the ways to set it.
+component LockedPill inherits Rectangle {
+    in property <bool> brief;
+    callback clicked();
+    height: 22px;
+    border-radius: self.height / 2;
+    background: area.has-hover ? Theme.surface-hi : transparent;
+    border-width: 1px;
+    border-color: area.has-hover ? Theme.text-faint : Theme.border;
+    property <length> row-w: 12px + 5px + min(label.preferred-width, root.width - 30px);
+    Image {
+        x: round((root.width - root.row-w) / 2 / 1px) * 1px;
+        y: round((root.height - 12px) / 2 / 1px) * 1px;
+        width: 12px;
+        height: 12px;
+        source: Icons.lock;
+        colorize: Theme.text-dim;
+    }
+    label := Text {
+        x: round((root.width - root.row-w) / 2 / 1px) * 1px + 17px;
+        width: min(self.preferred-width, root.width - 30px);
+        text: root.brief ? "100 %" : @tr("LockedVolume" => "Fixed · 100 %");
+        font-size: 11px;
+        color: Theme.text-dim;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+    area := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { root.clicked(); }
+    }
+}
+
+export component PlayerBar inherits Rectangle {
+    height: Theme.player-height;
+    // tracklist::format_time: m:ss, h:mm:ss from an hour.
+    pure function time(seconds: float) -> string {
+        let s = floor(max(seconds, 0));
+        let sec = mod(s, 60);
+        let min = mod(floor(s / 60), 60);
+        let pad-s = (sec < 10 ? "0" : "") + sec;
+        if (s >= 3600) {
+            return floor(s / 3600) + ":" + (min < 10 ? "0" : "") + min + ":" + pad-s;
+        }
+        return floor(s / 60) + ":" + pad-s;
+    }
+    // A line along the top; the ground shows through.
+    Rectangle {
+        y: 0;
+        height: 1px;
+        background: Theme.border;
+    }
+    // How the width is shared: each part its preferred width,
+    // the room left over to the three alike, the transport giving way first.
+    property <bool> narrow: root.width < 940px;
+    property <bool> visualizer: root.width >= 1100px && Theme.visualizer != "off" && App.loaded && !root.drop-visualizer;
+    // When the right side would run past the window,
+    // it gives way: the path pill keeps its chip alone, then "System" / "DAC"
+    // goes, then the visualizer beside the track. Widths counted from what the
+    // side holds (measuring the side itself would depend on what it shows).
+    path-probe := Text {
+        visible: false;
+        text: App.path-summary;
+        font-family: Theme.tnum-family;
+        font-size: 11px;
+        font-weight: 600;
+    }
+    property <length> path-full-w: ceil((36px + path-probe.preferred-width) / 1px) * 1px;
+    property <length> kind-w: !App.volume-fixed && App.volume-kind != "" && !root.narrow ? TextMetrics.width(App.volume-kind, 10px, 600) + 18px + 4px : 0px;
+    // Pitch, eq, speaker, mini player, settings, mute (34 each), the divider
+    // with its spacers (5), the volume (110), the 10 gaps between 11 items.
+    property <length> right-fixed: 6 * 34px + 5px + 110px + 10 * 4px;
+    property <length> right-room-vis: root.room - root.transport-min - (App.loaded && Theme.visualizer != "off" && root.width >= 1100px ? 330px : 220px);
+    property <bool> brief-path: root.narrow || (App.output-loaded && root.right-fixed + root.path-full-w + root.kind-w > root.right-room-vis);
+    // The path pill's chip alone; none before the output opens (it isn't shown).
+    property <length> chip-w: App.output-loaded ? 36px : 0px;
+    property <bool> drop-kind: root.right-fixed + root.chip-w + root.kind-w > root.right-room-vis;
+    property <bool> drop-visualizer: root.right-fixed + root.chip-w > root.right-room-vis;
+    property <length> spacing: narrow ? 12px : 28px;
+    property <length> room: root.width - 16px - 22px - 2 * spacing;
+    property <length> info-pref: narrow ? 200px : visualizer ? 420px : 320px;
+    property <length> info-max: visualizer ? 470px : 360px;
+    property <length> transport-pref: 520px;
+    // The right side never narrower than what it holds
+    // (the path pill, "System", the volume), the transport giving way first,
+    // then the track, then the right side down to its least.
+    property <length> right-min: right-side.preferred-width;
+    property <length> transport-min: transport.min-width;
+    property <length> right-base: max(narrow ? 236px : 520px, right-min);
+    property <length> info-min: narrow ? 160px : visualizer ? 330px : 220px;
+    property <length> extra: room - (info-pref + transport-pref + right-base);
+    property <length> total-pref: info-pref + transport-pref + right-base;
+    property <length> need: max(0px, -extra);
+    property <length> from-transport: min(need, max(0px, transport-pref - transport-min));
+    // With nothing playing the right side gives its empty room before the
+    // track ("Nothing playing" was cut beside a gap); with a track it keeps
+    // it, or the transport would shift with each track's format.
+    property <length> from-right: App.loaded ? 0px : max(0px, min(need - from-transport, right-base - right-min));
+    property <length> from-info: min(need - from-transport - from-right, info-pref - info-min);
+    property <length> info-w: extra >= 0 ? min(info-pref + round(extra * info-pref / total-pref / 1px) * 1px, info-max) : info-pref - from-info;
+    property <length> right-w: extra >= 0 ? right-base + max(0px, min(round(extra * right-base / total-pref / 1px) * 1px, 560px - right-base))
+        : max(right-min, right-base - (need - from-transport - from-info));
+    property <length> transport-w: max(transport-min, room - info-w - right-w);
+
+    HorizontalLayout {
+        x: 0;
+        y: 0;
+        width: root.width;
+        height: root.height;
+        padding-left: 16px;
+        padding-right: 22px;
+        spacing: root.spacing;
+        // --- The track.
+        HorizontalLayout {
+            width: root.info-w;
+            spacing: 12px;
+            Rectangle {
+                width: Theme.cover-side;
+                height: Theme.cover-side;
+                y: (parent.height - self.height) / 2;
+                border-radius: Theme.radius-small;
+                background: Theme.surface-hi;
+                border-width: App.has-cover ? 0 : 1px;
+                border-color: Theme.border;
+                clip: true;
+                if App.has-cover: Image {
+                    source: App.cover;
+                    width: parent.width;
+                    height: parent.height;
+                    image-fit: ImageFit.cover;
+                }
+                if !App.has-cover: Image {
+                    width: max(14px, round(parent.width / 1px * 0.32) * 1px);
+                    height: self.width;
+                    source: Icons.music;
+                    colorize: Theme.text-faint;
+                }
+                TouchArea {
+                    mouse-cursor: pointer;
+                    clicked => { App.navigate("playing", ""); }
+                }
+            }
+            // The names: between two stretches (the odd pixel goes
+            // above: ceil), whole pixels.
+            VerticalLayout {
+                alignment: start;
+                padding-top: max(0px, ceil((parent.height - names.preferred-height) / 2px) * 1px);
+              names := VerticalLayout {
+                spacing: 3px;
+                Text {
+                    text: App.loaded ? App.title : @tr("NowPlayingBar" => "Nothing playing");
+                    font-size: 14px;
+                    font-weight: 600;
+                    color: Theme.text;
+                    overflow: elide;
+                    TouchArea {
+                        mouse-cursor: App.loaded ? pointer : default;
+                        clicked => { if (App.loaded) { App.navigate("playing", ""); } }
+                    }
+                }
+                Text {
+                    text: App.loaded ? App.artist : @tr("NowPlayingBar" => "Pick something from your library");
+                    font-size: 12px;
+                    color: Theme.text-dim;
+                    overflow: elide;
+                }
+                if App.loaded && App.format != "" && !Theme.compact: HorizontalLayout {
+                    alignment: start;
+                    Badge {
+                        text: App.format;
+                        tone: App.format-special ? Theme.accent : Theme.text-dim;
+                        // Elided, never wider than the names.
+                        limit: max(40px, root.info-w - Theme.cover-side - 12px - (root.visualizer ? 96px + 12px : 0));
+                    }
+                }
+              }
+            }
+            if root.visualizer: Spectrum {
+                width: 96px;
+                height: Theme.compact ? 28px : Theme.spacious ? 44px : 38px;
+                y: parent.height / 2 + 8px - self.height + 18px;
+            }
+        }
+        // --- Transport and seek bar.
+        transport := VerticalLayout {
+            width: root.transport-w;
+            alignment: center;
+            spacing: 2px;
+            HorizontalLayout {
+                alignment: center;
+                spacing: 10px;
+                IconButton { icon: Icons.shuffle; active: App.shuffle; y: (parent.height - self.height) / 2; tooltip: @tr("NowPlayingBar" => "Shuffle"); clicked => { App.toggle-shuffle(); } }
+                IconButton { icon: Icons.prev; y: (parent.height - self.height) / 2; tooltip: @tr("NowPlayingBar" => "Previous"); clicked => { App.previous(); } }
+                PlayButton { playing: App.playing; clicked => { App.toggle-play(); } }
+                if App.stop-button: IconButton { icon: Icons.stop; y: (parent.height - self.height) / 2; tooltip: @tr("NowPlayingBar" => "Stop"); clicked => { App.stop(); } }
+                IconButton { icon: Icons.next; y: (parent.height - self.height) / 2; tooltip: @tr("NowPlayingBar" => "Next"); clicked => { App.next(); } }
+                IconButton {
+                    icon: App.repeat == 2 ? Icons.repeat-one : Icons.repeat;
+                    active: App.repeat != 0;
+                    y: (parent.height - self.height) / 2;
+                    tooltip: App.repeat == 2 ? @tr("NowPlayingBar" => "Repeat one") : App.repeat == 1 ? @tr("NowPlayingBar" => "Repeat all") : @tr("NowPlayingBar" => "Repeat off");
+                    clicked => { App.cycle-repeat(); }
+                }
+            }
+            HorizontalLayout {
+                spacing: 10px;
+                Text { width: 40px; text: seek.dragging ? root.time(seek.shown * App.duration) : App.elapsed; font-family: Theme.tnum-family; font-size: 11px; color: Theme.text-dim; horizontal-alignment: right; vertical-alignment: center; }
+                seek := FlatSlider {
+                    // Disabled (dimmed, no knob) with nothing loaded.
+                    enabled: App.loaded;
+                    wave-slot: "bar";
+                    value: App.position;
+                    moved(v) => { App.seek-drag(v); }
+                    released(v) => { App.seek(v); }
+                }
+                Text { width: 40px; text: App.total; font-family: Theme.tnum-family; font-size: 11px; color: Theme.text-dim; vertical-alignment: center; }
+            }
+        }
+        // --- Sound, output, window, volume.
+        right-side := HorizontalLayout {
+            width: root.right-w;
+            alignment: end;
+            spacing: 4px;
+            if !root.narrow: IconButton { icon: Icons.wave; active: App.pitch-on; y: (parent.height - self.height) / 2; tooltip: @tr("NowPlayingBar" => "Pitch / tempo (SoundTouch)"); clicked => { App.open-pitch(); } }
+            IconButton { icon: Icons.eq; active: App.eq-on; y: (parent.height - self.height) / 2; tooltip: App.eq-on ? @tr("NowPlayingBar" => "Equalizer on — click to open") : @tr("NowPlayingBar" => "Equalizer off — click to open"); clicked => { App.open-equalizer(); } }
+            if App.output-loaded: PathPill {
+                brief: root.brief-path;
+                y: (parent.height - self.height) / 2;
+                clicked => {
+                    Menus.anchor-x = self.absolute-position.x;
+                    Menus.anchor-y = self.absolute-position.y;
+                    Menus.anchor-width = self.width;
+                    Menus.anchor-height = self.height;
+                    App.show-signal-path();
+                }
+            }
+            IconButton {
+                icon: Icons.speaker;
+                active: App.bit-perfect;
+                tooltip: App.output-description;
+                y: (parent.height - self.height) / 2;
+                clicked => {
+                    Menus.anchor-x = self.absolute-position.x;
+                    Menus.anchor-y = self.absolute-position.y;
+                    Menus.anchor-width = self.width;
+                    Menus.anchor-height = self.height;
+                    App.show-outputs();
+                }
+            }
+            // 6 px of spacing on both sides of the divider: the layout puts the
+            // spacing once beside a spacer (10 px), not on both sides of it.
+            if !root.narrow: Rectangle { width: 2px; }
+            if !root.narrow: Rectangle { width: 1px; height: 18px; y: (parent.height - 18px) / 2; background: Theme.border; }
+            if !root.narrow: Rectangle { width: 2px; }
+            if root.width >= 820px: IconButton { icon: Icons.mini-player; y: (parent.height - self.height) / 2; tooltip: @tr("NowPlayingBar" => "Compact mode (Ctrl+M)"); clicked => { App.open-mini(); } }
+            IconButton { icon: Icons.settings; active: App.settings-open; y: (parent.height - self.height) / 2; tooltip: @tr("NowPlayingBar" => "Settings"); clicked => { App.open-settings(); } }
+            IconButton {
+                icon: App.muted || App.volume <= 0 ? Icons.volume-mute : App.volume < 0.5 ? Icons.volume-low : Icons.volume;
+                y: (parent.height - self.height) / 2;
+                tint: App.volume-fixed ? Theme.text-faint : transparent;
+                tooltip: App.volume-fixed ? @tr("NowPlayingBar" => "Volume fixed at 100 %: set it on the DAC or the amplifier. Click to choose how the volume is set.")
+                    : @tr("NowPlayingBar" => "Mute · right-click: volume control");
+                clicked => {
+                    Menus.anchor-x = self.absolute-position.x;
+                    Menus.anchor-y = self.absolute-position.y;
+                    Menus.anchor-width = self.width;
+                    Menus.anchor-height = self.height;
+                    App.toggle-mute();
+                }
+                // Right-click: how the volume is set.
+                right-clicked => {
+                    Menus.anchor-x = self.absolute-position.x;
+                    Menus.anchor-y = self.absolute-position.y;
+                    Menus.anchor-width = self.width;
+                    Menus.anchor-height = self.height;
+                    App.volume-menu();
+                }
+            }
+            if App.volume-fixed: LockedPill {
+                width: root.narrow ? 60px : 110px;
+                brief: root.narrow;
+                y: (parent.height - self.height) / 2;
+                clicked => {
+                    Menus.anchor-x = self.absolute-position.x;
+                    Menus.anchor-y = self.absolute-position.y;
+                    Menus.anchor-width = self.width;
+                    Menus.anchor-height = self.height;
+                    App.volume-menu();
+                }
+            }
+            // "DAC" / "System": where the volume acts, in a thin accent ring.
+            // With "padding: 1px 5px; border: 1px" it is the
+            // text + 18 px wide and + 4 px tall.
+            if !App.volume-fixed && App.volume-kind != "" && root.width >= 940px && !root.drop-kind: Rectangle {
+                width: TextMetrics.width(App.volume-kind, 10px, 600) + 18px;
+                height: kind.preferred-height + 4px;
+                y: (parent.height - self.height) / 2;
+                border-radius: 8px;
+                border-width: 1px;
+                border-color: Theme.accent.with-alpha(0.6);
+                kind := Text {
+                    text: App.volume-kind;
+                    font-size: 10px;
+                    font-weight: 600;
+                    color: Theme.accent;
+                    horizontal-alignment: center;
+                    vertical-alignment: center;
+                }
+            }
+            if !App.volume-fixed: FlatSlider {
+                width: root.narrow ? 60px : 110px;
+                y: (parent.height - self.height) / 2;
+                quiet: true;
+                value: App.volume;
+                moved(v) => { App.set-volume(v); }
+                released(v) => { App.set-volume(v); }
+                scrolled(d) => { App.step-volume(d); }
+                // Right-click: how the volume is set (as on the button).
+                right-clicked => {
+                    Menus.anchor-x = self.absolute-position.x;
+                    Menus.anchor-y = self.absolute-position.y;
+                    Menus.anchor-width = self.width;
+                    Menus.anchor-height = self.height;
+                    App.volume-menu();
+                }
+            }
+        }
+    }
+}

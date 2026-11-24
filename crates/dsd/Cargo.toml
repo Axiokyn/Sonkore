@@ -1,0 +1,13 @@
+[package]
+name = "sonkore-dsd"
+description = "DSD: DSF/DFF, DST, DSD to PCM, PCM to DSD, DoP"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+# Stage 2 of DSD -> PCM.
+rubato = "5.1"

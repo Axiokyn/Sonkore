@@ -1,0 +1,670 @@
+case 0 ok preamp -0x1.8cccccccccccdp+2 bands 10
+band LSC 0x1.a4p+6 0x1.6666666666666p+2 0x1.6666666666666p-1 1
+band PK 0x1.276p+11 -0x1.3333333333333p+1 0x1.6e147ae147ae1p+0 1
+band PK 0x1.043p+12 0x1.ccccccccccccdp+1 0x1.dae147ae147aep+1 1
+band PK 0x1.802p+12 -0x1.7333333333333p+1 0x1.35c28f5c28f5cp+2 1
+band PK 0x1.f7fp+12 -0x1.a666666666666p+1 0x1.6b851eb851eb8p+1 1
+band HSC 0x1.388p+13 0x1.2666666666666p+1 0x1.6666666666666p-1 1
+band PK 0x1.1p+5 0x1.999999999999ap-1 0x1.e147ae147ae14p-2 1
+band PK 0x1.3ep+7 -0x1p+0 0x1.a8f5c28f5c28fp+0 1
+band PK 0x1.058p+10 0x1.6666666666666p-1 0x1.399999999999ap+1 1
+band PK 0x1.33fp+14 -0x1.999999999999ap-3 0x1.70a3d70a3d70ap-2 0
+export
+Preamp: -6.2 dB
+Filter 1: ON LSC Fc 105 Hz Gain 5.6 dB Q 0.70
+Filter 2: ON PK Fc 2363 Hz Gain -2.4 dB Q 1.43
+Filter 3: ON PK Fc 4163 Hz Gain 3.6 dB Q 3.71
+Filter 4: ON PK Fc 6146 Hz Gain -2.9 dB Q 4.84
+Filter 5: ON PK Fc 8063 Hz Gain -3.3 dB Q 2.84
+Filter 6: ON HSC Fc 10000 Hz Gain 2.3 dB Q 0.70
+Filter 7: ON PK Fc 34 Hz Gain 0.8 dB Q 0.47
+Filter 8: ON PK Fc 159 Hz Gain -1.0 dB Q 1.66
+Filter 9: ON PK Fc 1046 Hz Gain 0.7 dB Q 2.45
+Filter 10: OFF PK Fc 19708 Hz Gain -0.2 dB Q 0.36
+end
+json [{"enabled":true,"freq":105,"gain":5.6,"q":0.7,"type":"LSC"},{"enabled":true,"freq":2363,"gain":-2.4,"q":1.43,"type":"PK"},{"enabled":true,"freq":4163,"gain":3.6,"q":3.71,"type":"PK"},{"enabled":true,"freq":6146,"gain":-2.9,"q":4.84,"type":"PK"},{"enabled":true,"freq":8063,"gain":-3.3,"q":2.84,"type":"PK"},{"enabled":true,"freq":10000,"gain":2.3,"q":0.7,"type":"HSC"},{"enabled":true,"freq":34,"gain":0.8,"q":0.47,"type":"PK"},{"enabled":true,"freq":159,"gain":-1,"q":1.66,"type":"PK"},{"enabled":true,"freq":1046,"gain":0.7,"q":2.45,"type":"PK"},{"enabled":false,"freq":19708,"gain":-0.2,"q":0.36,"type":"PK"}]
+case 1 ok preamp 0x1.ap+1 bands 7
+band PK 0x1.9p+5 0x1.ap+1 0x1.6a0902de00d1bp-1 1
+band LSC 0x1.4p+6 -0x1p+2 0x1.6a09e667f3bccp-1 1
+band HSC 0x1.194p+13 0x1.8p+2 0x1.566e1f1746c6bp-1 1
+band LSC 0x1.ep+6 0x1p+1 0x1.6a0902de00d1bp-1 1
+band HSC 0x1.b58p+12 -0x1.cp+1 0x1.fd69bb03c9701p-2 1
+band LSC 0x1.18p+6 0x1.2p+3 0x1.6a09e667f3bccp-1 1
+band HSC 0x1.b58p+12 0x1p+0 0x1.439007c0f35ffp-3 1
+export
+Preamp: 3.3 dB
+Filter 1: ON PK Fc 50 Hz Gain 3.3 dB Q 0.71
+Filter 2: ON LSC Fc 80 Hz Gain -4.0 dB Q 0.71
+Filter 3: ON HSC Fc 9000 Hz Gain 6.0 dB Q 0.67
+Filter 4: ON LSC Fc 120 Hz Gain 2.0 dB Q 0.71
+Filter 5: ON HSC Fc 7000 Hz Gain -3.5 dB Q 0.50
+Filter 6: ON LSC Fc 70 Hz Gain 9.0 dB Q 0.71
+Filter 7: ON HSC Fc 7000 Hz Gain 1.0 dB Q 0.16
+end
+json [{"enabled":true,"freq":50,"gain":3.25,"q":0.7071,"type":"PK"},{"enabled":true,"freq":80,"gain":-4,"q":0.7071067811865475,"type":"LSC"},{"enabled":true,"freq":9000,"gain":6,"q":0.6688089099801692,"type":"HSC"},{"enabled":true,"freq":120,"gain":2,"q":0.7071,"type":"LSC"},{"enabled":true,"freq":7000,"gain":-3.5,"q":0.4974736424504585,"type":"HSC"},{"enabled":true,"freq":70,"gain":9,"q":0.7071067811865475,"type":"LSC"},{"enabled":true,"freq":7000,"gain":1,"q":0.15798955972279313,"type":"HSC"}]
+case 2 ok preamp -0x1.47ae147ae147bp-5 bands 12
+band NO 0x1.ep+5 0x0p+0 0x1.6a0902de00d1bp-1 1
+band LPQ 0x1.194p+14 0x0p+0 0x1p-1 1
+band HPQ 0x1.48p+4 0x0p+0 0x1p-3 1
+band BP 0x1.f4p+9 0x0p+0 0x1p+1 1
+band XYZ 0x1.f4p+9 0x1p+0 0x1p+0 1
+band PK 0x1.f42p+9 -0x1p-2 0x1.8p-2 0
+band PK 0x1.3882p+13 0x1.999999999999ap-5 0x1.fd70a3d70a3d7p-1 1
+band PK 0x0p+0 0x1p+0 0x1p+0 1
+band PK 0x1.d6f3454p+26 0x1.6p+1 0x1p-1 1
+band PK 0x1.9e0fcaf9380fcp-17 -0x0p+0 0x1.4p+2 1
+band PK 0x0p+0 0x1p+0 0x1.6a0902de00d1bp-1 1
+band PK 0x1.9p+6 0x1p+0 0x1p+0 1
+export
+Preamp: -0.0 dB
+Filter 1: ON NO Fc 60 Hz Gain 0.0 dB Q 0.71
+Filter 2: ON LPQ Fc 18000 Hz Gain 0.0 dB Q 0.50
+Filter 3: ON HPQ Fc 20.5 Hz Gain 0.0 dB Q 0.13
+Filter 4: ON BP Fc 1000 Hz Gain 0.0 dB Q 2.00
+Filter 5: ON XYZ Fc 1000 Hz Gain 1.0 dB Q 1.00
+Filter 6: OFF PK Fc 1000.25 Hz Gain -0.3 dB Q 0.38
+Filter 7: ON PK Fc 10000.3 Hz Gain 0.1 dB Q 0.99
+Filter 8: ON PK Fc 0 Hz Gain 1.0 dB Q 1.00
+Filter 9: ON PK Fc 1.23457e+08 Hz Gain 2.8 dB Q 0.50
+Filter 10: ON PK Fc 1.234e-05 Hz Gain 0.0 dB Q 5.00
+Filter 11: ON PK Fc 0 Hz Gain 1.0 dB Q 0.71
+Filter 12: ON PK Fc 100 Hz Gain 1.0 dB Q 1.00
+end
+json [{"enabled":true,"freq":60,"gain":0,"q":0.7071,"type":"NO"},{"enabled":true,"freq":18000,"gain":0,"q":0.5,"type":"LPQ"},{"enabled":true,"freq":20.5,"gain":0,"q":0.125,"type":"HPQ"},{"enabled":true,"freq":1000,"gain":0,"q":2,"type":"BP"},{"enabled":true,"freq":1000,"gain":1,"q":1,"type":"XYZ"},{"enabled":false,"freq":1000.25,"gain":-0.25,"q":0.375,"type":"PK"},{"enabled":true,"freq":10000.25,"gain":0.05,"q":0.995,"type":"PK"},{"enabled":true,"freq":0,"gain":1,"q":1,"type":"PK"},{"enabled":true,"freq":123456789,"gain":2.75,"q":0.5,"type":"PK"},{"enabled":true,"freq":1.234e-05,"gain":0,"q":5,"type":"PK"},{"enabled":true,"freq":0,"gain":1,"q":0.7071,"type":"PK"},{"enabled":true,"freq":100,"gain":1,"q":1,"type":"PK"}]
+case 3 ok preamp 0x0p+0 bands 32
+band PK 0x1.c8p+5 -0x1.8cccccccccccdp+1 0x1.3333333333333p-1 1
+band PK 0x1.78p+6 -0x1.199999999999ap+1 0x1.6666666666666p-1 1
+band PK 0x1.06p+7 -0x1.4cccccccccccdp+0 0x1.999999999999ap-1 1
+band PK 0x1.5p+7 0x1.999999999999ap-2 0x1.ccccccccccccdp-1 1
+band PK 0x1.9ap+7 0x1.8p+0 0x1p+0 1
+band PK 0x1.e4p+7 0x1.4cccccccccccdp+1 0x1.199999999999ap+0 1
+band PK 0x1.17p+8 0x1.d99999999999ap+1 0x1.3333333333333p+0 1
+band PK 0x1.3cp+8 0x1.3333333333333p+2 0x1.4cccccccccccdp+0 1
+band PK 0x1.61p+8 -0x1.399999999999ap+2 0x1.6666666666666p+0 1
+band PK 0x1.86p+8 -0x1.8p+1 0x1.8p+0 1
+band PK 0x1.abp+8 -0x1.0cccccccccccdp+1 0x1.999999999999ap+0 1
+band PK 0x1.dp+8 -0x1.3333333333333p+0 0x1.b333333333333p+0 1
+band PK 0x1.f5p+8 0x1.3333333333333p-2 0x1.ccccccccccccdp+0 1
+band PK 0x1.0dp+9 0x1.6666666666666p+0 0x1.e666666666666p+0 1
+band PK 0x1.1f8p+9 0x1.4p+1 0x1p+1 1
+band PK 0x1.32p+9 0x1.ccccccccccccdp+1 0x1.0cccccccccccdp+1 1
+band PK 0x1.448p+9 0x1.2cccccccccccdp+2 0x1.199999999999ap+1 1
+band PK 0x1.57p+9 -0x1.3333333333333p+2 0x1.2666666666666p+1 1
+band PK 0x1.698p+9 -0x1.f333333333333p+1 0x1.3333333333333p+1 1
+band PK 0x1.7cp+9 -0x1p+1 0x1.4p+1 1
+band PK 0x1.8e8p+9 -0x1.199999999999ap+0 0x1.4cccccccccccdp+1 1
+band PK 0x1.a1p+9 0x1.999999999999ap-3 0x1.599999999999ap+1 1
+band PK 0x1.b38p+9 0x1.4cccccccccccdp+0 0x1.6666666666666p+1 1
+band PK 0x1.c6p+9 0x1.3333333333333p+1 0x1.7333333333333p+1 1
+band PK 0x1.d88p+9 0x1.cp+1 0x1.8p+1 1
+band PK 0x1.ebp+9 0x1.2666666666666p+2 0x1.8cccccccccccdp+1 1
+band PK 0x1.fd8p+9 -0x1.2cccccccccccdp+2 0x1.999999999999ap+1 1
+band PK 0x1.08p+10 -0x1.e666666666666p+1 0x1.a666666666666p+1 1
+band PK 0x1.114p+10 -0x1.7333333333333p+1 0x1.b333333333333p+1 1
+band PK 0x1.1a8p+10 -0x1p+0 0x1.cp+1 1
+band PK 0x1.23cp+10 0x1.999999999999ap-4 0x1.ccccccccccccdp+1 1
+band PK 0x1.2dp+10 0x1.3333333333333p+0 0x1.d99999999999ap+1 1
+export
+Preamp: 0.0 dB
+Filter 1: ON PK Fc 57 Hz Gain -3.1 dB Q 0.60
+Filter 2: ON PK Fc 94 Hz Gain -2.2 dB Q 0.70
+Filter 3: ON PK Fc 131 Hz Gain -1.3 dB Q 0.80
+Filter 4: ON PK Fc 168 Hz Gain 0.4 dB Q 0.90
+Filter 5: ON PK Fc 205 Hz Gain 1.5 dB Q 1.00
+Filter 6: ON PK Fc 242 Hz Gain 2.6 dB Q 1.10
+Filter 7: ON PK Fc 279 Hz Gain 3.7 dB Q 1.20
+Filter 8: ON PK Fc 316 Hz Gain 4.8 dB Q 1.30
+Filter 9: ON PK Fc 353 Hz Gain -4.9 dB Q 1.40
+Filter 10: ON PK Fc 390 Hz Gain -3.0 dB Q 1.50
+Filter 11: ON PK Fc 427 Hz Gain -2.1 dB Q 1.60
+Filter 12: ON PK Fc 464 Hz Gain -1.2 dB Q 1.70
+Filter 13: ON PK Fc 501 Hz Gain 0.3 dB Q 1.80
+Filter 14: ON PK Fc 538 Hz Gain 1.4 dB Q 1.90
+Filter 15: ON PK Fc 575 Hz Gain 2.5 dB Q 2.00
+Filter 16: ON PK Fc 612 Hz Gain 3.6 dB Q 2.10
+Filter 17: ON PK Fc 649 Hz Gain 4.7 dB Q 2.20
+Filter 18: ON PK Fc 686 Hz Gain -4.8 dB Q 2.30
+Filter 19: ON PK Fc 723 Hz Gain -3.9 dB Q 2.40
+Filter 20: ON PK Fc 760 Hz Gain -2.0 dB Q 2.50
+Filter 21: ON PK Fc 797 Hz Gain -1.1 dB Q 2.60
+Filter 22: ON PK Fc 834 Hz Gain 0.2 dB Q 2.70
+Filter 23: ON PK Fc 871 Hz Gain 1.3 dB Q 2.80
+Filter 24: ON PK Fc 908 Hz Gain 2.4 dB Q 2.90
+Filter 25: ON PK Fc 945 Hz Gain 3.5 dB Q 3.00
+Filter 26: ON PK Fc 982 Hz Gain 4.6 dB Q 3.10
+Filter 27: ON PK Fc 1019 Hz Gain -4.7 dB Q 3.20
+Filter 28: ON PK Fc 1056 Hz Gain -3.8 dB Q 3.30
+Filter 29: ON PK Fc 1093 Hz Gain -2.9 dB Q 3.40
+Filter 30: ON PK Fc 1130 Hz Gain -1.0 dB Q 3.50
+Filter 31: ON PK Fc 1167 Hz Gain 0.1 dB Q 3.60
+Filter 32: ON PK Fc 1204 Hz Gain 1.2 dB Q 3.70
+end
+json [{"enabled":true,"freq":57,"gain":-3.1,"q":0.6,"type":"PK"},{"enabled":true,"freq":94,"gain":-2.2,"q":0.7,"type":"PK"},{"enabled":true,"freq":131,"gain":-1.3,"q":0.8,"type":"PK"},{"enabled":true,"freq":168,"gain":0.4,"q":0.9,"type":"PK"},{"enabled":true,"freq":205,"gain":1.5,"q":1,"type":"PK"},{"enabled":true,"freq":242,"gain":2.6,"q":1.1,"type":"PK"},{"enabled":true,"freq":279,"gain":3.7,"q":1.2,"type":"PK"},{"enabled":true,"freq":316,"gain":4.8,"q":1.3,"type":"PK"},{"enabled":true,"freq":353,"gain":-4.9,"q":1.4,"type":"PK"},{"enabled":true,"freq":390,"gain":-3,"q":1.5,"type":"PK"},{"enabled":true,"freq":427,"gain":-2.1,"q":1.6,"type":"PK"},{"enabled":true,"freq":464,"gain":-1.2,"q":1.7,"type":"PK"},{"enabled":true,"freq":501,"gain":0.3,"q":1.8,"type":"PK"},{"enabled":true,"freq":538,"gain":1.4,"q":1.9,"type":"PK"},{"enabled":true,"freq":575,"gain":2.5,"q":2,"type":"PK"},{"enabled":true,"freq":612,"gain":3.6,"q":2.1,"type":"PK"},{"enabled":true,"freq":649,"gain":4.7,"q":2.2,"type":"PK"},{"enabled":true,"freq":686,"gain":-4.8,"q":2.3,"type":"PK"},{"enabled":true,"freq":723,"gain":-3.9,"q":2.4,"type":"PK"},{"enabled":true,"freq":760,"gain":-2,"q":2.5,"type":"PK"},{"enabled":true,"freq":797,"gain":-1.1,"q":2.6,"type":"PK"},{"enabled":true,"freq":834,"gain":0.2,"q":2.7,"type":"PK"},{"enabled":true,"freq":871,"gain":1.3,"q":2.8,"type":"PK"},{"enabled":true,"freq":908,"gain":2.4,"q":2.9,"type":"PK"},{"enabled":true,"freq":945,"gain":3.5,"q":3,"type":"PK"},{"enabled":true,"freq":982,"gain":4.6,"q":3.1,"type":"PK"},{"enabled":true,"freq":1019,"gain":-4.7,"q":3.2,"type":"PK"},{"enabled":true,"freq":1056,"gain":-3.8,"q":3.3,"type":"PK"},{"enabled":true,"freq":1093,"gain":-2.9,"q":3.4,"type":"PK"},{"enabled":true,"freq":1130,"gain":-1,"q":3.5,"type":"PK"},{"enabled":true,"freq":1167,"gain":0.1,"q":3.6,"type":"PK"},{"enabled":true,"freq":1204,"gain":1.2,"q":3.7,"type":"PK"}]
+case 4 none preamp 0x1.8p+1 bands 0
+export
+Preamp: 3.0 dB
+end
+json []
+profiles
+[
+    {
+        "bands": [
+            {
+                "enabled": true,
+                "freq": 105,
+                "gain": 5.6,
+                "q": 0.7,
+                "type": "LSC"
+            },
+            {
+                "enabled": true,
+                "freq": 2363,
+                "gain": -2.4,
+                "q": 1.43,
+                "type": "PK"
+            },
+            {
+                "enabled": true,
+                "freq": 4163,
+                "gain": 3.6,
+                "q": 3.71,
+                "type": "PK"
+            },
+            {
+                "enabled": true,
+                "freq": 6146,
+                "gain": -2.9,
+                "q": 4.84,
+                "type": "PK"
+            },
+            {
+                "enabled": true,
+                "freq": 8063,
+                "gain": -3.3,
+                "q": 2.84,
+                "type": "PK"
+            },
+            {
+                "enabled": true,
+                "freq": 10000,
+                "gain": 2.3,
+                "q": 0.7,
+                "type": "HSC"
+            },
+            {
+                "enabled": true,
+                "freq": 34,
+                "gain": 0.8,
+                "q": 0.47,
+                "type": "PK"
+            },
+            {
+                "enabled": true,
+                "freq": 159,
+                "gain": -1,
+                "q": 1.66,
+                "type": "PK"
+            },
+            {
+                "enabled": true,
+                "freq": 1046,
+                "gain": 0.7,
+                "q": 2.45,
+                "type": "PK"
+            },
+            {
+                "enabled": false,
+                "freq": 19708,
+                "gain": -0.2,
+                "q": 0.36,
+                "type": "PK"
+            }
+        ],
+        "mode": "parametric",
+        "name": "Case \"0\" · é",
+        "preamp": -6.2
+    },
+    {
+        "bands": [
+            {
+                "enabled": true,
+                "freq": 50,
+                "gain": 3.25,
+                "q": 0.7071,
+                "type": "PK"
+            },
+            {
+                "enabled": true,
+                "freq": 80,
+                "gain": -4,
+                "q": 0.7071067811865475,
+                "type": "LSC"
+            },
+            {
+                "enabled": true,
+                "freq": 9000,
+                "gain": 6,
+                "q": 0.6688089099801692,
+                "type": "HSC"
+            },
+            {
+                "enabled": true,
+                "freq": 120,
+                "gain": 2,
+                "q": 0.7071,
+                "type": "LSC"
+            },
+            {
+                "enabled": true,
+                "freq": 7000,
+                "gain": -3.5,
+                "q": 0.4974736424504585,
+                "type": "HSC"
+            },
+            {
+                "enabled": true,
+                "freq": 70,
+                "gain": 9,
+                "q": 0.7071067811865475,
+                "type": "LSC"
+            },
+            {
+                "enabled": true,
+                "freq": 7000,
+                "gain": 1,
+                "q": 0.15798955972279313,
+                "type": "HSC"
+            }
+        ],
+        "mode": "graphic",
+        "name": "Case \"1\" · é",
+        "preamp": 3.25
+    },
+    {
+        "bands": [
+            {
+                "enabled": true,
+                "freq": 60,
+                "gain": 0,
+                "q": 0.7071,
+                "type": "NO"
+            },
+            {
+                "enabled": true,
+                "freq": 18000,
+                "gain": 0,
+                "q": 0.5,
+                "type": "LPQ"
+            },
+            {
+                "enabled": true,
+                "freq": 20.5,
+                "gain": 0,
+                "q": 0.125,
+                "type": "HPQ"
+            },
+            {
+                "enabled": true,
+                "freq": 1000,
+                "gain": 0,
+                "q": 2,
+                "type": "BP"
+            },
+            {
+                "enabled": true,
+                "freq": 1000,
+                "gain": 1,
+                "q": 1,
+                "type": "XYZ"
+            },
+            {
+                "enabled": false,
+                "freq": 1000.25,
+                "gain": -0.25,
+                "q": 0.375,
+                "type": "PK"
+            },
+            {
+                "enabled": true,
+                "freq": 10000.25,
+                "gain": 0.05,
+                "q": 0.995,
+                "type": "PK"
+            },
+            {
+                "enabled": true,
+                "freq": 0,
+                "gain": 1,
+                "q": 1,
+                "type": "PK"
+            },
+            {
+                "enabled": true,
+                "freq": 123456789,
+                "gain": 2.75,
+                "q": 0.5,
+                "type": "PK"
+            },
+            {
+                "enabled": true,
+                "freq": 1.234e-05,
+                "gain": 0,
+                "q": 5,
+                "type": "PK"
+            },
+            {
+                "enabled": true,
+                "freq": 0,
+                "gain": 1,
+                "q": 0.7071,
+                "type": "PK"
+            },
+            {
+                "enabled": true,
+                "freq": 100,
+                "gain": 1,
+                "q": 1,
+                "type": "PK"
+            }
+        ],
+        "mode": "parametric",
+        "name": "Case \"2\" · é",
+        "preamp": -0.04
+    },
+    {
+        "bands": [
+            {
+                "enabled": true,
+                "freq": 57,
+                "gain": -3.1,
+                "q": 0.6,
+                "type": "PK"
+            },
+            {
+                "enabled": true,
+                "freq": 94,
+                "gain": -2.2,
+                "q": 0.7,
+                "type": "PK"
+            },
+            {
+                "enabled": true,
+                "freq": 131,
+                "gain": -1.3,
+                "q": 0.8,
+                "type": "PK"
+            },
+            {
+                "enabled": true,
+                "freq": 168,
+                "gain": 0.4,
+                "q": 0.9,
+                "type": "PK"
+            },
+            {
+                "enabled": true,
+                "freq": 205,
+                "gain": 1.5,
+                "q": 1,
+                "type": "PK"
+            },
+            {
+                "enabled": true,
+                "freq": 242,
+                "gain": 2.6,
+                "q": 1.1,
+                "type": "PK"
+            },
+            {
+                "enabled": true,
+                "freq": 279,
+                "gain": 3.7,
+                "q": 1.2,
+                "type": "PK"
+            },
+            {
+                "enabled": true,
+                "freq": 316,
+                "gain": 4.8,
+                "q": 1.3,
+                "type": "PK"
+            },
+            {
+                "enabled": true,
+                "freq": 353,
+                "gain": -4.9,
+                "q": 1.4,
+                "type": "PK"
+            },
+            {
+                "enabled": true,
+                "freq": 390,
+                "gain": -3,
+                "q": 1.5,
+                "type": "PK"
+            },
+            {
+                "enabled": true,
+                "freq": 427,
+                "gain": -2.1,
+                "q": 1.6,
+                "type": "PK"
+            },
+            {
+                "enabled": true,
+                "freq": 464,
+                "gain": -1.2,
+                "q": 1.7,
+                "type": "PK"
+            },
+            {
+                "enabled": true,
+                "freq": 501,
+                "gain": 0.3,
+                "q": 1.8,
+                "type": "PK"
+            },
+            {
+                "enabled": true,
+                "freq": 538,
+                "gain": 1.4,
+                "q": 1.9,
+                "type": "PK"
+            },
+            {
+                "enabled": true,
+                "freq": 575,
+                "gain": 2.5,
+                "q": 2,
+                "type": "PK"
+            },
+            {
+                "enabled": true,
+                "freq": 612,
+                "gain": 3.6,
+                "q": 2.1,
+                "type": "PK"
+            },
+            {
+                "enabled": true,
+                "freq": 649,
+                "gain": 4.7,
+                "q": 2.2,
+                "type": "PK"
+            },
+            {
+                "enabled": true,
+                "freq": 686,
+                "gain": -4.8,
+                "q": 2.3,
+                "type": "PK"
+            },
+            {
+                "enabled": true,
+                "freq": 723,
+                "gain": -3.9,
+                "q": 2.4,
+                "type": "PK"
+            },
+            {
+                "enabled": true,
+                "freq": 760,
+                "gain": -2,
+                "q": 2.5,
+                "type": "PK"
+            },
+            {
+                "enabled": true,
+                "freq": 797,
+                "gain": -1.1,
+                "q": 2.6,
+                "type": "PK"
+            },
+            {
+                "enabled": true,
+                "freq": 834,
+                "gain": 0.2,
+                "q": 2.7,
+                "type": "PK"
+            },
+            {
+                "enabled": true,
+                "freq": 871,
+                "gain": 1.3,
+                "q": 2.8,
+                "type": "PK"
+            },
+            {
+                "enabled": true,
+                "freq": 908,
+                "gain": 2.4,
+                "q": 2.9,
+                "type": "PK"
+            },
+            {
+                "enabled": true,
+                "freq": 945,
+                "gain": 3.5,
+                "q": 3,
+                "type": "PK"
+            },
+            {
+                "enabled": true,
+                "freq": 982,
+                "gain": 4.6,
+                "q": 3.1,
+                "type": "PK"
+            },
+            {
+                "enabled": true,
+                "freq": 1019,
+                "gain": -4.7,
+                "q": 3.2,
+                "type": "PK"
+            },
+            {
+                "enabled": true,
+                "freq": 1056,
+                "gain": -3.8,
+                "q": 3.3,
+                "type": "PK"
+            },
+            {
+                "enabled": true,
+                "freq": 1093,
+                "gain": -2.9,
+                "q": 3.4,
+                "type": "PK"
+            },
+            {
+                "enabled": true,
+                "freq": 1130,
+                "gain": -1,
+                "q": 3.5,
+                "type": "PK"
+            },
+            {
+                "enabled": true,
+                "freq": 1167,
+                "gain": 0.1,
+                "q": 3.6,
+                "type": "PK"
+            },
+            {
+                "enabled": true,
+                "freq": 1204,
+                "gain": 1.2,
+                "q": 3.7,
+                "type": "PK"
+            }
+        ],
+        "mode": "graphic",
+        "name": "Case \"3\" · é",
+        "preamp": 0
+    },
+    {
+        "bands": [
+        ],
+        "mode": "parametric",
+        "name": "Case \"4\" · é",
+        "preamp": 3
+    },
+    {
+        "bands": [
+        ],
+        "mode": "parametric",
+        "name": "Empty",
+        "preamp": -0.5
+    }
+]
+end
+number 0x0p+0 0 0.0 0.00 0 0 0
+number 0x1p-1 1 0.5 0.50 0.5 0.5 0.5
+number 0x1p+0 1 1.0 1.00 1 1 1
+number 0x1.4p+0 1 1.3 1.25 1.25 1.25 1.25
+number -0x1.1p+2 -4 -4.3 -4.25 -4.25 -4.25 -4.25
+number 0x1p-3 0 0.1 0.13 0.125 0.125 0.125
+number 0x1.8p-2 0 0.4 0.38 0.375 0.375 0.375
+number 0x1.fd70a3d70a3d7p-1 1 1.0 0.99 0.995 0.995 0.995
+number 0x1.3eb851eb851ecp+3 10 10.0 9.96 9.96 9.96 9.96
+number 0x1.3e66666666666p+3 10 9.9 9.95 9.95 9.95 9.95
+number 0x1.81cd6c8b43958p+13 12346 12345.7 12345.68 1.23e+04 1.235e+04 12345.7
+number 0x1.f4p+4 31 31.3 31.25 31.3 31.25 31.25
+number 0x1.f4p+5 63 62.5 62.50 62.5 62.5 62.5
+number 0x1.f4p+9 1000 1000.0 1000.00 1e+03 1000 1000
+number 0x1.f4p+13 16000 16000.0 16000.00 1.6e+04 1.6e+04 16000
+number 0x1.2d687p+20 1234567 1234567.0 1234567.00 1.23e+06 1.235e+06 1.23457e+06
+number 0x1.a36e2eb1c432dp-14 0 0.0 0.00 0.0001 0.0001 0.0001
+number 0x1.9e0fcaf9380fcp-17 0 0.0 0.00 1.23e-05 1.234e-05 1.234e-05
+number 0x1.4p+1 3 2.5 2.50 2.5 2.5 2.5
+number -0x1.4p+1 -3 -2.5 -2.50 -2.5 -2.5 -2.5
+number 0x1.869fp+16 99999 99999.0 99999.00 1e+05 1e+05 99999
+number 0x1.f3f999999999ap+9 1000 1000.0 999.95 1e+03 1000 999.95
+number 0x1.b1ae4d6e2ef5p+69 1000000000000000000000 1000000000000000000000.0 1000000000000000000000.00 1e+21 1e+21 1e+21
+number -0x1.47ae147ae147bp-5 -0 -0.0 -0.04 -0.04 -0.04 -0.04
+number 0x1.6a09e667f055ap+0 1 1.4 1.41 1.41 1.414 1.41421
+number 0x1.6a0902de00d1bp-1 1 0.7 0.71 0.707 0.7071 0.7071
+number 0x1.8000000000001p+1 3 3.0 3.00 3 3 3
+number 0x1.3882p+13 10000 10000.3 10000.25 1e+04 1e+04 10000.3
+number 0x1.999999999999ap-5 0 0.1 0.05 0.05 0.05 0.05
+number 0x1.77p+14 24000 24000.0 24000.00 2.4e+04 2.4e+04 24000
+number -0x0p+0 0 0.0 0.00 0 0 0
+number -0x1.4f8b588e368f1p-17 -0 -0.0 -0.00 -1e-05 -1e-05 -1e-05
+number 0x0.0000000000001p-1022 0 0.0 0.00 4.94e-324 4.941e-324 4.94066e-324
+label 0x1.4p+3 10
+label 0x1.4p+4 20
+label 0x1.f4p+4 31.25
+label 0x1.f4p+5 62.5
+label 0x1.8ff5c28f5c28fp+6 99.99
+label 0x1.f4p+6 125
+label 0x1.f3f3333333333p+9 999.9
+label 0x1.f3f999999999ap+9 1000
+label 0x1.f4p+9 1k
+label 0x1.77p+10 1.5k
+label 0x1.f4p+10 2k
+label 0x1.194p+11 2.25k
+label 0x1.81c8p+13 12.3k
+label 0x1.f4p+13 16k
+label 0x1.387cp+14 20k
+label 0x1.77p+14 24k
+label 0x1.34ap+10 1.23k

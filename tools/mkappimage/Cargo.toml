@@ -1,0 +1,12 @@
+[package]
+name = "mkappimage"
+description = "Builds Sonkore's AppImage: a type 2 runtime followed by a zstd squashfs of the AppDir"
+version = "1.0.7"
+edition = "2024"
+license = "GPL-3.0-or-later"
+publish = false
+
+[workspace]
+
+[dependencies]
+backhand = { version = "0.25", default-features = false, features = ["zstd", "xz", "gzip"] }

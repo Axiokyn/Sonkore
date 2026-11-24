@@ -1,0 +1,4 @@
+# Windows: the C runtime linked into Sonkore.exe, so the zip runs on a
+# clean Windows with nothing to install first (no MSVC runtime to install).
+[target.x86_64-pc-windows-msvc]
+rustflags = ["-C", "target-feature=+crt-static"]

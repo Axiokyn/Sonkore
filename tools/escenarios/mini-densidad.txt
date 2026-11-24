@@ -1,0 +1,74 @@
+# La lista del mini se vuelve a distribuir al cambiar la densidad en Ajustes
+# con el mini abierto (error del 2026-11-22: la columna de carátulas quedaba
+# y las carátulas tapaban los títulos). Cómoda: carátulas, la primera columna
+# en x=70; Compacta: sin carátulas, x=36. De Compacta a Cómoda, como pasó.
+ajuste ui/compactPlaylist=true
+ajuste appearance/listDensity=compact
+esperar 1
+dclic 900 113
+estado playing=true
+clic 1028 797            # el mini
+esperar 1.5
+estado mini-x=36
+tecla ctrl+comma
+ventanas 2 5
+esperar 1
+foco last
+clic 363 67              # Apariencia
+esperar 0.6
+rueda 460 500 60
+rueda 460 500 60
+rueda 460 500 60
+rueda 460 500 60
+rueda 460 500 60
+rueda 460 500 60
+rueda 460 500 60
+rueda 460 500 60
+rueda 460 500 60
+rueda 460 500 60
+rueda 460 500 60
+rueda 460 500 60
+rueda 460 500 60
+rueda 460 500 60
+rueda 460 500 60
+rueda 460 500 60
+rueda 460 500 60
+rueda 460 500 60
+rueda 460 500 60
+rueda 460 500 60
+rueda 460 500 60
+rueda 460 500 60
+rueda 460 500 60
+rueda 460 500 60
+rueda 460 500 60
+rueda 460 500 60
+rueda 460 500 60
+rueda 460 500 60
+rueda 460 500 60
+rueda 460 500 60
+rueda 460 500 60
+rueda 460 500 60
+rueda 460 500 60
+rueda 460 500 60
+rueda 460 500 60
+rueda 460 500 60
+rueda 460 500 60
+rueda 460 500 60
+rueda 460 500 60
+rueda 460 500 60
+rueda 460 500 60
+rueda 460 500 60
+rueda 460 500 60
+rueda 460 500 60
+rueda 460 500 60
+rueda 460 500 60
+rueda 460 500 60
+rueda 460 500 60
+esperar 0.6
+captura ajustes
+clic 219 433             # Densidad de las listas: Cómoda
+estado density=comfortable
+estado mini-x=70
+foco main
+esperar 0.5
+captura mini-comoda

@@ -1,0 +1,275 @@
+// Sonkore's window: the top bar, the sidebar and
+// the pages on a panel, the player bar; no system frame, rounded corners.
+
+import "../../../fonts/inter/400.ttf";
+import "../../../fonts/inter/500.ttf";
+import "../../../fonts/inter/600.ttf";
+import "../../../fonts/inter/700.ttf";
+import "../../../fonts/inter/tnum-400.ttf";
+import "../../../fonts/inter/tnum-500.ttf";
+import "../../../fonts/inter/tnum-600.ttf";
+import "../../../fonts/sora/700.ttf";
+// The other fonts Settings › General offers (src/fonts.rs).
+import "../../../fonts/manrope/400.ttf";
+import "../../../fonts/manrope/500.ttf";
+import "../../../fonts/manrope/600.ttf";
+import "../../../fonts/manrope/700.ttf";
+import "../../../fonts/plus-jakarta-sans/400.ttf";
+import "../../../fonts/plus-jakarta-sans/500.ttf";
+import "../../../fonts/plus-jakarta-sans/600.ttf";
+import "../../../fonts/plus-jakarta-sans/700.ttf";
+import "../../../fonts/figtree/400.ttf";
+import "../../../fonts/figtree/500.ttf";
+import "../../../fonts/figtree/600.ttf";
+import "../../../fonts/figtree/700.ttf";
+import "../../../fonts/outfit/400.ttf";
+import "../../../fonts/outfit/500.ttf";
+import "../../../fonts/outfit/600.ttf";
+import "../../../fonts/outfit/700.ttf";
+import "../../../fonts/dm-sans/400.ttf";
+import "../../../fonts/dm-sans/500.ttf";
+import "../../../fonts/dm-sans/600.ttf";
+import "../../../fonts/dm-sans/700.ttf";
+import "../../../fonts/nunito-sans/400.ttf";
+import "../../../fonts/nunito-sans/500.ttf";
+import "../../../fonts/nunito-sans/600.ttf";
+import "../../../fonts/nunito-sans/700.ttf";
+import "../../../fonts/rubik/400.ttf";
+import "../../../fonts/rubik/500.ttf";
+import "../../../fonts/rubik/600.ttf";
+import "../../../fonts/rubik/700.ttf";
+
+import { Theme, Visual, Pointer } from "theme.slint";
+import { Icons } from "icons.slint";
+import { Skins, Skin } from "skins.slint";
+import { App, NavItem, FolderRow, PlaylistRow, Column, Cell, TrackRow } from "data.slint";
+import { TopBar, ResizeGrips, WindowOutline, WindowActions } from "chrome.slint";
+import { Sidebar } from "sidebar.slint";
+import { PlayerBar } from "playerbar.slint";
+import { TrackTable } from "tracks.slint";
+import { Pages, Menus, Dialogs, AlbumTile, BrowseEntry, PathStage, MenuEntry } from "pagedata.slint";
+import { AlbumsPage } from "albums.slint";
+import { BrowsePage } from "browse.slint";
+import { NowPlayingPage } from "nowplaying.slint";
+import { QueuePage, PlaylistPage } from "lists.slint";
+import { MenuLayer } from "menus.slint";
+import { DialogLayer } from "dialogs.slint";
+import { MiniPlayer, Mini, MiniRow, MiniCell, MiniColumn, MiniFolder, MiniChoice } from "mini.slint";
+import { EqualizerWindow, EqUi, EqBand, EqMark, EqMenuEntry, AutoEqRow } from "equalizer.slint";
+import { PitchWindow, PitchUi } from "pitch.slint";
+import { TextMetrics } from "panels.slint";
+
+export { Theme, Visual, Pointer, Icons, Skins, Skin, App, NavItem, FolderRow, PlaylistRow, Column, Cell, TrackRow, WindowActions, Pages, Menus, Dialogs, AlbumTile, BrowseEntry, PathStage, MenuEntry, Mini, MiniRow, MiniCell, MiniColumn, MiniFolder, MiniChoice }
+export { SettingsWindow, SettingsData, OutputDevice, ColumnLine, Opt, SettingsOverlay, Appearance, SkinTile } from "settings.slint";
+export { EqualizerWindow, EqUi, EqBand, EqMark, EqMenuEntry, AutoEqRow, PitchWindow, PitchUi, TextMetrics }
+
+export component MainWindow inherits Window {
+    title: App.loaded ? App.title + "  ·  " + App.artist : "Sonkore";
+    icon: Icons.logo;
+    no-frame: true;
+    background: transparent;
+    default-font-family: Theme.font-family;
+    default-font-size: 13px;
+    // The mini player (Mini.on) is this window at another size: as narrow as
+    // 340 px; without its list as tall as the player and no taller.
+    min-width: Mini.on ? 340px : 720px;
+    min-height: Mini.on ? Mini.least-height : 480px;
+    max-height: Mini.on && !Mini.list-shown ? Mini.most-height : 4000000000px;
+    always-on-top: Mini.on && Mini.always-on-top;
+    preferred-width: 1320px;
+    preferred-height: 840px;
+    property <length> corner: WindowActions.maximized ? 0 : Theme.window-radius;
+    // The sidebar gives way to a page that needs the width (the window's
+    // splitter: the sidebar down to 200 px, the pages at least as wide as
+    // their own minimum). The minimums are measured ones (they come from
+    // each page's contents): the others never make it give way.
+    property <length> page-least: App.page == "albums" ? (Theme.compact ? 481px : 567px)
+        : App.page == "artists" || App.page == "genres" ? (Theme.compact ? 516px : 532px)
+        : App.page == "playing" && !Theme.compact ? 471px : 0px;
+    property <length> sidebar-shown: min(App.sidebar-width, max(200px, root.width - 8px - root.page-least));
+    // The backdrop's picture is made again for a new size or theme.
+    property <bool> ground-decorated: Theme.decorated;
+    property <string> ground-style: Theme.backdrop;
+    property <color> ground-accent: Theme.accent;
+    property <color> ground-bg: Theme.bg;
+    property <bool> ground-dark: Theme.dark;
+    changed ground-decorated => { App.ground-changed(); }
+    changed ground-style => { App.ground-changed(); }
+    changed ground-accent => { App.ground-changed(); Visual.wave-changed(); }
+    changed ground-bg => { App.ground-changed(); }
+    changed ground-dark => { App.ground-changed(); Visual.wave-changed(); }
+    changed width => { App.ground-changed(); }
+    changed height => { App.ground-changed(); }
+    init => { App.ground-changed(); }
+    // The waveform seek bar's pictures follow the style, colours and track.
+    property <string> wave-style: Theme.slider-style;
+    property <color> wave-text: Theme.text;
+    property <bool> wave-loaded: App.loaded;
+    changed wave-style => { Visual.wave-changed(); }
+    changed wave-text => { Visual.wave-changed(); }
+    changed wave-loaded => { Visual.wave-changed(); }
+    // The keyboard back to the window's shortcuts (a row clicked, Esc).
+    property <int> focus-req: App.focus-request;
+    changed focus-req => { keys.focus(); }
+
+    ground := Rectangle {
+        background: Theme.decorated ? transparent : Theme.frame;
+        border-radius: root.corner;
+        clip: true;
+      // The decorated ground under everything.
+      if Theme.decorated: Image {
+        width: parent.width;
+        height: parent.height;
+        source: Theme.backdrop-image;
+        image-fit: ImageFit.fill;
+      }
+      // The window's shortcuts: the keys no field took.
+      keys := FocusScope {
+        width: parent.width;
+        height: parent.height;
+        init => { self.focus(); }
+        key-pressed(e) => {
+            if (e.modifiers.control) {
+                if (e.text == Key.RightArrow) { return App.key("next", false) ? accept : reject; }
+                if (e.text == Key.LeftArrow) { return App.key("previous", false) ? accept : reject; }
+                if (e.text == Key.UpArrow) { return App.key("volume-up", false) ? accept : reject; }
+                if (e.text == Key.DownArrow) { return App.key("volume-down", false) ? accept : reject; }
+                if (e.text == "f" || e.text == "F") {
+                    if (Mini.on) {
+                        Mini.search-opened();
+                    } else {
+                        App.search-summoned = true;
+                        App.search-request += 1;
+                    }
+                    return accept;
+                }
+                if (e.text == "e" || e.text == "E") { App.open-equalizer(); return accept; }
+                if (e.text == ",") { App.open-settings(); return accept; }
+                if (e.text == "m" || e.text == "M") { if (Mini.on) { Mini.full-view(); } else { App.open-mini(); } return accept; }
+                if (e.text == "q" || e.text == "Q") { App.quit(); return accept; }
+                if (e.text == "a" || e.text == "A") { return App.key("select-all", false) ? accept : reject; }
+                return reject;
+            }
+            if (e.text == " ") { return App.key("play-pause", false) ? accept : reject; }
+            if (e.text == Key.Return) { return App.key("enter", e.modifiers.shift) ? accept : reject; }
+            if (e.text == Key.Delete) { return App.key("delete", e.modifiers.shift) ? accept : reject; }
+            if (e.text == Key.Escape) { return App.key("escape", e.modifiers.shift) ? accept : reject; }
+            if (e.text == Key.UpArrow) { return App.key("up", e.modifiers.shift) ? accept : reject; }
+            if (e.text == Key.DownArrow) { return App.key("down", e.modifiers.shift) ? accept : reject; }
+            if (e.text == Key.Home) { return App.key("home", e.modifiers.shift) ? accept : reject; }
+            if (e.text == Key.End) { return App.key("end", e.modifiers.shift) ? accept : reject; }
+            if (e.text == Key.PageUp) { return App.key("page-up", e.modifiers.shift) ? accept : reject; }
+            if (e.text == Key.PageDown) { return App.key("page-down", e.modifiers.shift) ? accept : reject; }
+            reject
+        }
+        if !Mini.on: VerticalLayout {
+            width: parent.width;
+            height: parent.height;
+            TopBar {
+                show-search: App.show-search || App.search-summoned;
+                focus-search: App.search-request;
+                search-escaped => { keys.focus(); }
+                pages-left: root.sidebar-shown;
+                title: App.heading;
+                subtitle: App.subheading;
+                searchable: App.searchable;
+                search-placeholder: App.search-placeholder;
+                corner: root.corner;
+                search-edited(t) => { App.search(t); }
+            }
+            HorizontalLayout {
+                vertical-stretch: 1;
+                Sidebar {
+                    width: root.sidebar-shown;
+                    add-folder => { App.add-folder(); }
+                    rescan => { App.rescan-library(); }
+                }
+                // The edge between the sidebar and the pages (8 px).
+                Rectangle {
+                    width: 8px;
+                    TouchArea {
+                        mouse-cursor: ew-resize;
+                        // Double click: the width it starts with (248 px).
+                        double-clicked => { App.sidebar-resized(248px); }
+                        moved => {
+                            if (self.pressed) {
+                                App.sidebar-resized(clamp(root.sidebar-shown + self.mouse-x - self.pressed-x, 200px, 520px));
+                            }
+                        }
+                    }
+                }
+                // The pages on their panel: a rounded top-left corner.
+                Rectangle {
+                    horizontal-stretch: 1;
+                    background: Theme.pane-shown;
+                    border-top-left-radius: 14px;
+                    clip: true;
+                    if App.page == "albums": AlbumsPage {
+                    }
+                    if App.page == "artists" || App.page == "genres": BrowsePage {
+                    }
+                    if App.page == "playing": NowPlayingPage {
+                    }
+                    if App.page == "queue": QueuePage {
+                    }
+                    if App.page == "playlist": PlaylistPage {
+                    }
+                    if App.page != "albums" && App.page != "artists" && App.page != "genres" && App.page != "playing"
+                        && App.page != "queue" && App.page != "playlist": TrackTable {
+                    }
+                }
+            }
+            PlayerBar { }
+        }
+        if Mini.on: MiniPlayer {
+            width: parent.width;
+            height: parent.height;
+            corner: root.corner;
+        }
+      }
+        if App.message != "": Rectangle {
+            x: (parent.width - self.width) / 2;
+            y: parent.height - Theme.player-height - 14px - self.height;
+            width: toast.preferred-width + 28px;
+            height: toast.preferred-height + 16px;
+            border-radius: 8px;
+            background: Theme.surface-hi;
+            border-width: 1px;
+            border-color: Theme.border;
+            toast := Text {
+                text: App.message;
+                color: Theme.text;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+            }
+        }
+        // The tracks being carried, beside the pointer.
+        if App.dragging: Rectangle {
+            x: App.drag-x - root.absolute-position.x + 14px;
+            y: App.drag-y - root.absolute-position.y + 10px;
+            width: carried.preferred-width + 24px;
+            height: 26px;
+            border-radius: 13px;
+            background: Theme.surface-hi;
+            border-width: 1px;
+            border-color: Theme.accent;
+            opacity: 0.95;
+            carried := Text {
+                text: App.drag-label;
+                font-size: 12px;
+                font-weight: 600;
+                color: Theme.text;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+            }
+        }
+        DialogLayer { }
+        MenuLayer { }
+        WindowOutline {
+            radius: root.corner;
+        }
+        ResizeGrips {
+            enabled: !WindowActions.maximized;
+        }
+    }
+}

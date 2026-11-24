@@ -1,0 +1,34 @@
+# Ajustes › Audio › Convolución: «Cargar…» pregunta con zenity (uno falso que
+# contesta 10-impulso.wav: una muestra a 0,5, −6 dB) y el filtro se aplica a
+# lo que suena; «Quitar» lo saca. 01-izquierda: −12 dBFS (tools/tonos.py).
+pantalla 2546 4200
+ajuste widgets/windows/settings=@Size(920 2700)
+ajuste appearance/language=es
+preparar python3 {repo}/tools/tonos.py --biblioteca {rt}/p
+preparar mkdir -p {rt}/bin && printf '#!/bin/sh\necho "{repo}/target/ui-live/tonos/10-impulso.wav"\n' > {rt}/bin/zenity && chmod +x {rt}/bin/zenity
+entorno PATH={rt}/bin:/usr/bin:/bin
+ajuste library/rescanOnStartup=true
+ajuste playback/repeat=2
+argumentos {repo}/target/ui-live/tonos/01-izquierda.flac
+estado playing=true 5
+tecla ctrl+comma
+ventanas 2
+foco last
+esperar 0.8
+clic 578 67
+esperar 0.8
+sonido nivel-i=-12±0.2
+clic 835 1527
+guardado playback/convolution=true
+guardado playback/convolutionFile~10-impulso.wav
+sonido nivel-i=-18±0.3 frec-i=1000±1
+# Cargada, la fila tiene un interruptor, «Cambiar…» y «Quitar».
+clic 677 1527
+guardado playback/convolution=false
+sonido nivel-i=-12±0.2
+clic 677 1527
+guardado playback/convolution=true
+sonido nivel-i=-18±0.3
+clic 849 1527
+guardado playback/convolutionFile=
+sonido nivel-i=-12±0.2

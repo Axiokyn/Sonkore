@@ -1,0 +1,112 @@
+// The look of the window: the colours of the current
+// skin and the sizes that follow the interface density. Set from Rust
+// (theme.rs), which resolves them.
+
+export global Theme {
+    // Colours.
+    in property <bool> dark: true;
+    in property <color> bg: #0a0a0c;
+    in property <color> frame: #0e0e11;       // sidebar and bars
+    in property <color> pane: #0a0a0c;        // behind the lists
+    in property <color> surface: #141418;
+    in property <color> surface-hi: #1c1c21;
+    in property <color> hover: #22222a;
+    in property <color> border: #25252c;
+    in property <color> text: #f4f4f6;
+    in property <color> text-dim: #9b9ba5;
+    in property <color> text-faint: #5d5d67;
+    in property <color> accent: #1ed760;
+    in property <color> on-accent: #000000;
+    in property <color> good: #1ed760;
+    in property <color> warn: #f5a524;
+    out property <color> accent-soft: accent.with-alpha(dark ? 0.16 : 0.12);
+
+    // Shapes and density.
+    in property <length> radius: 8px;
+    out property <length> radius-small: max(2px, round(radius / 1px * 0.6) * 1px);
+    in property <bool> compact: false;
+    in property <bool> spacious: false;
+    in property <length> row-height: 56px;    // the track lists' rows
+    // A row and the pixel under it (no gap in the List density).
+    out property <length> row-pitch: list-density == "list" ? row-height : row-height + 1px;
+    in property <string> list-density: "comfortable";
+    in property <bool> alternate-rows: false;
+    in property <bool> list-covers: true;
+    in property <bool> solid-icons: true;
+    in property <string> icon-style: "solid";   // solid, line, tile (Appearance › Icons)
+    in property <string> slider-style: "line";
+    in property <string> volume-style: "line";
+    in property <string> transport-style: "sonkore";
+    in property <string> window-buttons: "windows";
+    in property <length> window-radius: 8px;
+    in property <string> window-outline: "highlight";
+    in property <string> backdrop: "plain";
+    // The decorated ground (aurora, gradient, glow: paint.rs::backdrop, at
+    // the window's device pixels) under panels that let it through
+    // (55 %).
+    in property <image> backdrop-image;
+    out property <bool> decorated: backdrop != "" && backdrop != "plain";
+    out property <color> frame-shown: decorated ? frame.with-alpha(0.55) : frame;
+    out property <color> pane-shown: decorated ? pane.with-alpha(0.55) : pane;
+    in property <string> visualizer: "bars";
+    in property <string> font-family: "Inter";
+    // The "tnum" feature (times, counts, list cells): Inter with its tabular
+    // figures built in (fonts/inter/tnum-*.ttf, tools/tnum-fonts.py).
+    out property <string> tnum-family: font-family == "Inter" ? "Inter Tnum" : font-family;
+
+    // Sizes that follow the density (compact / comfortable / spacious).
+    out property <length> top-bar-height: compact ? 42px : spacious ? 54px : 48px;
+    out property <length> nav-height: compact ? 28px : spacious ? 42px : 36px;
+    out property <length> section-height: compact ? 26px : spacious ? 34px : 30px;
+    out property <length> player-height: compact ? 72px : spacious ? 100px : 88px;
+    out property <length> cover-side: compact ? 44px : spacious ? 66px : 58px;
+    out property <length> play-size: compact ? 34px : spacious ? 48px : 42px;
+    out property <length> control-height: compact ? 28px : spacious ? 38px : 34px;
+    out property <length> search-height: compact ? 28px : 32px;
+
+    // Type sizes.
+    out property <length> font-small: 11px;
+    out property <length> font-body: 13px;
+    out property <length> font-title: 15px;
+}
+
+// Text widths measured with Inter's hinted advances (whole pixels per
+// glyph), for what is sized from its
+// text (buttons, tabs, badges). Set from Rust.
+export global TextMetrics {
+    pure callback width(string, length, int) -> length;   // text, pixel size, weight
+    pure callback spaced-width(string, length, int, length) -> length;  // + letter spacing
+    pure callback tnum-width(string, length, int) -> length;   // with tabular figures (Theme.tnum-family)
+}
+
+// The visualizer's pictures (paint.rs::SpectrumMeter, moved by
+// spectrum.rs): the player bar's and the mini player's. The views say how
+// big they are; Rust paints at that size.
+export global Visual {
+    in property <image> bar;
+    in property <image> mini;
+    in-out property <length> bar-width: 96px;
+    in-out property <length> bar-height: 38px;
+    in-out property <length> mini-width;
+    in-out property <length> mini-height;
+    // The waveform seek bar (paint.rs::wave): the played part over the
+    // rest, for the player bar ("bar") and the mini player ("mini").
+    in property <image> seek-rest;
+    in property <image> seek-played;
+    in property <image> mini-seek-rest;
+    in property <image> mini-seek-played;
+    in-out property <length> seek-width;
+    in-out property <length> mini-seek-width;
+    // A waveform bar's width or the colours changed: painted again.
+    callback wave-changed();
+}
+
+// The last press of a mouse button in the window, in window coordinates
+// (window_drag.rs, after Slint has handled it): a field with the keyboard
+// lets go of it when the press was elsewhere (Slint's touch areas do not
+// take the focus on a click).
+export global Pointer {
+    in property <length> x;
+    in property <length> y;
+    in property <int> presses;
+}

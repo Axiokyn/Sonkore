@@ -1,0 +1,26 @@
+[package]
+name = "sonkore-eq"
+description = "The equalizer: biquad SuperEQ, linear-phase FIR, profiles"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+sonkore-core = { path = "../core" }
+realfft = "3.5"
+regex = { version = "1.11", default-features = false, features = ["std", "unicode-case", "unicode-perl", "perf"] }
+serde_json = { version = "1.0", features = ["float_roundtrip"] }
+
+# HTTPS: rustls on Linux; on Windows the system's own TLS (SChannel) and its
+# certificate store, which needs no C compiler to build.
+[target.'cfg(not(windows))'.dependencies]
+ureq = "3"
+
+[target.'cfg(windows)'.dependencies]
+ureq = { version = "3", default-features = false, features = ["native-tls-no-default", "gzip"] }
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"

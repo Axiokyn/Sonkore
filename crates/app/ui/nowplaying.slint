@@ -1,0 +1,185 @@
+// The playing track: the cover, titles, format and output, the signal path
+// under it, and the play queue beside it; on a narrow page (under 900 px)
+// the queue goes under the track.
+
+import { Theme } from "theme.slint";
+import { Icons } from "icons.slint";
+import { PillButton, Badge, OverlayScrollBar } from "controls.slint";
+import { App } from "data.slint";
+import { Pages } from "pagedata.slint";
+import { CoverBox, Divider, SignalPathList, Quality } from "pagekit.slint";
+import { TrackTable } from "tracks.slint";
+import { ScrollView } from "std-widgets.slint";
+
+// The track's column (it scrolls when taller than the page).
+component TrackColumn inherits VerticalLayout {
+    in property <length> cover-side;
+    // The cover 4 px down.
+    padding-top: 4px;
+    padding-bottom: 16px;
+    spacing: 12px;
+    alignment: start;
+    HorizontalLayout {
+        alignment: start;
+        CoverBox {
+            width: root.cover-side;
+            height: root.cover-side;
+            radius: Theme.radius;
+            icon-size: 64px;
+            source: Pages.now-cover;
+            has-cover: Pages.now-has-cover;
+        }
+    }
+    Text {
+        text: Pages.now-has ? Pages.now-title : @tr("NowPlayingPage" => "Nothing playing");
+        font-size: 22px;
+        font-weight: 700;
+        color: Theme.text;
+        wrap: word-wrap;
+    }
+    if Pages.now-has: Text {
+        text: Pages.now-artist;
+        font-size: 15px;
+        color: Theme.text-dim;
+        wrap: word-wrap;
+    }
+    if !Pages.now-has: Text {
+        text: @tr("NowPlayingPage" => "Pick something from your library: double-click a track, an album or a playlist.");
+        font-size: 13px;
+        color: Theme.text-dim;
+        wrap: word-wrap;
+    }
+    HorizontalLayout {
+        spacing: 6px;
+        alignment: start;
+        if Pages.now-has && Pages.now-format != "": Badge {
+            text: Pages.now-format;
+            tone: Theme.accent;
+        }
+        if Pages.now-has && Pages.now-output != "": Badge {
+            text: Pages.now-output;
+            tone: Pages.now-output-good ? Theme.good : Theme.text-dim;
+        }
+    }
+    if Pages.now-has: HorizontalLayout {
+        alignment: start;
+        PillButton {
+            has-icon: true;
+            icon: Icons.locate;
+            text: @tr("NowPlayingPage" => "Show in library");
+            clicked => { Pages.show-in-library(); }
+        }
+    }
+    VerticalLayout {
+        padding-top: 6px;
+        Divider { height: 1px; }
+    }
+    HorizontalLayout {
+        Text {
+            text: @tr("NowPlayingPage" => "Signal path");
+            font-size: 15px;
+            font-weight: 600;
+            color: Theme.text;
+            horizontal-stretch: 1;
+        }
+        if Pages.stages.length > 0: Badge {
+            text: Pages.verdict;
+            tone: Quality.color(Pages.verdict-quality);
+        }
+    }
+    HorizontalLayout {
+        padding-right: 12px;
+        SignalPathList {
+            stages: Pages.stages;
+            empty-text: @tr("SignalPathList" => "Nothing is playing.");
+            action(a) => { Pages.stage-action(a); }
+        }
+    }
+}
+
+// The queue: its title, save and clear, the list.
+component QueueColumn inherits Rectangle {
+    head := HorizontalLayout {
+        x: 0;
+        y: 4px;
+        width: root.width;
+        height: 34px;
+        padding-right: 16px;
+        spacing: 8px;
+        Text {
+            text: @tr("NowPlayingPage" => "Play queue");
+            font-size: 15px;
+            font-weight: 600;
+            color: Theme.text;
+            vertical-alignment: center;
+            horizontal-stretch: 1;
+        }
+        PillButton {
+            has-icon: true;
+            icon: Icons.save;
+            text: @tr("NowPlayingPage" => "Save as playlist");
+            enabled: Pages.queue-has-tracks;
+            clicked => { Pages.save-queue(); }
+        }
+        PillButton {
+            has-icon: true;
+            icon: Icons.trash;
+            text: @tr("NowPlayingPage" => "Clear");
+            enabled: Pages.queue-has-tracks;
+            clicked => { Pages.clear-queue(); }
+        }
+    }
+    TrackTable {
+        x: 0;
+        y: 4px + 34px + 8px;
+        width: root.width;
+        height: root.height - self.y;
+        joined: false;
+        sortable: false;
+    }
+}
+
+export component NowPlayingPage inherits Rectangle {
+    // 28 px in, the page's 6 px heading.
+    property <length> left: 28px;
+    property <length> top: 6px;
+    property <length> page-width: root.width - root.left;
+    property <bool> stacked: root.width < 900px;
+    // The column: at most 420 px (40 % of the page, at least 300); the cover
+    // its width less 20 px, at most 380 (220 stacked).
+    property <length> pane-width: root.stacked ? root.width - 28px : max(300px, min(420px, floor(root.width * 0.4 / 1px) * 1px));
+    property <length> cover-side: max(60px, root.stacked ? min(220px, root.pane-width - 20px) : min(root.pane-width - 20px, 380px));
+    property <length> pane-height: root.stacked ? min(column.preferred-height, floor(root.height * 0.55 / 1px) * 1px) : root.height - root.top;
+    pane := ScrollView {
+        x: root.left;
+        y: root.top;
+        width: root.pane-width;
+        height: root.pane-height;
+        // The overlay bar instead (below).
+        vertical-scrollbar-policy: always-off;
+        horizontal-scrollbar-policy: always-off;
+        content-width: self.visible-width;
+        content-height: column.preferred-height;
+        column := TrackColumn {
+            width: root.pane-width;
+            cover-side: root.cover-side;
+        }
+    }
+    property <length> pane-range: max(0px, pane.content-height - pane.visible-height);
+    if root.pane-range > 0: OverlayScrollBar {
+        x: pane.x + pane.width - 10px;
+        y: pane.y;
+        width: 10px;
+        height: pane.height;
+        position: -pane.content-y;
+        page: pane.visible-height;
+        range: root.pane-range;
+        scroll-to(y) => { pane.content-y = -clamp(y, 0px, root.pane-range); }
+    }
+    QueueColumn {
+        x: root.stacked ? root.left : root.left + root.pane-width + 28px;
+        y: root.stacked ? root.top + root.pane-height + 16px : root.top;
+        width: root.width - self.x;
+        height: root.height - self.y;
+    }
+}

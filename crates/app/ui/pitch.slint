@@ -1,0 +1,648 @@
+// The Pitch & tempo window: SoundTouch on
+// or off, pitch / tempo / rate to seven decimals, the step of − and +, and
+// SoundTouch's own settings. Rust (pitch_ui.rs) fills `PitchUi` and answers
+// its callbacks.
+
+import { Theme } from "theme.slint";
+import { Icons } from "icons.slint";
+import { WindowActions, WindowOutline, ResizeGrips } from "chrome.slint";
+import { AppWindowBar, Card, LSwitch, StatusCard, Pill, ComboBox, Caps, WindowGround, TextMetrics } from "panels.slint";
+
+export global PitchUi {
+    in property <bool> enabled;
+    in property <string> subtitle;
+    // Pitch, tempo and rate as shown ("-0.3176660"), and whether − / + apply.
+    in property <string> pitch-text: "0.0000000";
+    in property <string> tempo-text: "1.0000000";
+    in property <string> rate-text: "1.0000000";
+    in property <bool> pitch-down: true;
+    in property <bool> pitch-up: true;
+    in property <bool> tempo-down: true;
+    in property <bool> tempo-up: true;
+    in property <bool> rate-down: true;
+    in property <bool> rate-up: true;
+    in property <string> pitch-hint;
+    in property <string> tempo-hint;
+    in property <string> rate-hint;
+    in property <[string]> steps;
+    in property <int> step-index;
+    in property <string> step-text;           // "0.000001", for the tooltips
+    in property <bool> aa-filter;
+    in property <int> aa-length: 64;
+    in property <bool> quick-seek;
+    in property <int> sequence-ms;
+    in property <int> seek-window-ms;
+    in property <int> overlap-ms: 8;
+    // The spin box colours (shades of the theme's, from Rust).
+    in property <color> spin-outline: #070708;
+    in property <color> spin-strip-top: #3a3a42;
+    in property <color> spin-strip-bottom: #2f2f36;
+    in property <color> spin-pressed: #19191e;
+
+    callback set-enabled(bool);
+    // "pitch" | "tempo" | "rate": a text typed (valid or not), Enter / focus
+    // out, − / + (direction).
+    callback typed(string, string);
+    callback finished(string, string);
+    callback nudge(string, int);
+    pure callback valid(string, string) -> bool;
+    callback set-step(int);
+    callback set-aa-filter(bool);
+    callback set-aa-length(int);
+    callback set-quick-seek(bool);
+    callback set-sequence-ms(int);
+    callback set-seek-window-ms(int);
+    callback set-overlap-ms(int);
+    callback reset();
+    callback done();
+}
+
+// The − and + of a precision field: a 36 px rounded square; held down it
+// repeats (after 350 ms, every 35 ms).
+component StepButton inherits Rectangle {
+    in property <string> text;
+    in property <bool> enabled: true;
+    in property <string> tooltip;
+    callback step();
+    width: 36px;
+    height: 36px;
+    border-radius: Theme.radius-small;
+    background: area.pressed && root.enabled ? Theme.border : area.has-hover && root.enabled ? Theme.hover : Theme.surface-hi;
+    border-width: 1px;
+    border-color: Theme.border;
+    Text {
+        width: root.width;
+        height: root.height;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+        text: root.text;
+        font-size: 16px;
+        color: Theme.text;
+    }
+    area := TouchArea {
+        enabled: root.enabled;
+        mouse-cursor: pointer;
+        pointer-event(e) => {
+            if (e.kind == PointerEventKind.down && e.button == PointerEventButton.left) {
+                root.step();
+                repeat.interval = 350ms;
+                repeat.running = true;
+            } else if (e.kind == PointerEventKind.up) {
+                repeat.running = false;
+            }
+        }
+    }
+    repeat := Timer {
+        running: false;
+        interval: 350ms;
+        triggered => {
+            self.interval = 35ms;
+            if (area.pressed && root.enabled) { root.step(); } else { self.running = false; }
+        }
+    }
+}
+
+// A precision field:  [label]  [−]  [ -0.3176660 ]  [+]  [suffix]
+// The text is sent as typed when it is valid; it is re-formatted when the
+// field loses focus, so the caret never jumps.
+component PrecisionField inherits Rectangle {
+    in property <string> key;
+    in property <string> label;
+    in property <string> suffix;
+    in property <string> value-text;
+    in property <bool> can-down;
+    in property <bool> can-up;
+    height: 36px;
+    Text {
+        x: 0;
+        width: 72px;
+        height: root.height;
+        vertical-alignment: center;
+        text: root.label;
+        font-size: 13px;
+        font-weight: 600;
+        color: PitchUi.enabled ? Theme.text : Theme.text-faint;
+    }
+    StepButton {
+        x: 78px;
+        text: "−";
+        enabled: root.can-down;
+        step => {
+            PitchUi.nudge(root.key, -1);
+            input.text = root.value-text;
+        }
+    }
+    field := Rectangle {
+        x: 120px;
+        width: root.width - 120px - 72px;
+        height: 36px;
+        border-radius: Theme.radius-small;
+        background: Theme.surface-hi;
+        border-width: input.has-focus ? 2px : 1px;
+        border-color: input.has-focus ? Theme.accent : Theme.border;
+        input := TextInput {
+            x: 4px;
+            width: parent.width - 8px;
+            height: parent.height;
+            horizontal-alignment: right;
+            vertical-alignment: center;
+            single-line: true;
+            font-family: "DejaVu Sans Mono";
+            font-size: 15px;
+            color: PitchUi.valid(root.key, self.text) ? Theme.text : Theme.warn;
+            selection-background-color: Theme.accent;
+            selection-foreground-color: Theme.on-accent;
+            init => { self.text = root.value-text; }
+            edited => { PitchUi.typed(root.key, self.text); }
+            accepted => {
+                PitchUi.finished(root.key, self.text);
+                self.text = root.value-text;
+            }
+            changed has-focus => {
+                if (!self.has-focus) { self.text = root.value-text; }
+            }
+            key-pressed(e) => {
+                if (e.text == Key.UpArrow || e.text == Key.DownArrow) {
+                    PitchUi.nudge(root.key, e.text == Key.UpArrow ? 1 : -1);
+                    self.text = root.value-text;
+                    return accept;
+                }
+                if (e.text == Key.Escape) {
+                    self.text = root.value-text;
+                    self.clear-focus();
+                    return accept;
+                }
+                reject
+            }
+        }
+    }
+    StepButton {
+        x: root.width - 66px;
+        text: "+";
+        enabled: root.can-up;
+        step => {
+            PitchUi.nudge(root.key, 1);
+            input.text = root.value-text;
+        }
+    }
+    Text {
+        x: root.width - 24px;
+        width: 24px;
+        height: root.height;
+        vertical-alignment: center;
+        text: root.suffix;
+        font-size: 13px;
+        color: Theme.text-dim;
+    }
+    changed value-text => {
+        if (!input.has-focus) { input.text = root.value-text; }
+    }
+}
+
+// A line under a field (11 px, dim, 78 px in).
+component Hint inherits Rectangle {
+    in property <string> text;
+    height: 14px;
+    Text {
+        x: 78px;
+        y: 0;
+        width: root.width - 78px;
+        text: root.text;
+        font-size: 11px;
+        color: Theme.text-dim;
+    }
+}
+
+// A spin box: a 24 px field, the value centred, the arrows in a strip at
+// the right; "auto" for 0 where that means automatic.
+component SettingSpin inherits Rectangle {
+    in property <int> value;
+    in property <int> minimum;
+    in property <int> maximum;
+    in property <int> step: 1;
+    in property <string> unit;
+    in property <bool> auto-at-zero;
+    in property <bool> enabled: true;
+    callback modified(int);
+    height: 24px;
+    property <int> held: 0;
+    property <string> shown: root.auto-at-zero && root.value == 0 ? @tr("EditSoundtouch" => "auto") : root.value + " " + root.unit;
+    function set(v: int) {
+        let c = clamp(v, root.minimum, root.maximum);
+        if (c != root.value) { root.modified(c); }
+    }
+    Rectangle {
+        border-radius: 2px;
+        background: Theme.surface;
+        border-width: 1px;
+        border-color: input.has-focus ? Theme.accent.darker(25%) : PitchUi.spin-outline;
+    }
+    // The top shadow.
+    Rectangle {
+        x: 2px;
+        y: 1px;
+        width: root.width - 4px;
+        height: 1px;
+        background: #00000012;
+    }
+    // The arrows' strip: a gradient, a line on its left.
+    Rectangle {
+        x: root.width - 18px;
+        y: 1px;
+        width: 17px;
+        height: root.height - 2px;
+        background: @linear-gradient(180deg, PitchUi.spin-strip-top 0%, PitchUi.spin-strip-bottom 100%);
+    }
+    Rectangle {
+        x: root.width - 18px;
+        y: 1px;
+        width: 1px;
+        height: root.height - 2px;
+        background: PitchUi.spin-outline;
+    }
+    if root.held != 0: Rectangle {
+        x: root.width - 17px;
+        y: root.held > 0 ? 1px : root.height / 2;
+        width: 16px;
+        height: root.height / 2 - 1px;
+        border-radius: 1.7px;
+        background: PitchUi.spin-pressed;
+    }
+    // Disabled: the arrows at half (the value keeps its colour).
+    property <color> arrow: Theme.text.with-alpha(0.72 * (root.enabled ? 1 : 0.5));
+    Path {
+        x: root.width - 13px;
+        y: 5px;
+        width: 8px;
+        height: 4px;
+        viewbox-width: 8;
+        viewbox-height: 4;
+        fit: fill;
+        commands: "M 4 0 L 8 4 L 0 4 Z";
+        fill: root.value < root.maximum || !root.enabled ? root.arrow : root.arrow.with-alpha(root.arrow.alpha / 255 * 0.5);
+    }
+    Path {
+        x: root.width - 13px;
+        y: 15px;
+        width: 8px;
+        height: 4px;
+        viewbox-width: 8;
+        viewbox-height: 4;
+        fit: fill;
+        commands: "M 0 0 L 8 0 L 4 4 Z";
+        fill: root.value > root.minimum || !root.enabled ? root.arrow : root.arrow.with-alpha(root.arrow.alpha / 255 * 0.5);
+    }
+    input := TextInput {
+        x: 4px;
+        width: root.width - 8px - 16px;
+        height: root.height;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+        single-line: true;
+        enabled: root.enabled;
+        font-size: 13px;
+        color: Theme.text;
+        selection-background-color: Theme.accent;
+        selection-foreground-color: Theme.on-accent;
+        init => { self.text = root.shown; }
+        accepted => { self.clear-focus(); }
+        // Focused: the bare number, to edit. Left: only a number changes the
+        // value. The shown text ("64 taps", "8 ms") is no number, and to-float
+        // gave 0: clicking in and out set the minimum.
+        changed has-focus => {
+            if (self.has-focus) {
+                self.text = root.value;
+            } else {
+                if (self.text.is-float()) {
+                    root.set(self.text.to-float());
+                }
+                self.text = root.shown;
+            }
+        }
+        key-pressed(e) => {
+            if (e.text == Key.UpArrow || e.text == Key.DownArrow) {
+                root.set(root.value + (e.text == Key.UpArrow ? root.step : -root.step));
+                return accept;
+            }
+            reject
+        }
+    }
+    TouchArea {
+        x: root.width - 18px;
+        width: 18px;
+        enabled: root.enabled;
+        pointer-event(e) => {
+            if (e.kind == PointerEventKind.down && e.button == PointerEventButton.left) {
+                root.held = self.mouse-y < root.height / 2 ? 1 : -1;
+                root.set(root.value + root.held * root.step);
+                repeat.interval = 300ms;
+                repeat.running = true;
+            } else if (e.kind == PointerEventKind.up) {
+                root.held = 0;
+                repeat.running = false;
+            }
+        }
+    }
+    repeat := Timer {
+        running: false;
+        interval: 300ms;
+        triggered => {
+            self.interval = 100ms;
+            root.set(root.value + root.held * root.step);
+        }
+    }
+    changed shown => {
+        if (!input.has-focus) { input.text = root.shown; }
+    }
+}
+
+// LSwitch with its text: the text 10 px after the track; a click anywhere
+// on it toggles.
+component LabeledSwitch inherits Rectangle {
+    in property <string> text;
+    in property <bool> checked;
+    callback toggled(bool);
+    height: 34px;
+    LSwitch {
+        x: 0;
+        checked: root.checked;
+        toggled(v) => { root.toggled(v); }
+    }
+    Text {
+        x: 54px;
+        width: root.width - 54px;
+        height: root.height;
+        vertical-alignment: center;
+        text: root.text;
+        font-size: 13px;
+        color: PitchUi.enabled ? Theme.text : Theme.text-faint;
+        overflow: elide;
+    }
+    TouchArea {
+        x: 50px;
+        width: root.width - 50px;
+        mouse-cursor: pointer;
+        clicked => { root.toggled(!root.checked); }
+    }
+}
+
+// A row of the advanced settings: the name, the spin box after the column
+// of names.
+component SpinRow inherits Rectangle {
+    in property <string> label;
+    in property <length> column;
+    in property <color> label-color: PitchUi.enabled ? Theme.text : Theme.text-faint;
+    height: 24px;
+    Text {
+        x: 0;
+        width: root.column;
+        height: root.height;
+        vertical-alignment: center;
+        text: root.label;
+        font-size: 13px;
+        color: root.label-color;
+        overflow: elide;
+    }
+    @children
+}
+
+export component PitchWindow inherits Window {
+    title: @tr("EditSoundtouch" => "Pitch & tempo");
+    icon: Icons.logo;
+    no-frame: true;
+    background: transparent;
+    default-font-family: Theme.font-family;
+    default-font-size: 13px;
+    min-width: 460px;
+    max-width: 760px;
+    preferred-width: 580px;
+    out property <length> full-height: content.preferred-height + 38px;
+    preferred-height: self.full-height;
+    // Never taller than its content.
+    min-height: min(360px, self.full-height);
+    max-height: self.full-height;
+    property <length> corner: WindowActions.maximized ? 0 : Theme.window-radius;
+
+    // The widest name of the advanced settings' first column.
+    property <length> names: ceil(max(TextMetrics.width(@tr("EditSoundtouch" => "AA Filter Length"), 13px, 400),
+                                      TextMetrics.width(@tr("EditSoundtouch" => "Sequence Length"), 13px, 400),
+                                      TextMetrics.width(@tr("EditSoundtouch" => "Seek Window Length"), 13px, 400),
+                                      TextMetrics.width(@tr("EditSoundtouch" => "Overlap Length"), 13px, 400)) / 1px) * 1px;
+
+    WindowGround {
+        corner: root.corner;
+        clip: true;
+        // Escape closes the window.
+        keys := FocusScope {
+            init => { self.focus(); }
+            key-pressed(e) => {
+                if (e.text == Key.Escape) {
+                    WindowActions.close();
+                    return accept;
+                }
+                reject
+            }
+        }
+        AppWindowBar {
+            x: 0;
+            y: 0;
+            width: parent.width;
+            icon: Icons.wave;
+            title: root.title;
+            maximizable: false;
+            corner: root.corner;
+        }
+        flick := Flickable {
+            // Wheel and touch only: a mouse drag is for the sliders and
+            // the graph's points, never for scrolling (as Slint's desktop ScrollView).
+            mouse-drag-pan-enabled: false;
+            x: 0;
+            y: 38px;
+            width: parent.width;
+            height: parent.height - 38px;
+            content-height: content.preferred-height;
+            content := VerticalLayout {
+                width: flick.width;
+                padding-left: 16px;
+                padding-right: 16px;
+                padding-top: 4px;
+                padding-bottom: 12px;
+                spacing: 10px;
+                alignment: start;
+
+                StatusCard {
+                    title: "SoundTouch";
+                    subtitle: PitchUi.subtitle;
+                    on: PitchUi.enabled;
+                    toggled(v) => { PitchUi.set-enabled(v); }
+                }
+
+                // Pitch · Tempo · Rate.
+                Card {
+                    opacity: PitchUi.enabled ? 1 : 0.45;
+                    VerticalLayout {
+                        padding: 12px;
+                        spacing: 6px;
+                        Caps {
+                            height: 14px;   // 2 px more before the fields
+                            label: @tr("EditSoundtouch" => "Pitch · Tempo · Rate");
+                        }
+                        PrecisionField {
+                            key: "pitch";
+                            label: @tr("EditSoundtouch" => "Pitch");
+                            suffix: @tr("EditSoundtouch" => "st");
+                            value-text: PitchUi.pitch-text;
+                            can-down: PitchUi.pitch-down && PitchUi.enabled;
+                            can-up: PitchUi.pitch-up && PitchUi.enabled;
+                        }
+                        Hint { text: PitchUi.pitch-hint; }
+                        PrecisionField {
+                            key: "tempo";
+                            label: @tr("EditSoundtouch" => "Tempo");
+                            suffix: "×";
+                            value-text: PitchUi.tempo-text;
+                            can-down: PitchUi.tempo-down && PitchUi.enabled;
+                            can-up: PitchUi.tempo-up && PitchUi.enabled;
+                        }
+                        Hint { text: PitchUi.tempo-hint; }
+                        PrecisionField {
+                            key: "rate";
+                            label: @tr("EditSoundtouch" => "Rate");
+                            suffix: "×";
+                            value-text: PitchUi.rate-text;
+                            can-down: PitchUi.rate-down && PitchUi.enabled;
+                            can-up: PitchUi.rate-up && PitchUi.enabled;
+                        }
+                        Hint { text: PitchUi.rate-hint; }
+                        Rectangle { height: 0px; }
+                        Rectangle {
+                            height: 34px;
+                            Text {
+                                x: 0;
+                                width: 72px;
+                                height: parent.height;
+                                vertical-alignment: center;
+                                text: @tr("EditSoundtouch" => "± step");
+                                font-size: 13px;
+                                color: PitchUi.enabled ? Theme.text : Theme.text-faint;
+                            }
+                            ComboBox {
+                                x: 77px;
+                                width: parent.width - 77px;
+                                model: PitchUi.steps;
+                                current-index: PitchUi.step-index;
+                                enabled: PitchUi.enabled;
+                                activated(i) => { PitchUi.set-step(i); }
+                            }
+                        }
+                    }
+                }
+
+                // Advanced SoundTouch.
+                Card {
+                    opacity: PitchUi.enabled ? 1 : 0.45;
+                    VerticalLayout {
+                        padding: 12px;
+                        spacing: 8px;
+                        Caps {
+                            height: 12px;
+                            label: @tr("EditSoundtouch" => "Advanced SoundTouch");
+                        }
+                        LabeledSwitch {
+                            text: @tr("EditSoundtouch" => "Use AA Filter (anti-aliasing)");
+                            checked: PitchUi.aa-filter;
+                            toggled(v) => { PitchUi.set-aa-filter(v); }
+                        }
+                        SpinRow {
+                            label: @tr("EditSoundtouch" => "AA Filter Length");
+                            column: root.names;
+                            label-color: Theme.text.with-alpha(PitchUi.aa-filter ? 1 : 0.4);
+                            SettingSpin {
+                                x: root.names + 12px;
+                                width: parent.width - self.x;
+                                minimum: 8;
+                                maximum: 128;
+                                step: 8;
+                                unit: @tr("EditSoundtouch" => "taps");
+                                value: PitchUi.aa-length;
+                                enabled: PitchUi.aa-filter && PitchUi.enabled;
+                                modified(v) => { PitchUi.set-aa-length(v); }
+                            }
+                        }
+                        LabeledSwitch {
+                            text: @tr("EditSoundtouch" => "Use Quickseek (faster, slightly lower quality)");
+                            checked: PitchUi.quick-seek;
+                            toggled(v) => { PitchUi.set-quick-seek(v); }
+                        }
+                        SpinRow {
+                            label: @tr("EditSoundtouch" => "Sequence Length");
+                            column: root.names;
+                            SettingSpin {
+                                x: root.names + 12px;
+                                width: parent.width - self.x;
+                                minimum: 0;
+                                maximum: 500;
+                                unit: "ms";
+                                auto-at-zero: true;
+                                value: PitchUi.sequence-ms;
+                                enabled: PitchUi.enabled;
+                                modified(v) => { PitchUi.set-sequence-ms(v); }
+                            }
+                        }
+                        SpinRow {
+                            label: @tr("EditSoundtouch" => "Seek Window Length");
+                            column: root.names;
+                            SettingSpin {
+                                x: root.names + 12px;
+                                width: parent.width - self.x;
+                                minimum: 0;
+                                maximum: 250;
+                                unit: "ms";
+                                auto-at-zero: true;
+                                value: PitchUi.seek-window-ms;
+                                enabled: PitchUi.enabled;
+                                modified(v) => { PitchUi.set-seek-window-ms(v); }
+                            }
+                        }
+                        SpinRow {
+                            label: @tr("EditSoundtouch" => "Overlap Length");
+                            column: root.names;
+                            SettingSpin {
+                                x: root.names + 12px;
+                                width: parent.width - self.x;
+                                minimum: 1;
+                                maximum: 100;
+                                unit: "ms";
+                                value: PitchUi.overlap-ms;
+                                enabled: PitchUi.enabled;
+                                modified(v) => { PitchUi.set-overlap-ms(v); }
+                            }
+                        }
+                    }
+                }
+
+                // Reset / Done.
+                HorizontalLayout {
+                    Pill {
+                        has-icon: true;
+                        icon: Icons.refresh;
+                        text: @tr("EditSoundtouch" => "Reset to neutral");
+                        clicked => { PitchUi.reset(); }
+                    }
+                    Rectangle { horizontal-stretch: 1; }
+                    Pill {
+                        text: @tr("EditSoundtouch" => "Done");
+                        primary: true;
+                        clicked => { PitchUi.done(); }
+                    }
+                }
+            }
+        }
+        WindowOutline {
+            radius: root.corner;
+        }
+        ResizeGrips {
+            enabled: !WindowActions.maximized;
+        }
+    }
+}

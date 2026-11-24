@@ -1,0 +1,33 @@
+# El ecualizador (Ctrl+E) sobre lo que suena: encendido y plano no cambia
+# nada; el punto de 1 kHz arrastrado a +6 dB sube 6; el preamplificador a
+# −6 dB lo devuelve. 01-izquierda: 1 kHz a −12 dBFS (tools/tonos.py).
+# Ventana de 1000×630; en el gráfico, 0 dB en y=311 y +6 en y=270.
+preparar python3 {repo}/tools/tonos.py --biblioteca {rt}/p
+ajuste library/rescanOnStartup=true
+ajuste playback/repeat=2
+argumentos {repo}/target/ui-live/tonos/01-izquierda.flac
+estado playing=true 5
+tecla ctrl+e
+ventanas 2
+foco last
+esperar 0.8
+sonido nivel-i=-12±0.2
+clic 941 73
+guardado equalizer/enabled=true
+estado eq=true
+sonido nivel-i=-12±0.2
+arrastre 577 311 577 270
+guardado equalizer/bands~freq.{0,3}:1000,.{0,3}gain.{0,3}:(5\.[5-9]|6)
+sonido nivel-i=-6±0.5 frec-i=1000±1
+# (El campo, al tomar el foco, desplaza la ventana: va último.)
+clic 525 508
+tecla ctrl+a
+tecla minus
+tecla 6
+tecla enter
+guardado equalizer/preamp~^-6
+sonido nivel-i=-12±0.5
+clic 941 73
+guardado equalizer/enabled=false
+estado eq=false
+sonido nivel-i=-12±0.2

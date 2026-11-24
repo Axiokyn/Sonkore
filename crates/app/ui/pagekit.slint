@@ -1,0 +1,130 @@
+// Pieces the pages share.
+
+import { Theme } from "theme.slint";
+import { Icons } from "icons.slint";
+import { PathStage } from "pagedata.slint";
+import { PillButton } from "controls.slint";
+
+// The cover, or a rounded surface with
+// a hairline and a faint note (a third of the side, or `icon-size`),
+// centred on whole pixels.
+export component CoverBox inherits Rectangle {
+    in property <image> source;
+    in property <bool> has-cover;
+    in property <length> radius: Theme.radius-small;
+    in property <length> icon-size: 0px;
+    border-radius: root.radius;
+    background: has-cover ? transparent : Theme.surface-hi;
+    border-width: has-cover ? 0px : 1px;
+    border-color: Theme.border;
+    clip: true;
+    if root.has-cover: Image {
+        source: root.source;
+        width: parent.width;
+        height: parent.height;
+        image-fit: ImageFit.cover;
+    }
+    if !root.has-cover: Image {
+        property <length> side: root.icon-size > 0 ? root.icon-size : max(14px, round(root.width / 1px * 0.32) * 1px);
+        x: round((root.width - self.side) / 2 / 1px) * 1px;
+        y: round((root.height - self.side) / 2 / 1px) * 1px;
+        width: self.side;
+        height: self.side;
+        source: Icons.music;
+        colorize: Theme.text-faint;
+    }
+}
+
+// A line in the border colour.
+export component Divider inherits Rectangle {
+    background: Theme.border;
+}
+
+// The colour of a signal path quality.
+export global Quality {
+    public pure function color(quality: string) -> color {
+        if (quality == "lossless") { return #9b6bff; }
+        if (quality == "high") { return #3fb950; }
+        if (quality == "enhanced") { return #4ea1ff; }
+        if (quality == "warning") { return Theme.warn; }
+        return #e3a008;
+    }
+}
+
+// Every stage from the file to the DAC (SignalPathList): a dot in the
+// colour of its quality, a line down to the next one; the stage, its
+// detail under it, the quality's name on the right.
+export component SignalPathList inherits VerticalLayout {
+    in property <[PathStage]> stages;
+    in property <string> empty-text;
+    callback action(string);
+    spacing: 12px;
+    if root.stages.length == 0: Text {
+        text: root.empty-text;
+        font-size: 13px;
+        color: Theme.text-dim;
+    }
+    for s[i] in root.stages: Rectangle {
+        min-height: stage-texts.preferred-height;
+        // The line to the next stage, then the dot.
+        if i + 1 < root.stages.length: Rectangle {
+            x: 5px;
+            y: 12px;
+            width: 2px;
+            height: parent.height + 12px + 4px - 12px;
+            background: Theme.border;
+        }
+        Rectangle {
+            x: 0;
+            y: 4px;
+            width: 12px;
+            height: 12px;
+            border-radius: 6px;
+            background: Quality.color(s.quality);
+        }
+        HorizontalLayout {
+            padding-left: 24px;
+            spacing: 12px;
+            stage-texts := VerticalLayout {
+                spacing: 1px;
+                horizontal-stretch: 1;
+                Text {
+                    text: s.stage;
+                    font-size: 13px;
+                    font-weight: 600;
+                    color: Theme.text;
+                }
+                Text {
+                    text: s.detail;
+                    font-size: 11px;
+                    color: Theme.text-dim;
+                    wrap: word-wrap;
+                }
+                // A one-click fix, where the stage offers one.
+                if s.action == "headroomAuto": HorizontalLayout {
+                    alignment: start;
+                    padding-top: 4px;
+                    PillButton {
+                        text: @tr("SignalPathList" => "Use automatic headroom");
+                        clicked => { root.action(s.action); }
+                    }
+                }
+            }
+            VerticalLayout {
+                alignment: start;
+                Text {
+                    text: s.label;
+                    font-size: 11px;
+                    color: Quality.color(s.quality);
+                }
+            }
+        }
+    }
+}
+
+// The chevron turned (the software renderer does not rotate images):
+// right for a sub-menu or a folded folder, up for an ascending sort.
+export global TurnedIcons {
+    out property <image> chevron-right: Theme.solid-icons ? @image-url("icons/solid/chevron-right.svg") : @image-url("icons/chevron-right.svg");
+    out property <image> chevron-up: Theme.solid-icons ? @image-url("icons/solid/chevron-up.svg") : @image-url("icons/chevron-up.svg");
+}

@@ -1,0 +1,23 @@
+# The README's screenshots (tools/readme/capturas.sh runs this at 200 %):
+# the made-up library of tools/readme/biblioteca.py, in English, a track
+# playing. Not a test, so it is not in tools/escenarios.
+ajuste appearance/language=en
+ajuste library/rescanOnStartup=true
+ajuste library/watchFolders=false
+ajuste ui/startPage=albums
+preparar python3 {repo}/tools/readme/biblioteca.py --perfil {rt}/p
+argumentos "{repo}/target/readme/musica/Aurora Vale/2021 - Northern Lights/01 - First Snow.flac" "{repo}/target/readme/musica/Aurora Vale/2021 - Northern Lights/02 - Magnetic North.flac" "{repo}/target/readme/musica/Aurora Vale/2021 - Northern Lights/03 - Polar Night.flac" "{repo}/target/readme/musica/Aurora Vale/2021 - Northern Lights/04 - Driftwood.flac"
+ventanas 1
+estado tracks=24 10
+estado playing=true
+estado page=albums
+esperar 3
+captura albums
+clic 73 107
+estado page=playing
+esperar 3
+captura now-playing
+tecla ctrl+m
+estado mini-on=true
+esperar 3
+captura mini-player

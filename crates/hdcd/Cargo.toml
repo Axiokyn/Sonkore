@@ -1,0 +1,12 @@
+[package]
+name = "sonkore-hdcd"
+description = "HDCD decoding (port of libhdcd) and CUE sheets"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lints]
+workspace = true
+
+[dev-dependencies]
+md-5 = "0.10"

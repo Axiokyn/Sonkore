@@ -1,0 +1,54 @@
+# Cada menú del mini con una fila bajo el puntero: el resaltado deja el
+# mismo espacio a los dos lados dentro del borde (el de carpetas, con una
+# elegida, está en menu-carpetas.txt). Las X son el fondo del menú justo
+# dentro de su borde.
+ajuste ui/compactPlaylist=true
+dclic 900 113
+estado playing=true
+tecla space
+clic 1028 797
+estado mini-on=true
+esperar 0.8
+# Opciones (…)
+clic 455 131
+esperar 0.6
+mover 300 340
+esperar 0.4
+captura opciones
+centrado opciones 340 242.67 467.33
+tecla escape
+esperar 0.4
+# Dónde actúa el volumen (clic derecho en el parlante)
+rclic 320 131
+esperar 0.6
+mover 200 58
+esperar 0.4
+captura volumen
+centrado volumen 58 106.67 331.33
+tecla escape
+esperar 0.4
+# Orden
+clic 456 178
+esperar 0.6
+mover 300 280
+esperar 0.4
+captura orden
+centrado orden 280 242.67 467.33
+tecla escape
+esperar 0.4
+# Columnas (clic derecho en el encabezado)
+rclic 250 205
+esperar 0.6
+mover 250 435
+esperar 0.4
+captura columnas
+centrado columnas 435 166.67 473.33
+tecla escape
+esperar 0.4
+# Una pista (clic derecho en la fila)
+rclic 200 236
+esperar 0.6
+mover 250 257
+esperar 0.4
+captura fila
+centrado fila 257 202.67 427.33

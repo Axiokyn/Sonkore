@@ -12,18 +12,18 @@ T = {
     "Hauteur et tempo (SoundTouch)",
     "Tonhöhe & Tempo (SoundTouch)",
     "Intonazione e tempo (SoundTouch)"),
-" · PipeWire converts it to %1 kHz": (
-    " · PipeWire lo convierte a %1 kHz",
-    " · o PipeWire converte para %1 kHz",
-    " · PipeWire le convertit en %1 kHz",
-    " · PipeWire wandelt es in %1 kHz um",
-    " · PipeWire lo converte a %1 kHz"),
-" · linear phase, %1 taps": (
-    " · fase lineal, %1 coeficientes",
-    " · fase linear, %1 coeficientes",
-    " · phase linéaire, %1 coefficients",
-    " · linearphasig, %1 Koeffizienten",
-    " · fase lineare, %1 coefficienti"),
+" · PipeWire converts it to {0} kHz": (
+    " · PipeWire lo convierte a {0} kHz",
+    " · o PipeWire converte para {0} kHz",
+    " · PipeWire le convertit en {0} kHz",
+    " · PipeWire wandelt es in {0} kHz um",
+    " · PipeWire lo converte a {0} kHz"),
+" · linear phase, {0} taps": (
+    " · fase lineal, {0} coeficientes",
+    " · fase linear, {0} coeficientes",
+    " · phase linéaire, {0} coefficients",
+    " · linearphasig, {0} Koeffizienten",
+    " · fase lineare, {0} coefficienti"),
 " · system volume below 100 %": (
     " · volumen del sistema por debajo del 100 %",
     " · volume do sistema abaixo de 100 %",

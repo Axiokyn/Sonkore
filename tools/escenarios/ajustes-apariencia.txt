@@ -1,0 +1,65 @@
+# Ajustes › Apariencia: cada opción se toca con el mouse, queda guardada y
+# la ventana principal la muestra (estado "look"). Ventana de Ajustes de
+# 2700 px de alto; la pestaña se desplaza 420 px (7 pasos de rueda de
+# 60 px) para que entre del tema Islands hasta la densidad.
+pantalla 2546 4200
+ajuste widgets/windows/settings=@Size(920 2700)
+ajuste appearance/language=es
+ventanas 1
+estado look~icons=solid transport=sonkore slider=line volume=line buttons=windows radius=8 outline=highlight backdrop=plain visualizer=bars
+clic 1074 795
+ventanas 2
+foco last
+esperar 0.8
+clic 365 67
+esperar 0.8
+rueda 460 1300 60
+rueda 460 1300 60
+rueda 460 1300 60
+rueda 460 1300 60
+rueda 460 1300 60
+rueda 460 1300 60
+rueda 460 1300 60
+esperar 0.5
+# Tema Abyss y un acento propio.
+clic 565 1207
+guardado appearance/skinIndex~^[1-9]
+clic 593 1313
+guardado appearance/accentOverride~^#
+estado look~accent=#
+# Íconos, botones de reproducción, barras de progreso y de volumen.
+clic 220 1407
+guardado appearance/iconStyle=line
+estado look~icons=line
+clic 220 1527
+guardado appearance/transportStyle=round
+estado look~transport=round
+clic 220 1647
+guardado appearance/sliderStyle=pill
+estado look~slider=pill
+clic 220 1860
+guardado appearance/volumeStyle=pill
+estado look~volume=pill
+# Ventana: botones, esquinas, contorno.
+clic 220 2013
+guardado appearance/windowButtons=mac
+estado look~buttons=mac
+clic 460 2133
+guardado appearance/windowRadius=12
+estado look~radius=12
+clic 220 2260
+guardado appearance/windowOutline=line
+estado look~outline=line
+# Fondo y visualizador.
+clic 220 2411
+guardado appearance/backdrop=aurora
+estado look~backdrop=aurora
+clic 340 2533
+guardado ui/visualizer=mirror
+estado look~visualizer=mirror
+# Densidad: espaciosa.
+clic 100 2673
+guardado appearance/density=spacious
+foco main
+esperar 0.5
+captura principal

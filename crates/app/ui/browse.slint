@@ -1,0 +1,160 @@
+// Artists or genres: the
+// names on the left (each over "3 albums · 41 tracks"), a line, then the
+// one picked: its name, its count, play and shuffle, and its tracks.
+
+import { Theme } from "theme.slint";
+import { Icons } from "icons.slint";
+import { PillButton, OverlayScrollBar } from "controls.slint";
+import { App } from "data.slint";
+import { Pages, BrowseEntry } from "pagedata.slint";
+import { Divider } from "pagekit.slint";
+import { TrackTable } from "tracks.slint";
+import { ListView } from "std-widgets.slint";
+
+// A row of the list: a rounded highlight on the picked one
+// (the hover colour under the pointer), the name over its detail.
+component EntryRow inherits Rectangle {
+    in property <BrowseEntry> entry;
+    in property <int> index;
+    in property <bool> scrollable;
+    property <bool> current: root.entry.key == Pages.selected;
+    property <bool> detail: !Theme.compact;
+    height: (Theme.compact ? 26px : 50px) + 3px;
+    // As wide as the list less 6 px (12 while it scrolls), 3 px between rows.
+    ground := Rectangle {
+        x: 0;
+        y: 0;
+        width: parent.width - (root.scrollable ? 12px : 6px);
+        height: parent.height - 3px;
+        border-radius: Theme.radius-small;
+        background: root.current ? Theme.accent-soft : area.has-hover ? Theme.hover : transparent;
+    }
+    // Centred as a pair, a pixel low (the centre rounds down).
+    property <length> name-h: 16px;
+    property <length> detail-h: 14px; // the line height at 11 px: 11 + 3
+    property <length> total: root.name-h + (root.detail ? 2px + root.detail-h : 0px);
+    property <length> top: floor((ground.height - 1px) / 2 / 1px) * 1px - floor(root.total / 2 / 1px) * 1px + 1px;
+    Text {
+        x: 8px;
+        y: root.top;
+        width: ground.width - 16px;
+        height: root.name-h;
+        text: root.entry.name;
+        font-size: 13px;
+        font-weight: root.current || root.index == 0 ? 600 : 400;
+        color: !root.current && root.entry.unknown ? Theme.text-dim : Theme.text;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+    if root.detail: Text {
+        x: 8px;
+        y: root.top + root.name-h + 2px;
+        width: ground.width - 16px;
+        height: root.detail-h;
+        text: root.entry.detail;
+        font-size: 11px;
+        color: Theme.text-faint;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+    area := TouchArea {
+        width: ground.width;
+        height: ground.height;
+        x: 0;
+        y: 0;
+        clicked => { Pages.browse-select(root.entry.key); }
+        double-clicked => { Pages.browse-activate(root.entry.key); }
+    }
+}
+
+export component BrowsePage inherits Rectangle {
+    // 8 px in, 18 px under the page's 6 px heading.
+    property <length> left: 8px;
+    property <length> top: 24px;
+    property <length> list-width: clamp(floor(root.width * 0.26 / 1px) * 1px, 200px, 300px);
+    property <length> row-height: (Theme.compact ? 26px : 50px) + 3px;
+    property <bool> scrollable: Pages.entries.length * root.row-height > root.height - root.top;
+    entries := ListView {
+        x: root.left;
+        y: root.top;
+        width: root.list-width;
+        height: root.height - root.top;
+        // The overlay bar instead (below).
+        vertical-scrollbar-policy: always-off;
+        horizontal-scrollbar-policy: always-off;
+        for e[i] in Pages.entries: EntryRow {
+            entry: e;
+            index: i;
+            scrollable: root.scrollable;
+        }
+    }
+    property <length> range: max(0px, entries.content-height - entries.visible-height);
+    if root.range > 0: OverlayScrollBar {
+        x: entries.x + entries.width - 10px;
+        y: entries.y;
+        width: 10px;
+        height: entries.height;
+        position: -entries.content-y;
+        page: entries.visible-height;
+        range: root.range;
+        scroll-to(y) => { entries.content-y = -clamp(y, 0px, root.range); }
+    }
+    Divider {
+        x: root.left + root.list-width + 6px;
+        y: root.top;
+        width: 1px;
+        height: root.height - root.top;
+    }
+    property <length> right: root.left + root.list-width + 6px + 1px;
+    // The picked one: its name and count, play and shuffle.
+    names := VerticalLayout {
+        x: root.right + 16px;
+        y: root.top;
+        width: max(0px, pills.x - 8px - self.x);
+        spacing: 0;
+        Text {
+            text: Pages.browse-name;
+            font-size: 17px;
+            font-weight: 600;
+            color: Theme.text;
+            height: 20px; // the line height at 17 px with full hinting: 16 + 4
+            vertical-alignment: center;
+        }
+        Text {
+            text: Pages.browse-count;
+            font-size: 12px;
+            color: Theme.text-dim;
+            height: 15px; // 12 + 3
+            vertical-alignment: center;
+        }
+    }
+    pills := HorizontalLayout {
+        x: root.width - 12px - self.preferred-width;
+        y: root.top + 1px;
+        spacing: 8px;
+        PillButton {
+            has-icon: true;
+            icon: Icons.play;
+            text: @tr("BrowsePage" => "Play");
+            primary: true;
+            enabled: Pages.browse-playable;
+            clicked => { Pages.browse-play(); }
+        }
+        PillButton {
+            has-icon: true;
+            icon: Icons.shuffle;
+            text: @tr("BrowsePage" => "Shuffle");
+            enabled: Pages.browse-playable;
+            clicked => { Pages.browse-shuffle(); }
+        }
+    }
+    property <length> head: 35px;   // the names (21 + 14) and the pills (1 + 34)
+    TrackTable {
+        x: root.right + 12px;
+        y: root.top + root.head + 8px;
+        width: root.width - self.x;
+        height: root.height - self.y;
+        joined: false;
+        sortable: true;
+    }
+}

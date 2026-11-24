@@ -1,0 +1,57 @@
+# Ajustes › Apariencia, el final de la pestaña (densidad de las listas,
+# carátulas, filas alternas): cada opción se toca con el mouse, queda guardada
+# y la ventana principal la aplica. Ventana de Ajustes de 2700 px de alto,
+# desplazada hasta el fondo (20 pasos de rueda: el desplazamiento se detiene
+# al final). Botones de cada fila en x = 100, 220, 340, 460.
+pantalla 2546 4200
+ajuste widgets/windows/settings=@Size(920 2700)
+ajuste appearance/language=es
+ventanas 1
+estado look~alternate=false
+estado covers!=0
+clic 1074 795
+ventanas 2
+foco last
+esperar 0.8
+clic 365 67
+esperar 0.8
+rueda 460 1300 60
+rueda 460 1300 60
+rueda 460 1300 60
+rueda 460 1300 60
+rueda 460 1300 60
+rueda 460 1300 60
+rueda 460 1300 60
+rueda 460 1300 60
+rueda 460 1300 60
+rueda 460 1300 60
+rueda 460 1300 60
+rueda 460 1300 60
+rueda 460 1300 60
+rueda 460 1300 60
+rueda 460 1300 60
+rueda 460 1300 60
+rueda 460 1300 60
+rueda 460 1300 60
+rueda 460 1300 60
+rueda 460 1300 60
+esperar 0.5
+# Carátulas en las listas de pistas: sin carátulas, y de vuelta.
+clic 100 2500
+guardado appearance/listCovers=false
+estado covers=0
+clic 220 2500
+guardado appearance/listCovers=true
+estado covers!=0
+# Densidad de las listas: Compacta, después Lista (sin carátulas).
+clic 340 2380
+guardado appearance/listDensity=compact
+estado density=compact
+clic 460 2380
+guardado appearance/listDensity=list
+estado density=list
+estado covers=0
+# Filas de color alterno.
+clic 220 2620
+guardado appearance/alternateRows=true
+estado look~alternate=true

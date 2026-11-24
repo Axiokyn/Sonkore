@@ -1,0 +1,70 @@
+# Las carátulas de la lista salen con la densidad: Compacta (filas de 30 px)
+# no tiene carátulas (filas >= 40). Error del 2026-11-22: al
+# cambiar la densidad en Ajustes la columna de carátulas quedaba y se enciman.
+estado covers=52
+esperar 1
+clic 1074 795             # Ajustes
+ventanas 2 5
+esperar 1
+foco last
+clic 363 67              # pestaña Apariencia
+esperar 0.6
+rueda 460 500 60
+rueda 460 500 60
+rueda 460 500 60
+rueda 460 500 60
+rueda 460 500 60
+rueda 460 500 60
+rueda 460 500 60
+rueda 460 500 60
+rueda 460 500 60
+rueda 460 500 60
+rueda 460 500 60
+rueda 460 500 60
+rueda 460 500 60
+rueda 460 500 60
+rueda 460 500 60
+rueda 460 500 60
+rueda 460 500 60
+rueda 460 500 60
+rueda 460 500 60
+rueda 460 500 60
+rueda 460 500 60
+rueda 460 500 60
+rueda 460 500 60
+rueda 460 500 60
+rueda 460 500 60
+rueda 460 500 60
+rueda 460 500 60
+rueda 460 500 60
+rueda 460 500 60
+rueda 460 500 60
+rueda 460 500 60
+rueda 460 500 60
+rueda 460 500 60
+rueda 460 500 60
+rueda 460 500 60
+rueda 460 500 60
+rueda 460 500 60
+rueda 460 500 60
+rueda 460 500 60
+rueda 460 500 60
+rueda 460 500 60
+rueda 460 500 60
+rueda 460 500 60
+rueda 460 500 60
+rueda 460 500 60
+rueda 460 500 60
+rueda 460 500 60
+rueda 460 500 60
+esperar 0.6
+clic 339 433             # Densidad de las listas: Compacta
+estado density=compact
+estado covers=0
+foco main
+esperar 0.5
+captura lista-compacta
+foco last
+clic 76 433              # Espaciosa
+estado density=spacious
+estado covers=62

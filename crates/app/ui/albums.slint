@@ -1,0 +1,233 @@
+// The album grid and one album: as many columns as 196 px fit (150 compact),
+// the cells sharing the width; under the pointer a cover grows a little and
+// a round play button shows on it. A click opens the album: back, the cover
+// beside its name, artist, details and buttons, then its tracks.
+
+import { Theme } from "theme.slint";
+import { Icons } from "icons.slint";
+import { IconButton, PillButton, SectionLabel, OverlayScrollBar } from "controls.slint";
+import { App } from "data.slint";
+import { Pages, AlbumTile, Menus } from "pagedata.slint";
+import { CoverBox } from "pagekit.slint";
+import { TrackTable } from "tracks.slint";
+import { ListView } from "std-widgets.slint";
+
+// One tile: the cover 10 px in, the name 8 px under it,
+// "artist · year" 8 px under that.
+component Tile inherits Rectangle {
+    in property <AlbumTile> tile;
+    in property <length> cell;
+    property <length> side: root.cell - 20px;
+    property <bool> hovered: area.has-hover;
+    property <length> grow: root.hovered ? root.side * 0.01 : 0px;
+    width: root.cell;
+    height: root.cell + 58px;
+    area := TouchArea {
+        mouse-cursor: pointer;
+        clicked => {
+            // The play button plays the album, the rest of the tile opens it.
+            if (self.mouse-x >= root.side - 44px && self.mouse-x < root.side
+                    && self.mouse-y >= root.side - 44px && self.mouse-y < root.side) {
+                Pages.play-album(root.tile.key);
+            } else {
+                Pages.open-album(root.tile.key);
+            }
+        }
+    }
+    CoverBox {
+        x: 10px - root.grow;
+        y: 10px - root.grow;
+        width: root.side + 2 * root.grow;
+        height: root.side + 2 * root.grow;
+        radius: Theme.radius;
+        icon-size: max(14px, round(root.side / 1px * 0.32) * 1px);
+        source: root.tile.cover;
+        has-cover: root.tile.has-cover;
+    }
+    if root.hovered: Rectangle {
+        x: root.side - 44px;
+        y: root.side - 44px;
+        width: 44px;
+        height: 44px;
+        border-radius: 22px;
+        background: Theme.accent;
+        Image {
+            x: 13px;
+            y: 13px;
+            width: 18px;
+            height: 18px;
+            source: Icons.play;
+            colorize: Theme.on-accent;
+        }
+    }
+    title := Text {
+        x: 10px;
+        y: 10px + root.side + 8px;
+        width: root.side;
+        height: 17px;
+        text: root.tile.title;
+        font-size: 14px;
+        font-weight: 600;
+        color: Theme.text;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+    Text {
+        x: 10px;
+        y: title.y + title.height + 8px;
+        width: root.side;
+        height: 14px;
+        text: root.tile.subtitle;
+        font-size: 12px;
+        color: Theme.text-dim;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+}
+
+// The grid, 18 px in, out to the panel's edge (its scroll bar there).
+component AlbumGrid inherits Rectangle {
+    property <int> columns: max(2, floor(root.width / (Theme.compact ? 150px : 196px)));
+    property <length> cell: max(60px, floor((root.width - 8px) / root.columns / 1px) * 1px);
+    property <int> row-count: ceil(Pages.albums.length / root.columns);
+    grid := ListView {
+        // The overlay bar instead (below).
+        vertical-scrollbar-policy: always-off;
+        horizontal-scrollbar-policy: always-off;
+        for r in root.row-count: Rectangle {
+            height: root.cell + 58px;
+            for c in root.columns: Rectangle {
+                property <int> index: r * root.columns + c;
+                x: c * root.cell;
+                width: root.cell;
+                if index < Pages.albums.length: Tile {
+                    x: 0;
+                    y: 0;
+                    cell: root.cell;
+                    tile: Pages.albums[index];
+                }
+            }
+        }
+    }
+    property <length> range: max(0px, grid.content-height - grid.visible-height);
+    if root.range > 0: OverlayScrollBar {
+        x: root.width - 10px;
+        width: 10px;
+        height: grid.height;
+        position: -grid.content-y;
+        page: grid.visible-height;
+        range: root.range;
+        scroll-to(y) => { grid.content-y = -clamp(y, 0px, root.range); }
+    }
+}
+
+// One album: back, the cover and what it is, its tracks.
+component AlbumView inherits Rectangle {
+    property <length> cover-side: Theme.compact ? 140px : 210px;
+    IconButton {
+        x: 20px;
+        y: 4px;
+        icon: Icons.back;
+        icon-size: 18px;
+        tooltip: @tr("AlbumsPage" => "Back to albums");
+        clicked => { Pages.close-album(); }
+    }
+    property <length> top: 4px + 34px + 18px;
+    CoverBox {
+        x: 28px;
+        y: root.top;
+        width: root.cover-side;
+        height: root.cover-side;
+        radius: Theme.radius;
+        source: Pages.album-cover;
+        has-cover: Pages.album-has-cover;
+    }
+    // Name, artist, details, buttons: centred on the cover.
+    info := VerticalLayout {
+        x: 28px + root.cover-side + 26px;
+        y: root.top + max(0px, (root.cover-side - self.preferred-height) / 2);
+        width: max(0px, root.width - self.x - 28px);
+        height: self.preferred-height;
+        spacing: 6px;
+        SectionLabel {
+            text: @tr("AlbumsPage" => "Album").to-uppercase();
+            height: 12px;
+            vertical-alignment: center;
+        }
+        Text {
+            text: Pages.album-title;
+            font-size: Theme.compact ? 24px : 36px;
+            font-weight: 700;
+            color: Theme.text;
+            wrap: word-wrap;
+        }
+        Text {
+            text: Pages.album-artist;
+            font-size: 16px;
+            font-weight: 600;
+            color: Theme.text;
+            height: 19px;
+            vertical-alignment: center;
+        }
+        Text {
+            text: Pages.album-info;
+            font-size: 13px;
+            color: Theme.text-dim;
+            height: 16px;
+            vertical-alignment: center;
+        }
+        Rectangle { height: 12px; }
+        HorizontalLayout {
+            spacing: 8px;
+            alignment: start;
+            PillButton {
+                has-icon: true;
+                icon: Icons.play;
+                text: @tr("AlbumsPage" => "Play");
+                primary: true;
+                clicked => { Pages.album-play(); }
+            }
+            PillButton {
+                has-icon: true;
+                icon: Icons.shuffle;
+                text: @tr("AlbumsPage" => "Shuffle");
+                clicked => { Pages.album-shuffle(); }
+            }
+            more := IconButton {
+                icon: Icons.more;
+                icon-size: 18px;
+                clicked => {
+                    Menus.anchor-x = self.absolute-position.x;
+                    Menus.anchor-y = self.absolute-position.y;
+                    Menus.anchor-width = self.width;
+                    Menus.anchor-height = self.height;
+                    Pages.album-more();
+                }
+            }
+        }
+    }
+    property <length> table-top: root.top + max(root.cover-side, info.preferred-height) + 18px;
+    TrackTable {
+        x: 8px;
+        y: root.table-top;
+        width: root.width - 8px;
+        height: root.height - root.table-top;
+        joined: false;
+        sortable: true;
+    }
+}
+
+export component AlbumsPage inherits Rectangle {
+    if !Pages.album-open: AlbumGrid {
+        x: 18px;
+        y: 6px;
+        width: root.width - 18px;
+        height: root.height - 6px;
+    }
+    if Pages.album-open: AlbumView {
+        x: 0;
+        y: 6px;
+        width: root.width;
+        height: root.height - 6px;
+    }
+}

@@ -1,0 +1,133 @@
+// Questions asked in the window: the window dimmed, a card in the middle;
+// a click outside or Escape cancels.
+
+import { Theme } from "theme.slint";
+import { PillButton } from "controls.slint";
+import { Dialogs } from "pagedata.slint";
+
+// The name's field: a rounded box in the raised surface, the accent's
+// outline while it has the focus; 36 px tall, the text 6 px in.
+component NameField inherits Rectangle {
+    in property <string> placeholder;
+    in-out property <string> text <=> input.text;
+    callback accepted();
+    callback cancelled();
+    height: 36px;
+    border-radius: Theme.radius-small;
+    background: Theme.surface-hi;
+    border-width: 1px;
+    border-color: input.has-focus ? Theme.accent : Theme.border;
+    input := TextInput {
+        x: 6px;
+        width: parent.width - 12px;
+        height: parent.height;
+        vertical-alignment: center;
+        font-size: 13px;
+        color: Theme.text;
+        single-line: true;
+        selection-background-color: Theme.accent;
+        selection-foreground-color: Theme.on-accent;
+        accepted => { root.accepted(); }
+        key-pressed(e) => {
+            if (e.text == Key.Escape) {
+                root.cancelled();
+                return accept;
+            }
+            reject
+        }
+        init => {
+            self.focus();
+            self.select-all();
+        }
+    }
+    if input.text == "": Text {
+        x: 6px;
+        height: parent.height;
+        text: root.placeholder;
+        font-size: 13px;
+        color: Theme.text-faint;
+        vertical-alignment: center;
+    }
+}
+
+export component DialogLayer inherits Rectangle {
+    if Dialogs.kind != "": Rectangle {
+        background: #00000073;
+        TouchArea {
+            pointer-event(e) => {
+                if (e.kind == PointerEventKind.down) { Dialogs.cancelled(); }
+            }
+        }
+        FocusScope {
+            init => {
+                if (Dialogs.kind == "confirm") { self.focus(); }
+            }
+            key-pressed(e) => {
+                if (e.text == Key.Escape) {
+                    Dialogs.cancelled();
+                    return accept;
+                }
+                reject
+            }
+        }
+        // The card: 380 px for a name, up to 420 for a question.
+        card := Rectangle {
+            property <length> w: Dialogs.kind == "name" ? 380px : min(420px, parent.width - 24px);
+            x: floor((parent.width - self.w) / 2 / 1px) * 1px;
+            y: floor((parent.height - self.height) / 2 / 1px) * 1px;
+            width: self.w;
+            height: body.preferred-height;
+            border-radius: Theme.radius + 2px;
+            background: Theme.surface;
+            border-width: 1px;
+            border-color: Theme.border;
+            TouchArea { }
+            body := VerticalLayout {
+                padding: 20px;
+                spacing: 14px;
+                Text {
+                    text: Dialogs.title;
+                    font-size: 15px;
+                    font-weight: 600;
+                    color: Theme.text;
+                    wrap: Dialogs.kind == "confirm" ? word-wrap : no-wrap;
+                    overflow: elide;
+                }
+                if Dialogs.kind == "confirm": Text {
+                    text: Dialogs.text;
+                    font-size: 13px;
+                    color: Theme.text-dim;
+                    wrap: word-wrap;
+                }
+                if Dialogs.kind == "name": field := NameField {
+                    placeholder: Dialogs.placeholder;
+                    text <=> Dialogs.value;
+                    accepted => {
+                        if (Dialogs.valid(Dialogs.value)) { Dialogs.accepted(Dialogs.value); }
+                    }
+                    cancelled => { Dialogs.cancelled(); }
+                }
+                if Dialogs.kind == "name" && Dialogs.note != "": Text {
+                    text: Dialogs.note;
+                    font-size: 12px;
+                    color: Theme.text-dim;
+                    wrap: word-wrap;
+                }
+                HorizontalLayout {
+                    spacing: 8px;
+                    alignment: end;
+                    PillButton {
+                        text: Dialogs.kind == "name" ? @tr("NameDialog" => "Cancel") : @tr("ConfirmDialog" => "Cancel");
+                        clicked => { Dialogs.cancelled(); }
+                    }
+                    PillButton {
+                        text: Dialogs.accept-text;
+                        primary: true;
+                        enabled: Dialogs.kind != "name" || Dialogs.valid(Dialogs.value);
+                        clicked => { Dialogs.accepted(Dialogs.value); }
+                    }
+                }
+            }
+        }
+    }
+}

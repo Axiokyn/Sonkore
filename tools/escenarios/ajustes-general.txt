@@ -1,0 +1,62 @@
+# Ajustes › General: cada opción se toca con el mouse y tiene que quedar
+# guardada en sonkore.conf y verse en la app. Los combos no guardaban nada
+# (la lista se cerraba antes de avisar la opción) y la fuente nunca se
+# aplicaba. Ventana de Ajustes: 920x760; coordenadas de esa ventana.
+ajuste appearance/language=es
+ajuste ui/stopButton=false
+ajuste ui/wheelStep=180
+ventanas 1
+estado stop-button=false
+estado search-bar=true
+clic 1074 795
+ventanas 2
+foco last
+esperar 0.8
+# Retomar la última sesión, búsqueda en vivo, botón de detener, barra de búsqueda.
+clic 851 296
+guardado playback/resume=false
+clic 851 336
+guardado ui/liveSeek=false
+clic 851 376
+guardado ui/stopButton=true
+estado stop-button=true
+clic 851 416
+guardado ui/searchBar=false
+estado search-bar=false
+# Página de inicio (la lista abre hacia arriba): Álbumes.
+clic 796 456
+esperar 0.4
+clic 796 285
+guardado ui/startPage=albums
+# Velocidad de la rueda: Muy rápida, después Normal.
+clic 828 494
+guardado ui/wheelStep=300
+estado wheel-step=300
+clic 669 494
+guardado ui/wheelStep=100
+estado wheel-step=100
+# Escala: 125 % pide reiniciar.
+clic 807 256
+esperar 0.4
+clic 807 459
+guardado appearance/uiScale=1.25
+# (Desde acá el aviso de reiniciar corre todo 70 px hacia abajo.)
+# Fuente: Manrope en todas las ventanas, al momento.
+clic 767 286
+esperar 0.4
+clic 767 393
+guardado appearance/font=manrope
+estado font=Manrope
+captura manrope
+# Idioma: inglés, después de reiniciar (Reiniciar ahora, en el aviso de arriba).
+clic 767 246
+esperar 0.4
+clic 767 321
+guardado appearance/language=en
+esperar 0.4
+clic 807 137
+se-reinicia
+estado lang=en
+estado font=Manrope
+estado stop-button=true
+estado page=albums

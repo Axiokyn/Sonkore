@@ -1,0 +1,17 @@
+# En el mini, un clic fuera del buscador le quita el teclado (error del
+# 2026-11-22: seguía con el foco).
+ajuste ui/compactPlaylist=true
+esperar 1
+dclic 900 113
+estado playing=true
+clic 1028 797            # el mini
+esperar 1.5
+tecla ctrl+f
+esperar 0.4
+tecla a
+estado mini-search=a
+clic 300 140             # la barra de herramientas, entre botones
+tecla b                  # ya no escribe en el campo
+esperar 0.3
+estado mini-search=a
+captura sin-foco

@@ -1,0 +1,34 @@
+# Ajustes › Biblioteca: cada opción se toca con el mouse y tiene que quedar
+# guardada y aplicarse. Ventana de Ajustes de 2700 px de alto (pantalla
+# alta): toda la pestaña sin desplazar. (Las carátulas de internet no se
+# prueban: saldrían a internet.)
+pantalla 2546 4200
+ajuste widgets/windows/settings=@Size(920 2700)
+ajuste appearance/language=es
+ajuste library/watchFolders=false
+ajuste library/rescanOnStartup=false
+ventanas 1
+estado tracks=12
+clic 1074 795
+ventanas 2
+foco last
+esperar 0.8
+clic 785 67
+esperar 0.8
+# Omitir archivos cortos: menos de 5 s (las pistas de prueba duran 3 a 5 s).
+clic 807 491
+esperar 0.4
+clic 807 566
+guardado library/minDuration=5
+estado tracks<12
+# Vigilar cambios, escanear al iniciar.
+clic 851 531
+guardado library/watchFolders=true
+clic 851 571
+guardado library/rescanOnStartup=true
+# Columnas: Título se agrega; Restablecer columnas lo saca.
+clic 59 736
+guardado columns/keys~title
+estado columns~title
+clic 139 1095
+guardado columns/keys!~title

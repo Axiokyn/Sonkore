@@ -1,0 +1,33 @@
+# La barra lateral, la búsqueda y las carpetas responden rápido y llevan a
+# la página correcta. Ventana 1320x840 lógica. Coordenadas sacadas de una «captura» de ui-live (no de ui-tour: con salida PipeWire aparece la etiqueta «Sistema» y la barra inferior se corre).
+estado page=tracks
+latencia albumes 100
+clic 73 221
+estado page=albums
+latencia artistas 100
+clic 73 260
+estado page=artists
+latencia generos 100
+clic 73 298
+estado page=genres
+latencia favoritos 100
+clic 73 183
+estado page=favorites
+latencia sonando-ahora 100
+clic 73 107
+estado page=playing
+clic 105 419             # carpeta «Calle Ruido»
+estado page=folders
+estado argument~Calle Ruido$
+clic 73 145
+estado page=tracks
+clic 785 23              # el buscador
+latencia tecla-busqueda 100
+tecla n
+tecla o
+tecla c
+tecla h
+tecla e
+estado search=noche
+captura busqueda
+tecla escape
