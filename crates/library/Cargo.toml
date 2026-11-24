@@ -18,6 +18,8 @@ notify = { version = "8", default-features = false }
 # Loudness: EBU R128 (the pure-Rust port of libebur128) over symphonia's decoding.
 ebur128 = "0.1"
 symphonia = { version = "0.5.5", default-features = false, features = ["all-codecs", "all-formats", "opt-simd"] }
+# The formats symphonia does not decode (Opus, APE, WavPack…): FFmpeg, loaded at run time.
+sonkore-ffmpeg = { path = "../ffmpeg" }
 # Covers: decoding, scaling, rounded corners.
 image = { version = "0.25", default-features = false, features = ["jpeg", "png", "gif", "bmp", "webp"] }
 # Online covers (MusicBrainz + Cover Art Archive), blocking, on worker threads.

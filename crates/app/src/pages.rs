@@ -627,9 +627,7 @@ impl Controller {
             }
             "favorites" => {
                 let paths: Vec<String> = rows.iter().filter_map(|&r| self.list.path_at(r)).collect();
-                for p in &paths {
-                    self.library.borrow_mut().toggle_favorite(p);
-                }
+                self.library.borrow_mut().set_favorites(&paths, false);
                 self.fill_list();
                 self.refresh_sidebar();
             }
@@ -874,7 +872,7 @@ impl Controller {
     }
 
     /// The tracks added at the end of the playlist.
-    fn add_to_playlist(&self, name: &str, paths: Vec<String>) {
+    pub(super) fn add_to_playlist(&self, name: &str, paths: Vec<String>) {
         if paths.is_empty() {
             self.show_message(&tr("PlaylistPage", "No audio files in that folder"));
             return;
@@ -1285,6 +1283,7 @@ impl Controller {
             menu.push(Entry::check(tr("SettingsPage", text), mode == m, move |c| {
                 c.settings.borrow_mut().set_int("playback/volumeMode", m);
                 c.update_volume();
+                crate::settings_ui::refresh_audio();
             }));
         }
         let (x, y, w, _) = self.anchor();

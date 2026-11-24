@@ -86,10 +86,12 @@ pub(super) fn read(src: &mut Src, start: u64) -> Option<Demuxed> {
     if let Some(v) = valid_frames.filter(|&v| v > 0) {
         d.duration_ts = Some(v);
     } else if let (Some(size), true) = (data_size, bytes_per_packet > 0 && frames_per_packet > 0) {
-        d.duration_ts = Some((size / bytes_per_packet * frames_per_packet) as i64);
+        d.duration_ts = Some((size / bytes_per_packet).saturating_mul(frames_per_packet).min(i64::MAX as u64) as i64);
     }
     if bytes_per_packet > 0 && frames_per_packet > 0 {
-        d.stream_bit_rate = d.sample_rate as i64 * bytes_per_packet as i64 * 8 / frames_per_packet as i64;
+        // u128: the three fields come from the file and may be huge.
+        let bits = d.sample_rate as u128 * bytes_per_packet as u128 * 8 / frames_per_packet as u128;
+        d.stream_bit_rate = bits.min(i64::MAX as u128) as i64;
     }
     d.format_tags = meta;
     Some(d)

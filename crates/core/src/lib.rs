@@ -3,5 +3,6 @@
 //! Sonkore versions wrote, so all of them share one library, one set of
 //! playlists and one setup.
 
+pub mod panic_guard;
 pub mod paths;
 pub mod settings;

@@ -1,0 +1,47 @@
+# PCM a DSD en la DX1 de tests/asound (ALSA nulo: tests/pipewire/alsa-null.conf),
+# con el mouse en Ajustes › Audio › DSD mientras suena 04-tono-96k.flac (1 kHz
+# a -12 dBFS): el modulador lleva el fondo de escala PCM al 45 % (-6,9 dB),
+# así que el tono sale a -18,9 dB en DSD. Nativo a DSD64, DoP a DSD128 y
+# apagado (vuelve a PCM a 96 kHz). `sonido` mide el tono desde la densidad de
+# unos de cada palabra (dsd_measures en tools/ui-live.py).
+pantalla 2546 4200
+ajuste widgets/windows/settings=@Size(920 2700)
+ajuste appearance/language=es
+preparar python3 {repo}/tools/tonos.py --biblioteca {rt}/p
+ajuste library/rescanOnStartup=true
+ajuste playback/repeat=2
+ajuste playback/device="alsa|hw:CARD=DX1,DEV=0"
+argumentos {repo}/target/ui-live/tonos/04-tono-96k.flac
+estado playing=true 5
+sonido dsd=no tasa=96000 frec-i=1000±1 nivel-i=-12±0.3
+tecla ctrl+comma
+ventanas 2
+foco last
+esperar 0.8
+clic 578 67
+esperar 0.8
+# PCM a DSD › DSD64 (la salida DSD es Nativo).
+clic 796 1281
+esperar 0.4
+clic 796 1356
+guardado playback/pcmToDsd=1
+sonido dsd=NativeU32Be tasa=88200 frec-i=1000±2 frec-d=1000±2 nivel-i=-18.9±0.3 nivel-d=-18.9±0.3
+estado playing=true
+# Reproducción DSD › DoP; después PCM a DSD › DSD128.
+clic 807 1241
+esperar 0.4
+clic 807 1348
+guardado playback/dsdOutput=2
+sonido dsd=Dop dop=1 tasa=176400 frec-i=1000±2 nivel-i=-18.9±0.3
+clic 796 1281
+esperar 0.4
+clic 796 1388
+guardado playback/pcmToDsd=2
+sonido dsd=Dop dop=1 tasa=352800 frec-i=1000±2 nivel-i=-18.9±0.3
+# Desactivado: PCM otra vez, a la frecuencia de la pista.
+clic 796 1281
+esperar 0.4
+clic 796 1324
+guardado playback/pcmToDsd=0
+sonido dsd=no tasa=96000 frec-i=1000±1 nivel-i=-12±0.3
+estado playing=true

@@ -3,6 +3,9 @@
 //! s32 (16-bit << 16, 24-bit << 8), so a lossless file reaches the device
 //! untouched; float and lossy sources as f64, never clipped. Seeks land on
 //! the exact sample. MP3 / AAC encoder delay and padding are trimmed (gapless).
+//! Symphonia decodes most formats; the ones it does not (Opus, APE, WavPack,
+//! TTA, TAK, Musepack, WMA, Wave64, AC-3, DTS) go to FFmpeg when it is
+//! installed (`sonkore_ffmpeg`, loaded at run time), with the same rules.
 
 use std::fs::File;
 use std::path::Path;
@@ -57,6 +60,8 @@ pub struct StreamInfo {
     pub total_frames: Option<u64>,
     /// The codec's short name ("FLAC", "MP3", "AAC"…).
     pub codec: String,
+    /// What decodes it ("Symphonia", "FFmpeg (libavcodec 62.28)", "DSD reader"…).
+    pub decoder: String,
 }
 
 impl StreamInfo {
@@ -242,18 +247,122 @@ impl symphonia::core::io::MediaSource for Prefetch {
 
 /// Opens a file with the decoder for its format; "<sheet>.cue#<n>" opens
 /// that track of the CD image the sheet describes.
+///
+/// A damaged file can make a decoder panic (symphonia does: indexes out of
+/// bounds, assertions, arithmetic overflow in debug builds): opening it, and
+/// every read and seek of the decoder returned, turn a panic into an error,
+/// as for a file that cannot be read. The track is skipped instead of the
+/// worker thread (and, with panics that unwind, only it) dying.
 pub fn open(path: &Path) -> Result<Box<dyn Decoder>> {
+    let inner = guarded(|| open_unguarded(path))?;
+    Ok(Box::new(Guarded { inner, broken: false }))
+}
+
+/// Runs `f` (reading a file's data), a panic becoming an error. Free when
+/// nothing panics.
+fn guarded<T>(f: impl FnOnce() -> Result<T>) -> Result<T> {
+    sonkore_core::panic_guard::catch(f).unwrap_or_else(|p| Err(damaged(p.as_ref())))
+}
+
+fn damaged(panic: &(dyn std::any::Any + Send)) -> DecodeError {
+    let why = sonkore_core::panic_guard::message(panic);
+    DecodeError(format!("damaged file (the decoder failed: {why})"))
+}
+
+/// A decoder whose panics are errors (see [`open`]). Once one panicked it
+/// is not called again: its state is whatever the panic left.
+struct Guarded {
+    inner: Box<dyn Decoder>,
+    broken: bool,
+}
+
+impl Guarded {
+    fn call<T>(&mut self, f: impl FnOnce(&mut dyn Decoder) -> Result<T>) -> Result<T> {
+        if self.broken {
+            return Err(DecodeError("damaged file".into()));
+        }
+        let inner = &mut *self.inner;
+        sonkore_core::panic_guard::catch(|| f(inner)).unwrap_or_else(|p| {
+            self.broken = true;
+            Err(damaged(p.as_ref()))
+        })
+    }
+}
+
+impl Decoder for Guarded {
+    fn info(&self) -> &StreamInfo {
+        self.inner.info()
+    }
+    fn read_i32(&mut self, out: &mut [i32]) -> Result<usize> {
+        self.call(|d| d.read_i32(out))
+    }
+    fn read_f64(&mut self, out: &mut [f64]) -> Result<usize> {
+        self.call(|d| d.read_f64(out))
+    }
+    fn seek(&mut self, frame: u64) -> Result<u64> {
+        self.call(|d| d.seek(frame))
+    }
+}
+
+fn open_unguarded(path: &Path) -> Result<Box<dyn Decoder>> {
     if let Some(track) = sonkore_hdcd::cue::open_track(path) {
         let track = track.map_err(DecodeError)?;
-        let image = SymphoniaDecoder::open(&track.file)?;
+        let image = open_file(&track.file)?;
         let rate = image.info().rate;
         let range = track.range(rate, image.info().total_frames);
-        return Ok(Box::new(RangeDecoder::new(Box::new(image), range)?));
+        return Ok(Box::new(RangeDecoder::new(image, range)?));
     }
     if path.extension().and_then(|e| e.to_str()).is_some_and(|_| sonkore_dsd::is_dsd_extension(path)) {
         return Ok(Box::new(DsdPcm::open(path)?));
     }
-    Ok(Box::new(SymphoniaDecoder::open(path)?))
+    open_file(path)
+}
+
+/// A PCM file (not a sheet, not DSD): symphonia's formats with symphonia,
+/// the others with FFmpeg. A file symphonia opens but cannot decode (Opus
+/// in an .ogg or a .webm) is given to FFmpeg too.
+fn open_file(path: &Path) -> Result<Box<dyn Decoder>> {
+    let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
+    if sonkore_ffmpeg::handles_extension(ext) {
+        return FfmpegDecoder::open(path).map(|d| Box::new(d) as Box<dyn Decoder>).map_err(|e| ffmpeg_error(path, e));
+    }
+    match SymphoniaDecoder::open(path) {
+        Ok(d) => Ok(Box::new(d)),
+        Err(e) if path.is_file() => match FfmpegDecoder::open(path) {
+            Ok(d) => Ok(Box::new(d)),
+            // Symphonia's reason, unless it has no decoder for the codec
+            // and FFmpeg, which would have, is missing.
+            Err(f @ sonkore_ffmpeg::Error::Missing(_)) if e.0.starts_with("unsupported") => Err(ffmpeg_error(path, f)),
+            Err(_) => Err(e),
+        },
+        Err(e) => Err(e),
+    }
+}
+
+/// What the interface says when a file needs FFmpeg and it is not
+/// installed ("{0}" is the file's name).
+pub const FFMPEG_MISSING: &str = "Playing {0} needs FFmpeg, which is not installed";
+
+/// The file's name in an FFMPEG_MISSING message, for its translation.
+pub fn ffmpeg_missing_file(message: &str) -> Option<&str> {
+    let (before, after) = FFMPEG_MISSING.split_once("{0}")?;
+    message.strip_prefix(before)?.strip_suffix(after)
+}
+
+fn ffmpeg_error(path: &Path, e: sonkore_ffmpeg::Error) -> DecodeError {
+    match e {
+        sonkore_ffmpeg::Error::Missing(_) => {
+            let name = path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
+            DecodeError(FFMPEG_MISSING.replace("{0}", &name))
+        }
+        sonkore_ffmpeg::Error::Failed(why) => DecodeError(format!("FFmpeg: {why}")),
+    }
+}
+
+/// The FFmpeg libraries in use ("libavformat 62.12 · libavcodec 62.28 ·
+/// libavutil 60.26"), loading them if needed; None when not installed.
+pub fn ffmpeg_versions() -> Option<String> {
+    sonkore_ffmpeg::versions()
 }
 
 /// DSD (DSF, DSDIFF, DST) converted to PCM: 352.8 or
@@ -280,6 +389,7 @@ impl DsdPcm {
             lossless: false,
             total_frames: Some(i.total_frames),
             codec: i.codec.clone(),
+            decoder: if i.codec.contains("DST") { "DST decoder" } else { "DSD reader" }.into(),
         };
         Ok(DsdPcm { inner, info })
     }
@@ -328,6 +438,7 @@ impl DsdRaw {
             lossless: true,
             total_frames: Some(i.total_frames),
             codec: i.codec.clone(),
+            decoder: if i.codec.contains("DST") { "DST decoder" } else { "DSD reader" }.into(),
         };
         Ok(DsdRaw { inner, info })
     }
@@ -478,6 +589,64 @@ pub fn supported_extension(ext: &str) -> bool {
     )
 }
 
+// --- FFmpeg ----------------------------------------------------------------------
+
+/// The formats symphonia does not decode, through FFmpeg (`sonkore_ffmpeg`):
+/// lossless integer codecs as left-justified s32 at their depth (bit-perfect),
+/// lossy ones as f64; read through the same file source as symphonia's
+/// (Play from memory applies).
+pub struct FfmpegDecoder {
+    inner: sonkore_ffmpeg::Stream,
+    info: StreamInfo,
+}
+
+impl FfmpegDecoder {
+    pub fn open(path: &Path) -> std::result::Result<Self, sonkore_ffmpeg::Error> {
+        // (Not installed: said before anything is read.)
+        let versions =
+            sonkore_ffmpeg::versions().ok_or_else(|| sonkore_ffmpeg::Error::Missing("not installed".into()))?;
+        let source: Box<dyn sonkore_ffmpeg::Source> =
+            match open_source(path).map_err(|e| sonkore_ffmpeg::Error::Failed(e.to_string()))? {
+                FileSource::Disk(f) => Box::new(f),
+                FileSource::Memory(m) => Box::new(m),
+            };
+        let name = path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
+        let inner = sonkore_ffmpeg::Stream::open(source, &name)?;
+        let i = inner.info();
+        let codec_version = versions.split(" · ").find(|v| v.starts_with("libavcodec")).unwrap_or("").to_owned();
+        let info = StreamInfo {
+            rate: i.rate,
+            channels: i.channels,
+            bits: i.bits,
+            float: i.float,
+            lossless: i.lossless,
+            total_frames: i.total_frames,
+            codec: i.codec.clone(),
+            decoder: format!("FFmpeg ({codec_version})"),
+        };
+        Ok(FfmpegDecoder { inner, info })
+    }
+}
+
+fn ffmpeg_failed(e: sonkore_ffmpeg::Error) -> DecodeError {
+    DecodeError(e.to_string())
+}
+
+impl Decoder for FfmpegDecoder {
+    fn info(&self) -> &StreamInfo {
+        &self.info
+    }
+    fn read_i32(&mut self, out: &mut [i32]) -> Result<usize> {
+        self.inner.read_i32(out).map_err(ffmpeg_failed)
+    }
+    fn read_f64(&mut self, out: &mut [f64]) -> Result<usize> {
+        self.inner.read_f64(out).map_err(ffmpeg_failed)
+    }
+    fn seek(&mut self, frame: u64) -> Result<u64> {
+        self.inner.seek(frame).map_err(ffmpeg_failed)
+    }
+}
+
 // --- symphonia -------------------------------------------------------------------
 
 enum Samples {
@@ -564,6 +733,7 @@ impl SymphoniaDecoder {
             lossless: !float && bits > 0,
             total_frames: params.n_frames,
             codec: if name.is_empty() { "audio".into() } else { name.into() },
+            decoder: "Symphonia".into(),
         };
         let mut this = SymphoniaDecoder {
             track_id: track.id,

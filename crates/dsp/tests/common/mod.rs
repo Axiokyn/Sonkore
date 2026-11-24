@@ -154,7 +154,9 @@ pub fn measure(
 ) -> Quality {
     let low_nyq = in_rate.min(out_rate) as f64 / 2.0;
     let ratio = out_rate as f64 / in_rate as f64;
-    let lead = 30000usize; // output frames skipped at each end
+    // Output frames skipped at each end (at least 1500 input frames: a
+    // minimum-phase filter rings that long after the tone starts).
+    let lead = 30000usize.max((1500.0 * ratio) as usize);
     let in_frames = ((M + 2 * lead) as f64 / ratio) as usize;
     let mut through = |hz: f64| {
         let y = convert(&sine(hz, in_rate as f64, in_frames, 1, 1.0));
@@ -220,7 +222,7 @@ pub fn measure(
 /// bin).
 pub fn gain_db(in_rate: u32, out_rate: u32, hz: f64, convert: &mut dyn FnMut(&[f64]) -> Vec<f64>) -> f64 {
     let ratio = out_rate as f64 / in_rate as f64;
-    let lead = 30000usize;
+    let lead = 30000usize.max((1500.0 * ratio) as usize);
     let hz = (hz * M as f64 / out_rate as f64).round() * out_rate as f64 / M as f64;
     let in_frames = ((M + 2 * lead) as f64 / ratio) as usize;
     let y = convert(&sine(hz, in_rate as f64, in_frames, 1, 1.0));

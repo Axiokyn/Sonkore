@@ -315,9 +315,8 @@ component GeneralTab inherits VerticalLayout {
                 current: SettingsData.start-page;
             }
         }
-        // "Filters on the Tracks page" (ui/trackBrowser) comes back with the
-        // Genre → Artist → Album panes (PLAN.md): without them it did nothing.
-        if false: Picker {
+        // The Tracks page's Genres → Artists → Albums panes (filters.slint).
+        Picker {
             title: @tr("SettingsPage" => "Filters on the Tracks page");
             kind: "browser";
             preview-w: 84px;

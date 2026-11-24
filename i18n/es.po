@@ -3598,3 +3598,39 @@ msgctxt "DspController"
 msgid "The audio output stopped"
 msgstr "La salida de audio se detuvo"
 
+msgctxt "Drops"
+msgid "Drop music files or folders"
+msgstr "Suelta archivos o carpetas de música"
+
+msgctxt "Drops"
+msgid "Nothing here Sonkore can play"
+msgstr "Aquí no hay nada que Sonkore pueda reproducir"
+
+msgctxt "Drops"
+msgid "Drop to add to the queue"
+msgstr "Suelta para agregar a la cola"
+
+msgctxt "Drops"
+msgid "Drop to add to “{0}”"
+msgstr "Suelta para agregar a «{0}»"
+
+msgctxt "Drops"
+msgid "Drop to play"
+msgstr "Suelta para reproducir"
+
+msgctxt "Drops"
+msgid "Drop to add to the library"
+msgstr "Suelta para agregar a la biblioteca"
+
+msgctxt "Drops"
+msgid "Drop to play the files and add the folders to the library"
+msgstr "Suelta para reproducir los archivos y agregar las carpetas a la biblioteca"
+
+msgctxt "Drops"
+msgid "Adding to the library: {0}"
+msgstr "Agregando a la biblioteca: {0}"
+
+msgctxt "DspController"
+msgid "Playing {0} needs FFmpeg, which is not installed"
+msgstr "Para reproducir {0} hace falta FFmpeg, que no está instalado"
+

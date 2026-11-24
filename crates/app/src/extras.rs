@@ -406,6 +406,7 @@ impl SettingsHooks for Hooks {
                 ctx.player.borrow_mut().engine_mut().set_analysis(on);
             }
             "ui/trayIcon" => e.update_tray(),
+            "ui/trackBrowser" => e.controller.track_filters_changed(),
             "system/mpris" => e.controller.set_mpris(settings.borrow().flag("system/mpris", true)),
             // On: the covers that were missing are asked for again (the cover
             // cache remembered "none" for them). It used to do nothing.

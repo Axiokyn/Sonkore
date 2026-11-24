@@ -1,0 +1,42 @@
+# Archivos y carpetas arrastrados desde el administrador de archivos (en
+# Wayland: wl_data_device; el compositor de prueba hace de administrador de
+# archivos). Mientras están encima, un aviso dice qué va a pasar; al
+# soltarlos: los archivos suenan, una carpeta nueva entra a la biblioteca,
+# una que ya está se muestra, y en la cola se agregan al final.
+ajuste appearance/language=es
+preparar mkdir -p {rt}/Nueva && cp "{repo}/target/ui-tour/perfil/musica/Verde Agua/01.flac" {rt}/Nueva/ && echo hola > {rt}/notas.txt
+estado page=tracks
+estado drop=
+# Dos archivos: suenan, en lugar de la cola.
+soltar-encima 700 400 "{repo}/target/ui-tour/perfil/musica/Calle Ruido/02.flac" "{repo}/target/ui-tour/perfil/musica/Verde Agua/03.flac"
+estado drop~^Suelta.para.reproducir$
+captura encima
+soltar
+estado drop=
+estado queue=2
+estado bar-title~Calle.Ruido
+estado playing=true
+# Algo que no se puede reproducir: el aviso lo dice, y se va al salir.
+soltar-encima 700 400 {rt}/notas.txt
+estado drop~^Aquí.no.hay.nada
+soltar-fuera
+estado drop=
+# Una carpeta fuera de la biblioteca: entra (12 pistas + 1).
+soltar-encima 700 400 {rt}/Nueva
+estado drop~^Suelta.para.agregar.a.la.biblioteca$
+soltar
+estado message~Nueva
+estado tracks=13 5
+# Una carpeta que ya está en la biblioteca: se muestra.
+soltar-encima 700 400 "{repo}/target/ui-tour/perfil/musica/Noche Larga"
+soltar
+estado page=folders
+estado argument~Noche.Larga$
+# En Sonando ahora (la cola), lo soltado se agrega al final.
+clic 73 107
+estado page=playing
+soltar-encima 700 400 "{repo}/target/ui-tour/perfil/musica/Luz de Norte"
+estado drop~^Suelta.para.agregar.a.la.cola$
+soltar
+estado queue=5
+estado bar-title~Calle.Ruido

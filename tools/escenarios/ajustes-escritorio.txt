@@ -13,17 +13,17 @@ ventanas 2
 foco last
 esperar 0.8
 # Cerrar a la bandeja está deshabilitado sin el ícono: el clic no guarda nada.
-clic 851 646
+clic 851 768
 esperar 0.5
 guardado ui/closeToTray!=true
-clic 851 606
+clic 851 728
 guardado ui/trayIcon=true
-clic 851 646
+clic 851 768
 guardado ui/closeToTray=true
 # Controles multimedia del sistema (MPRIS): apagado y prendido, al momento.
-clic 851 686
+clic 851 808
 guardado system/mpris=false
 estado mpris=false
-clic 851 686
+clic 851 808
 guardado system/mpris=true
 estado mpris=true

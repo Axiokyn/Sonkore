@@ -30,6 +30,11 @@ image = { version = "0.25", default-features = false, features = ["png"] }
 zbus = { version = "5.19", default-features = false, features = ["async-io", "blocking-api"] }
 # Sound devices plugged in or out: a watch on /dev/snd (hotplug.rs).
 notify = { version = "8", default-features = false }
+# Files dropped on the window under Wayland, where winit has no drag and
+# drop: a data device on the window's own connection (dropped.rs). The
+# versions winit already uses.
+wayland-client = "0.31"
+wayland-backend = { version = "0.3", default-features = false, features = ["client_system"] }
 
 [target.'cfg(windows)'.dependencies]
 # #[implement] (the endpoint volume's change callback) names it.

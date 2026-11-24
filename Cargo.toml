@@ -1,7 +1,7 @@
 # Sonkore: a hi-fi music player for the desktop. Slint draws the interface.
 [workspace]
 resolver = "3"
-members = ["crates/core", "crates/engine", "crates/soundtouch", "crates/eq", "crates/dsp", "crates/dsd", "crates/hdcd", "crates/platform", "crates/library", "crates/ui", "crates/app"]
+members = ["crates/core", "crates/engine", "crates/soundtouch", "crates/eq", "crates/dsp", "crates/dsd", "crates/hdcd", "crates/ffmpeg", "crates/platform", "crates/library", "crates/ui", "crates/app"]
 
 [workspace.package]
 version = "1.0.7"
@@ -20,7 +20,12 @@ complexity = { level = "allow", priority = -1 }
 opt-level = 3
 lto = "fat"
 codegen-units = 1
-panic = "abort"
+# Unwind, not abort: a decoder that panics on a damaged file (symphonia
+# does) is caught where the file is read (sonkore_engine::decode::open, the
+# library's readers, the loudness analysis) and the file is skipped, instead
+# of the whole app dying. A panic out of an `extern "C"` callback (PipeWire,
+# ALSA, FFmpeg I/O) still aborts: Rust forbids unwinding through it.
+panic = "unwind"
 strip = true
 
 # Like release but built in seconds after a change (no fat LTO, parallel
@@ -59,3 +64,12 @@ i-slint-backend-winit = { path = "vendor/i-slint-backend-winit" }
 i-slint-renderer-software = { path = "vendor/i-slint-renderer-software" }
 parley = { path = "vendor/parley" }
 i-slint-core = { path = "vendor/i-slint-core" }
+# symphonia 0.5.5 trusted sizes from the file for allocations: a CAF packet
+# table reserved the packet count it claims (16 TiB: an allocation failure,
+# which aborts even with panic = "unwind"), a CAF cookie or packet, MP4
+# sample tables, samples and tag atoms their sizes, and FLAC pictures,
+# Vorbis comments and ID3v2 frames their 32-bit lengths whole (up to 4 GiB)
+# before reading. These crates read as the data comes instead.
+symphonia-format-caf = { path = "vendor/symphonia-format-caf" }
+symphonia-format-isomp4 = { path = "vendor/symphonia-format-isomp4" }
+symphonia-metadata = { path = "vendor/symphonia-metadata" }

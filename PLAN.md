@@ -8,20 +8,27 @@ configuración) está en `docs/engine.md`; las funciones, en
 ## Hecho
 
 - **Motor:** decodificación con Symphonia (FLAC, WAV, AIFF, CAF, MP3,
-  AAC/ALAC en MP4, Vorbis, MKV), bit-exacta y con búsquedas exactas a la
+  AAC/ALAC en MP4, Vorbis, MKV) y con FFmpeg cargado en tiempo de ejecución
+  si está instalado (Opus, APE, WavPack, TTA, TAK, Musepack, WMA, Wave64,
+  AC-3, DTS; `crates/ffmpeg`), bit-exacta y con búsquedas exactas a la
   muestra; gapless con empalme exacto (lista de edición de MP4, longitud real
   de AIFF); anillo sin bloqueos; fundido anti-clic de 8 ms con dither;
   bit-perfect por bloque.
 - **Salidas:** ALSA directa (`alsa|hw:…`: S32 / S24 / S24_3 / S16, periodos de
   40 ms × 3), PipeWire nativo cargado en tiempo de ejecución (sigue la
   frecuencia de la pista, volumen del stream a 100 %) y WASAPI compartido y
-  exclusivo en Windows.
+  exclusivo en Windows. Multicanal en el orden de cada salida (en ALSA, el
+  mapa de canales de la placa: se elige o se reordena, sin mezclar). El hilo
+  del dispositivo pide tiempo real a rtkit (o a su portal en Flatpak). El
+  volumen de PipeWire es el del sink al que está enlazado el flujo (por
+  ejemplo, el de Easy Effects).
 - **DSP:** ecualizador gráfico y paramétrico (diseño Vicanek/RBJ, ajuste
   gráfico de Newton, fase lineal), AutoEQ, convolución, crossfeed (bs2b),
   limitador true-peak, headroom, ReplayGain, remuestreo y sobremuestreo con
   rubato, cuantizador con dither y conformado de ruido; SoundTouch portado
   (tono, tempo, velocidad); HDCD (libhdcd portado).
-- **DSD:** DSF/DFF y DST, salida nativa y DoP, DSD→PCM.
+- **DSD:** DSF/DFF y DST, salida nativa y DoP, DSD→PCM, PCM→DSD (modulador
+  sigma-delta de 8.º orden, DSD64 a DSD512, nativo o DoP).
 - **Biblioteca:** escaneo y vigilancia de carpetas, etiquetas, carátulas
   (también de internet), sonoridad EBU R128, CUE, listas; `library.json`,
   `favorites.json`, `playlists.json` y `sonkore.conf` en el formato de
@@ -32,7 +39,10 @@ configuración) está en `docs/engine.md`; las funciones, en
   volumen del dispositivo (`IAudioEndpointVolume`).
 - **Interfaz:** ventana principal, todas las páginas, mini reproductor,
   Ajustes, ecualizador, tono y tempo, menús, temas, visualizador, fondos y
-  escala de interfaz; 5 idiomas (`i18n/<idioma>.po`).
+  escala de interfaz; 5 idiomas (`i18n/<idioma>.po`). Filtros Género →
+  Artista → Álbum sobre Pistas (`ui/trackBrowser`). Archivos y carpetas
+  soltados sobre la ventana (X11, Windows y macOS por winit; Wayland con un
+  `wl_data_device` propio, `dropped.rs`).
 - **Entrega:** AppImage (`packaging/appimage.sh`, sin appimagetool: el
   runtime es `target/appimage-runtime-x86_64` y el squashfs lo escribe
   `tools/mkappimage`) y zip de Windows. La CI (`.github/workflows/build.yml`)
@@ -43,33 +53,12 @@ configuración) está en `docs/engine.md`; las funciones, en
 ## Pendiente
 
 - **Motor:**
-  - salida PCM→DSD (el modulador está escrito, falta conectarlo);
-  - filtros de conversión de fase intermedia y mínima (hoy convierten como el
-    lineal: rubato solo tiene fase lineal);
-  - prioridad de tiempo real (rtkit);
-  - reordenado de canales en multicanal;
-  - seguir el sink de PipeWire al que se enlaza el flujo (por ejemplo, un
-    filtro de Easy Effects);
-  - respaldo FFmpeg para Opus, APE, WavPack, TTA, Musepack y WMA, que hoy no
-    se reproducen ni se les mide la sonoridad.
-- **Interfaz:**
-  - soltar archivos sobre la ventana;
-  - paneles Género → Artista → Álbum sobre Pistas (la opción «Filtros en la
-    página Pistas», `ui/trackBrowser`, está escondida hasta que existan: no
-    hacía nada).
-- **De la auditoría del 2026-11-24, sin hacer** (rendimiento con bibliotecas
-  grandes, nada que se rompa):
-  - la barra lateral rearma el árbol de carpetas entero (dos veces por cambio
-    de pista); el buscador del mini arma un HashMap de 50.000 rutas por tecla y
-    calcula `folder_tree` tres veces; `widest_badge` recorre todas las pistas en
-    cada `fill_list`;
+  - multicanal en WASAPI exclusivo: se pide la máscara WAVE (5.1 = 0x3F);
+    un dispositivo que solo acepte la de laterales (0x60F) queda sin probar.
+- **De la auditoría del 2026-11-24, sin hacer:**
   - el menú de salidas lista los dispositivos en el hilo de la interfaz (7 ms
-    en la prueba);
-  - «Restaurar valores» se deshace en parte al cerrar (la geometría y el perfil
-    de sonido de la salida se vuelven a guardar);
-  - cambiar el modo de volumen desde el mini no actualiza la ventana de Ajustes
-    abierta;
-  - quitar varios favoritos a la vez escribe `favorites.json` una vez por pista;
+    en la prueba). Una caché no sirve tal cual: /dev/snd no avisa de las
+    salidas que solo existen en PipeWire (Bluetooth);
   - el diseño del EQ de fase lineal (hasta 4 s a 384 kHz) corre en el hilo de
     audio: ya reutiliza buffers y se espacia, falta llevarlo a otro hilo;
   - con un búfer más largo que una pista corta (2000 ms), esa unión no es sin

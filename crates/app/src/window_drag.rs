@@ -112,6 +112,10 @@ pub fn follow_window<C: ComponentHandle + 'static>(
                 let scale = window.scale_factor();
                 cursor.set((position.x as f32 / scale, position.y as f32 / scale));
             }
+            // Files dragged from the file manager (X11, Windows, macOS; Wayland: dropped.rs).
+            winit::event::WindowEvent::HoveredFile(_)
+            | winit::event::WindowEvent::DroppedFile(_)
+            | winit::event::WindowEvent::HoveredFileCancelled => crate::dropped::winit_event(event),
             winit::event::WindowEvent::MouseInput { state: winit::event::ElementState::Pressed, .. } => {
                 let (weak, pressed, (x, y)) = (weak.clone(), pressed.clone(), cursor.get());
                 slint::Timer::single_shot(Duration::ZERO, move || {

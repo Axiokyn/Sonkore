@@ -841,3 +841,184 @@ fn replaygain_lands_on_the_first_sample_of_a_joined_track() {
 fn gain_with_next(engine: &mut Engine, gain: f64) {
     engine.set_next_track_gain(Some(gain));
 }
+
+// --- PCM → DSD -------------------------------------------------------------------
+
+/// A 16-bit stereo WAV of a `freq` sine at `amplitude` (1 = full scale).
+fn write_tone_wav(path: &Path, rate: u32, freq: f64, amplitude: f64, seconds: f64) {
+    let frames = (rate as f64 * seconds) as usize;
+    let mut data = Vec::with_capacity(frames * 4);
+    for f in 0..frames {
+        let v = ((f as f64 * freq / rate as f64 * std::f64::consts::TAU).sin() * amplitude * 32767.0).round() as i16;
+        data.extend_from_slice(&v.to_le_bytes());
+        data.extend_from_slice(&v.to_le_bytes());
+    }
+    let mut w = Vec::new();
+    w.extend_from_slice(b"RIFF");
+    w.extend_from_slice(&(36 + data.len() as u32).to_le_bytes());
+    w.extend_from_slice(b"WAVEfmt ");
+    w.extend_from_slice(&16u32.to_le_bytes());
+    w.extend_from_slice(&1u16.to_le_bytes());
+    w.extend_from_slice(&2u16.to_le_bytes());
+    w.extend_from_slice(&rate.to_le_bytes());
+    w.extend_from_slice(&(rate * 4).to_le_bytes());
+    w.extend_from_slice(&4u16.to_le_bytes());
+    w.extend_from_slice(&16u16.to_le_bytes());
+    w.extend_from_slice(b"data");
+    w.extend_from_slice(&(data.len() as u32).to_le_bytes());
+    w.extend_from_slice(&data);
+    std::fs::write(path, w).unwrap();
+}
+
+/// Channel `c`'s 1-bit stream (±1, oldest first) from device words.
+fn dsd_bits(words: &[i32], channels: usize, c: usize, packing: sonkore_dsd::DsdPacking) -> Vec<f64> {
+    use sonkore_dsd::DsdPacking;
+    let mut bits = Vec::new();
+    for frame in words.chunks_exact(channels) {
+        let w = frame[c];
+        let (value, n) = match packing {
+            DsdPacking::NativeU32Be => (u32::from_be_bytes(w.to_ne_bytes()), 32),
+            DsdPacking::NativeU32Le => (u32::from_le_bytes(w.to_ne_bytes()), 32),
+            DsdPacking::Dop => (((w as u32) >> 8) & 0xFFFF, 16),
+        };
+        for i in (0..n).rev() {
+            bits.push(if (value >> i) & 1 == 1 { 1.0 } else { -1.0 });
+        }
+    }
+    bits
+}
+
+/// The amplitude of the `freq` component of `x` (sampled at `rate`), over
+/// whole periods.
+fn tone_amplitude(x: &[f64], rate: f64, freq: f64) -> f64 {
+    let (mut re, mut im) = (0.0, 0.0);
+    for (n, v) in x.iter().enumerate() {
+        let phase = std::f64::consts::TAU * freq * n as f64 / rate;
+        re += v * phase.cos();
+        im += v * phase.sin();
+    }
+    2.0 * (re * re + im * im).sqrt() / x.len() as f64
+}
+
+#[test]
+fn pcm_goes_out_as_dsd_native_and_dop() {
+    // playback/pcmToDsd saved but did nothing: PCM is resampled to the DSD
+    // rate, modulated, and sent as DSD words with the DSD rules (pre-roll of
+    // the idle pattern, DoP markers, gapless joins).
+    use sonkore_dsd::DsdPacking;
+    let (a, b) = (tmp("to-dsd-a.wav"), tmp("to-dsd-b.wav"));
+    write_tone_wav(&a, 44100, 1000.0, 0.5, 0.6);
+    write_tone_wav(&b, 44100, 1000.0, 0.5, 0.4);
+    for (mode, packing) in [(1, DsdPacking::NativeU32Be), (2, DsdPacking::Dop)] {
+        let (mut engine, captured) = memory_engine(4.0, 32);
+        engine.set_device("alsa|hw:CARD=Test,DEV=0");
+        engine.set_dsd_output(mode);
+        engine.set_pcm_to_dsd(1); // DSD64
+        let info = engine.load(&a, 0.0).unwrap();
+        assert_eq!(info.rate, 44100, "{packing:?}: the stream stays the file's");
+        let device = engine.device_format().unwrap();
+        assert_eq!(device.dsd, Some(packing), "{packing:?}: a DSD device");
+        assert_eq!(device.rate, sonkore_dsd::frame_rate(2_822_400, packing), "{packing:?}: at DSD64");
+        let status = engine.output_status();
+        assert_eq!(status.pcm_to_dsd_rate, 2_822_400);
+        assert!(status.dsd.starts_with("DSD64"), "{packing:?}: {}", status.dsd);
+        assert!(!status.path_can_be_bit_perfect);
+        engine.set_next(Some(&b));
+        engine.play();
+        assert!(!engine.bit_perfect(), "{packing:?}: modulated, not bit-perfect");
+        let deadline = Instant::now() + Duration::from_secs(30);
+        let mut changes = 0;
+        while !engine.finished() && Instant::now() < deadline {
+            if engine.take_track_change() {
+                changes += 1;
+                engine.set_next(None);
+            }
+            std::thread::sleep(Duration::from_millis(5));
+        }
+        assert!(engine.finished(), "{packing:?}: played to the end");
+        assert_eq!(changes, 1, "{packing:?}: gapless into the second file");
+        assert_eq!(engine.underruns(), 0, "{packing:?}: underruns");
+        let played = captured.lock().unwrap().clone().unwrap().lock().unwrap().clone();
+        let mask = |v: i32| if packing == DsdPacking::Dop { v & 0x00FF_FF00 } else { v };
+        let silence = mask(sonkore_dsd::silence(packing, false));
+        let start = played.iter().position(|&v| mask(v) != silence).expect("music");
+        let end = played.iter().rposition(|&v| mask(v) != silence).unwrap() + 1;
+        assert!(start >= sonkore_dsd::output::preroll_frames(device.rate) * 2, "{packing:?}: pre-roll first");
+        let seconds = (end - start) as f64 / 2.0 / device.rate as f64;
+        assert!((seconds - 1.0).abs() < 0.01, "{packing:?}: {seconds} s of music for 1 s of tracks");
+        // No gap at the join: never a run of idle words in the music.
+        let longest = played[start..end].chunks_exact(2).fold((0, 0), |(run, most), f| {
+            let run = if mask(f[0]) == silence { run + 1 } else { 0 };
+            (run, most.max(run))
+        });
+        assert!(longest.1 < 4, "{packing:?}: {} idle words in a row", longest.1);
+        // The tone, at the modulator's scale (PCM full scale = 45 %), in each
+        // channel, over 0.1 s at the start, across the join and at the end.
+        let bits_per_word = if packing == DsdPacking::Dop { 16 } else { 32 };
+        let window = 282_240; // 100 periods of 1 kHz at 2.8224 MHz
+        for c in 0..2 {
+            let bits = dsd_bits(&played[start..end], 2, c, packing);
+            let join = (0.6 * 2_822_400.0) as usize;
+            for from in [10_000, join - window / 2, bits.len() - window - 10_000] {
+                let x = &bits[from..from + window];
+                let level = tone_amplitude(x, 2_822_400.0, 1000.0);
+                let want = 0.5 * sonkore_dsd::SigmaDelta::INPUT_SCALE;
+                assert!(
+                    (20.0 * (level / want).log10()).abs() < 0.1,
+                    "{packing:?} channel {c} at bit {from}: {level} (want {want})"
+                );
+                for spur in [2000.0, 3000.0, 5000.0] {
+                    let other = tone_amplitude(x, 2_822_400.0, spur);
+                    assert!(other < want * 1e-4, "{packing:?}: {spur} Hz at {other}");
+                }
+            }
+            assert_eq!(bits.len() % bits_per_word, 0);
+        }
+        if packing == DsdPacking::Dop {
+            for (f, frame) in played.chunks_exact(2).enumerate().skip(1) {
+                let prev = (played[(f - 1) * 2] as u32) >> 24;
+                let now = (frame[0] as u32) >> 24;
+                assert!(prev != now && (now == 0x05 || now == 0xFA), "DoP markers alternate (frame {f})");
+            }
+        }
+    }
+}
+
+#[test]
+fn pcm_to_dsd_stays_pcm_where_dsd_cannot_go() {
+    // A device that refuses DSD, or a sound server's output: PCM as before,
+    // and the device is not asked for DSD again for every track.
+    let path = tmp("to-dsd-refused.wav");
+    write_tone_wav(&path, 44100, 1000.0, 0.5, 0.2);
+    let asked = Arc::new(Mutex::new(Vec::<Request>::new()));
+    let log = asked.clone();
+    let mut engine = Engine::with_outputs(Box::new(move |_key: &str, req: Request, render: Arc<dyn Render>| {
+        log.lock().unwrap().push(req);
+        if req.dsd.is_some() {
+            return Err(sonkore_engine::output::OutputError("no DSD here".into()));
+        }
+        Ok(Box::new(MemoryOutput::open(plain_format(req.rate, req.channels), render, 4.0, 0)) as Box<dyn Output>)
+    }));
+    engine.set_device("alsa|hw:CARD=Test,DEV=0");
+    engine.set_dsd_output(1);
+    engine.set_pcm_to_dsd(4); // the highest the DAC takes
+    for _ in 0..2 {
+        engine.load(&path, 0.0).unwrap();
+        assert_eq!(engine.device_format().unwrap().dsd, None);
+        assert_eq!(engine.output_status().pcm_to_dsd_rate, 0);
+    }
+    let dsd_asks: Vec<u32> = asked.lock().unwrap().iter().filter(|r| r.dsd.is_some()).map(|r| r.rate).collect();
+    assert_eq!(dsd_asks, vec![352_800, 176_400, 88_200], "DSD256, 128, 64 once, best first");
+    // PipeWire carries no DSD: not even tried.
+    asked.lock().unwrap().clear();
+    engine.set_device("pipewire|some-sink");
+    engine.set_pcm_to_dsd(1);
+    engine.load(&path, 0.0).unwrap();
+    assert!(asked.lock().unwrap().iter().all(|r| r.dsd.is_none()));
+    // Off: never DSD.
+    asked.lock().unwrap().clear();
+    engine.set_device("alsa|hw:CARD=Test,DEV=0");
+    engine.set_pcm_to_dsd(0);
+    engine.load(&path, 0.0).unwrap();
+    assert!(asked.lock().unwrap().iter().all(|r| r.dsd.is_none()));
+}

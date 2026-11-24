@@ -128,11 +128,3 @@ fn reserved_output_never_grows() {
     r.drain(&mut out);
     assert_eq!(out.capacity(), cap);
 }
-
-#[test]
-fn phase_variants_are_accepted() {
-    for f in [Filter::Intermediate, Filter::Minimum] {
-        let mut r = Resampler::new(44100, 48000, 2, f).unwrap();
-        assert!(alignment_error(&mut r, 44100, 48000, 997.0) < 1e-9);
-    }
-}

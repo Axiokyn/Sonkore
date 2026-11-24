@@ -86,7 +86,6 @@ struct ListData {
     shown: Vec<String>,
     current_index: Option<usize>,
     current_path: String,
-    by_path: HashMap<String, usize>,
     /// The rows in sight: from `first`, `count` of them.
     first: usize,
     count: usize,
@@ -113,7 +112,7 @@ impl Model for RowsModel {
         let row = d.first + row;
         let e = d.entries.get(row)?;
         let lib = self.library.borrow();
-        let track = d.by_path.get(&e.path).and_then(|&i| lib.tracks.get(i));
+        let track = lib.index_of(&e.path).and_then(|i| lib.tracks.get(i));
         let artist_shown = d.shown.iter().any(|k| k == "artist");
         let cells: Vec<MiniCell> = d
             .shown
@@ -340,6 +339,9 @@ pub struct MiniUi {
     search: RefCell<String>,
     search_open: Cell<bool>,
     signature: RefCell<String>,
+    /// folder_tree per library generation (it was built three times for each
+    /// source menu and on every refresh).
+    tree_cache: RefCell<Option<(u64, Rc<Vec<FolderNode>>)>>,
     scroll_y: Cell<f32>,
     bar_timer: Timer,
 }
@@ -369,6 +371,7 @@ impl MiniUi {
             search: RefCell::new(String::new()),
             search_open: Cell::new(false),
             signature: RefCell::new(String::new()),
+            tree_cache: RefCell::new(None),
             scroll_y: Cell::new(0.0),
             bar_timer: Timer::default(),
         });
@@ -390,7 +393,7 @@ impl MiniUi {
         }
         // The library's first folder instead of the empty queue (compactPickFolder).
         if m.flag("ui/compactPickFolder", false) {
-            let tree = folder_tree(&m.ctx.library.borrow());
+            let tree = m.tree();
             if let Some(first) = tree.first() {
                 m.set_flag("ui/compactPickFolder", false);
                 m.set_text("ui/compactSource", &first.path);
@@ -513,6 +516,11 @@ impl MiniUi {
             m.window().global::<Mini>().set_volume_mode(mode);
             crate::volume::update(&m.ctx.settings.borrow(), m.ctx.player.borrow().engine());
             m.refresh_state();
+            // The main bar's volume and an open Settings window follow.
+            if let Some(after) = m.after.borrow().as_ref() {
+                after(Changes { state: true, ..Default::default() });
+            }
+            crate::settings_ui::refresh_audio();
         });
         on!(on_seek, |m, v: f32| {
             let d = m.duration();
@@ -890,7 +898,7 @@ impl MiniUi {
                 p.current_path().unwrap_or(""),
                 q.paths().first().map_or("", |s| s.as_str()),
                 q.paths().last().map_or("", |s| s.as_str()),
-                lib.tracks.len(),
+                lib.generation,
                 lib.favorites.len(),
                 self.source()
             )
@@ -1029,21 +1037,36 @@ impl MiniUi {
 
     /// The rows for the source, the order and the search (TrackListModel for
     /// the queue, filtered for a folder and its subfolders).
+    /// The folder tree, built once per library change.
+    fn tree(&self) -> Rc<Vec<FolderNode>> {
+        let lib = self.ctx.library.borrow();
+        if let Some((generation, tree)) = &*self.tree_cache.borrow()
+            && *generation == lib.generation
+        {
+            return tree.clone();
+        }
+        let tree = Rc::new(folder_tree(&lib));
+        *self.tree_cache.borrow_mut() = Some((lib.generation, tree.clone()));
+        tree
+    }
+
     fn rebuild(&self) {
         let queue = self.showing_queue();
         let source = self.source();
         let search = self.search.borrow().to_lowercase();
         let p = self.ctx.player.borrow();
         let lib = self.ctx.library.borrow();
-        let by_path: HashMap<String, usize> = lib.tracks.iter().enumerate().map(|(i, t)| (t.path.clone(), i)).collect();
+        // The library's index and lower-case keys (a map of every path was
+        // built, and 5 fields lower-cased per track, on each key typed).
         let matches = |path: &str| {
             if search.is_empty() {
                 return true;
             }
-            match by_path.get(path).map(|&i| &lib.tracks[i]) {
-                Some(t) => [&t.title, &t.artist, &t.album, &t.genre, &t.path]
-                    .iter()
-                    .any(|f| f.to_lowercase().contains(&search)),
+            match lib.index_of(path) {
+                Some(i) => {
+                    lib.search_keys.get(i).is_some_and(|k| k.contains(&search))
+                        || lib.tracks[i].genre.to_lowercase().contains(&search)
+                }
                 None => path.to_lowercase().contains(&search),
             }
         };
@@ -1079,7 +1102,6 @@ impl MiniUi {
             d.queue = queue;
             d.current_index = p.queue().current();
             d.current_path = p.current_path().unwrap_or("").to_owned();
-            d.by_path = by_path;
         }
         drop(lib);
         drop(p);
@@ -1287,14 +1309,13 @@ impl MiniUi {
             let changes = {
                 let mut p = self.ctx.player.borrow_mut();
                 let lib = self.ctx.library.borrow();
-                let by_path: HashMap<&str, &Track> = lib.tracks.iter().map(|t| (t.path.as_str(), t)).collect();
+                let track = |p: &str| lib.index_of(p).and_then(|i| lib.tracks.get(i));
                 let paths: Vec<String> = p.queue().paths().to_vec();
                 let desc = field == "favorite";
                 let mut order: Vec<usize> = (0..paths.len()).collect();
                 order.sort_by(|&a, &b| {
                     let (pa, pb) = (paths[a].as_str(), paths[b].as_str());
-                    let o =
-                        compare(field, (pa, by_path.get(pa).copied()), (pb, by_path.get(pb).copied()), &lib.favorites);
+                    let o = compare(field, (pa, track(pa)), (pb, track(pb)), &lib.favorites);
                     let o = if desc { o.reverse() } else { o };
                     o.then_with(|| natural_cmp(&pa.to_lowercase(), &pb.to_lowercase()))
                 });
@@ -1363,7 +1384,7 @@ impl MiniUi {
             return tr(CTX, "Play queue");
         }
         let source = self.source();
-        let tree = folder_tree(&self.ctx.library.borrow());
+        let tree = self.tree();
         tree.iter()
             .find(|f| f.path == source)
             .map(|f| f.label.clone())
@@ -1373,7 +1394,7 @@ impl MiniUi {
     /// The source menu's tree; a source no longer in the library goes back
     /// to the queue.
     fn refresh_folders(&self) {
-        let tree = folder_tree(&self.ctx.library.borrow());
+        let tree = self.tree();
         let source = self.source();
         if !source.is_empty() && !tree.iter().any(|f| f.path == source) {
             self.set_text("ui/compactSource", "");
@@ -1381,7 +1402,7 @@ impl MiniUi {
             return;
         }
         let levels = self.folder_levels(&tree);
-        let shown: Vec<FolderNode> = tree.into_iter().filter(|n| n.depth <= levels).collect();
+        let shown: Vec<FolderNode> = tree.iter().filter(|n| n.depth <= levels).cloned().collect();
         let playing = self.playing_folder(&shown);
         let rows: Vec<MiniFolder> = shown
             .iter()
@@ -1406,9 +1427,7 @@ impl MiniUi {
         mini.set_subfolders(self.flag("ui/compactSubfolders", true));
         mini.set_folder_levels(levels);
         // The levels to choose from: as many as the library has.
-        mini.set_folder_depth(
-            folder_tree(&self.ctx.library.borrow()).iter().map(|n| n.depth).max().unwrap_or(0).max(1),
-        );
+        mini.set_folder_depth(self.tree().iter().map(|n| n.depth).max().unwrap_or(0).max(1));
     }
 
     // --- Going to the playing track ---------------------------------------------------------
@@ -1443,9 +1462,9 @@ impl MiniUi {
             self.close_search();
         }
         if self.current_row().is_none() {
-            let tree = folder_tree(&self.ctx.library.borrow());
+            let tree = self.tree();
             let levels = self.folder_levels(&tree);
-            let shown: Vec<FolderNode> = tree.into_iter().filter(|n| n.depth <= levels).collect();
+            let shown: Vec<FolderNode> = tree.iter().filter(|n| n.depth <= levels).cloned().collect();
             let folder = self.playing_folder(&shown);
             self.set_text("ui/compactSource", &folder);
             self.rebuild();

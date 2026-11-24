@@ -327,6 +327,23 @@ fn favorites_file_as_stored() {
 }
 
 #[test]
+fn several_favorites_off_at_once() {
+    let dir = scratch("favorites-batch");
+    let data = dir.join("data");
+    fs::create_dir_all(&data).unwrap();
+    let stored = fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/data/favorites.json")).unwrap();
+    fs::write(data.join("favorites.json"), &stored).unwrap();
+    let mut lib = library(&dir);
+    let before = lib.favorite_count();
+    let off = vec!["/m/disc.cue#3".to_string(), "/m/not-a-favorite.flac".to_string()];
+    let ev = lib.set_favorites(&off, false);
+    assert_eq!(ev.iter().filter(|e| **e == Event::FavoritesChanged).count(), 1);
+    assert_eq!(lib.favorite_count(), before - 1);
+    assert!(!fs::read_to_string(data.join("favorites.json")).unwrap().contains("disc.cue#3"));
+    assert!(lib.set_favorites(&off, false).is_empty(), "nothing changed: nothing written");
+}
+
+#[test]
 fn cpp_library_json_loads_and_saves_byte_for_byte() {
     let dir = scratch("cppjson");
     let data = dir.join("data");

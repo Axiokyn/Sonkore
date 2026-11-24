@@ -34,8 +34,6 @@ pub struct PathState {
     pub hardware_volume: Option<(String, f64)>,
     /// The sound server's volume for the sink: (linear, on the DAC's control).
     pub system_volume: Option<(f64, bool)>,
-    /// The device thread's real-time priority (0: none).
-    pub rt_priority: i32,
 }
 
 fn arg(text: String, values: &[&str]) -> String {
@@ -133,7 +131,9 @@ pub fn build(settings: &Settings, engine: &Engine, state: &PathState) -> Vec<Sta
     let mut add =
         |stage: String, detail: String, quality: &'static str| out.push(Stage { stage, detail, quality, action: "" });
     let s = engine.output_status();
-    let dsd = !s.dsd.is_empty();
+    // PCM modulated to DSD goes through the PCM stages, then the modulator.
+    let to_dsd = s.pcm_to_dsd_rate != 0;
+    let dsd = !s.dsd.is_empty() && !to_dsd;
     let dsd_rate = engine.dsd_rate();
     let from_dsd = !dsd && dsd_rate != 0;
     let p = |k: &str| format!("playback/{k}");
@@ -150,7 +150,8 @@ pub fn build(settings: &Settings, engine: &Engine, state: &PathState) -> Vec<Sta
     let decoder = if dsd || from_dsd {
         if info.codec.contains("DST") { "DST decoder" } else { "DSD reader" }.to_owned()
     } else {
-        "Symphonia".to_owned()
+        // "Symphonia", or "FFmpeg (libavcodec 62.28)" for the formats it decodes.
+        info.decoder.clone()
     };
     add(tr(CTX, "Decoder"), decoder, if info.lossless || from_dsd { "lossless" } else { "high" });
     if from_dsd {
@@ -301,7 +302,23 @@ pub fn build(settings: &Settings, engine: &Engine, state: &PathState) -> Vec<Sta
             tr(CTX, "linear phase, steep"),
         ];
         let filter = &filters[snapshot.resample_filter.clamp(0, 3) as usize];
-        if s.resampled {
+        if to_dsd {
+            add(
+                tr(CTX, "PCM → DSD"),
+                t(
+                    "SoX VHQ, {0} · {1} kHz → {2} MHz · 8th-order sigma-delta modulator",
+                    &[filter, &khz(s.source_rate), &number_g(s.pcm_to_dsd_rate as f64 / 1e6, false)],
+                ),
+                "enhanced",
+            );
+            if s.modulator_resets > 0 {
+                add(
+                    tr(CTX, "Modulator"),
+                    t("{0} overloads: lower the headroom", &[&s.modulator_resets.to_string()]),
+                    "low",
+                );
+            }
+        } else if s.resampled {
             let fixed = settings.int(&p("fixedRate"), 0) != 0 && !s.upsampled;
             let mut detail = t("SoX VHQ, {0} · {1} → {2} kHz", &[filter, &khz(s.source_rate), &khz(s.device_rate)]);
             if fixed {
@@ -325,7 +342,7 @@ pub fn build(settings: &Settings, engine: &Engine, state: &PathState) -> Vec<Sta
         let wider = src_bits > device_bits;
         let processed =
             s.resampled || crossfeed_on || conv.is_some() || !stretch_neutral || !eq_neutral || volume != 1.0 || rg_on;
-        if !s.bit_perfect_now && (wider || (!s.hdcd && processed)) {
+        if !to_dsd && !s.bit_perfect_now && (wider || (!s.hdcd && processed)) {
             let bits = if s.device_float { 24 } else { s.device_bits.min(24) };
             let dither_default = if settings.flag(&p("dither"), true) { 1 } else { 0 };
             let mode = settings.int(&p("ditherMode"), dither_default).clamp(0, 2);
@@ -396,8 +413,10 @@ pub fn build(settings: &Settings, engine: &Engine, state: &PathState) -> Vec<Sta
     if mixer {
         output += &tr(CTX, " · through the system mixer");
     }
-    if state.rt_priority > 0 {
-        output += &t(" · real-time audio thread (priority {0})", &[&state.rt_priority.to_string()]);
+    // (Granted through rtkit, or PipeWire's own real-time loop.)
+    let rt_priority = engine.device_rt_priority();
+    if rt_priority > 0 {
+        output += &t(" · real-time audio thread (priority {0})", &[&rt_priority.to_string()]);
     }
     out.push(Stage {
         stage: tr(CTX, "Output"),

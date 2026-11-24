@@ -14,12 +14,13 @@ What the engine (`crates/engine`, with `crates/dsp`, `crates/dsd`, `crates/eq`, 
   - Ring full while playing: sleeps the drain time, at least one device period and at most a quarter of the ring. A park request wakes it.
 - **Device thread** (ALSA writer, PipeWire's real-time callback, WASAPI event thread).
   - It only copies from the ring.
-  - Its first call records its thread id, so that real-time priority can be requested through rtkit (not done yet).
-- **Other threads:** preload of the next track; one sigma-delta worker per extra channel when modulating to DSD; PipeWire's own loop (its events are sent back to the interface thread).
+  - Its first call records its kernel thread id. The worker hands it (once per device thread) to the engine's real-time requester, a thread of its own that asks rtkit (see §6) without ever blocking the audio threads. A thread already real-time (PipeWire's own data loop, or SCHED_FIFO the ALSA writer got directly) is not asked for; each thread is asked for once; a refusal is logged once per process and otherwise silent. The signal path's output row shows the priority it runs at.
+- **Other threads:** preload of the next track; one sigma-delta worker per extra channel when modulating to DSD; the real-time requester (`sonkore-rtkit`); PipeWire's own loop (its events are sent back to the interface thread).
 
 **Ring**
 
 - SPSC, `i32` samples, power-of-two size, monotonic indices, acquire/release ordering, 64-byte aligned.
+- In device frames: PCM frames, or DSD words when the device takes DSD (also for PCM→DSD, whose chain runs at the 1-bit rate).
 - Sized after the device opens, at the rate it opened at (a device faster than the track: an 8 kHz file on a 48 kHz graph never played with the ring sized for 8 kHz): `max(rate*bufferMs/1000, 2*devicePeriod) + 1024` frames, and at least twice the room one block needs at that rate. `bufferMs` is 150, clamped 60–2000. Formats outside 1 kHz–3.072 MHz or above 8 channels are refused.
 - It is written in partial frames and read in whole frames only.
 
@@ -95,7 +96,11 @@ What the engine (`crates/engine`, with `crates/dsp`, `crates/dsd`, `crates/eq`, 
   4. else the highest rate.
   
   The device is opened at that rate and the engine's own resampler converts.
-- **Channel reorder** for multichannel (not done yet): moves only, never mixes. Side and back surrounds are aliases.
+- **Channel order** for multichannel (`output::channels`): the engine's samples are in WAVE / FLAC order (mono; FL FR; FL FR FC; FL FR RL RR; FL FR FC RL RR; FL FR FC LFE RL RR; FL FR FC LFE RC SL SR; FL FR FC LFE RL RR SL SR). On a `hw:` device with 3 or more channels:
+  1. a channel map the driver lets be chosen (`SND_CHMAP_TYPE_VAR`) is set to the source's order;
+  2. otherwise the frames are reordered on the device thread from the map the device reports, or, when it reports none, ALSA's standard order (5: FL FR RL RR FC; 6: + LFE; 8: + SL SR).
+  
+  Samples are only moved, never mixed: exact positions first, then side and rear (back) surrounds stand in for each other. A layout that would need mixing (a channel with nowhere to go, driver-specific positions) goes out as it comes. DSD words are moved the same way.
 - **Mono:** if the device refuses mono, open stereo and duplicate.
 - **Quantizer target:** `float ? 24 : min(bits, 24)`.
 
@@ -117,6 +122,7 @@ What the engine (`crates/engine`, with `crates/dsp`, `crates/dsd`, `crates/eq`, 
 - Stream: S32 at the track rate.
 - `playback/followTrackRate` sets `clock.force-rate` in the "settings" metadata. It is held across a close and reset to 0 on release. Without it: a rate in `clock.allowed-rates` is used as is; otherwise force-rate, else `clock.rate`, else 48000, and the engine converts.
 - Quantum `clamp(bit_ceil(rate/25), 256, 8192)`; buffer = 4 × quantum.
+- The format carries the channel positions in WAVE / FLAC order (SPA FL FR FC LFE RL RR SL SR, RC for 7 channels); `stream.dont-remix` keeps PipeWire from mixing them.
 - Properties:
   - `node.rate=1/R`, `node.latency=Q/R`;
   - `stream.dont-remix=true`, `state.restore-props=false`;
@@ -130,7 +136,10 @@ What the engine (`crates/engine`, with `crates/dsp`, `crates/dsd`, `crates/eq`, 
 
 - **Shared:** through the Windows mixer, at the mix format's rate in 32-bit float; the engine resamples to it (Windows' own conversion stays off). Buffer 120 ms.
 - **Exclusive** (`playback/exclusive`, and always for DSD): the endpoint directly, in an integer format; bit-perfect when the rate matches; carries DoP.
+- The WAVEFORMATEXTENSIBLE channel mask is the WAVE layout for the channel count (5.1 = 0x3F, 7.1 = 0x63F), so the samples need no reordering.
 - Both are event driven on a thread of their own.
+
+**PCM → DSD** (`playback/pcmToDsd`, see §4): a PCM track on a direct output, with `playback/dsdOutput` native or DoP and no fixed output rate, opens the device for DSD at the highest wanted DSD rate it takes (native: whichever endianness the card takes; DoP: the same checks as for DSD files). Nothing taken: the track plays as PCM, and later tracks on the same device and channel count do not ask again until the device or a DSD setting changes. Never on PipeWire.
 
 **ALSA native DSD**
 
@@ -164,9 +173,18 @@ What the engine (`crates/engine`, with `crates/dsp`, `crates/dsd`, `crates/eq`, 
 | `.flac` | Symphonia | |
 | `.wav`/`.wave` | Symphonia | honours the valid bits per sample; f32 not clipped |
 | `.mp3`/`.mp2`/`.mp1` | Symphonia | float, lossy |
-| `.m4a`/`.m4b`/`.mp4`/`.aac`, `.caf`, `.ogg`/`.oga`, `.aif`/`.aiff`/`.aifc`, `.mka`/`.webm` | Symphonia | ALAC's depth comes from its magic cookie; AIFF's frame count from COMM |
+| `.m4a`/`.m4b`/`.mp4`/`.aac`, `.caf`, `.ogg`/`.oga`, `.aif`/`.aiff`/`.aifc`, `.mka`/`.webm` | Symphonia | ALAC's depth comes from its magic cookie; AIFF's frame count from COMM. A file symphonia opens but has no decoder for (Opus in `.ogg` or `.webm`) goes to FFmpeg |
 | `.dsf`/`.dff` | Sonkore's DSD decoder (DST included) | to PCM, or DSD to the device |
-| `.opus`, `.ape`, `.wv`, `.tta`, `.tak`, `.mpc`, `.wma`, `.w64`, `.ac3`, `.dts` | FFmpeg fallback, loaded with dlopen (not done yet) | not played, and their loudness is not measured |
+| `.opus`, `.ape`, `.wv`, `.tta`, `.tak`, `.mpc`, `.wma`, `.w64`, `.ac3`, `.eac3`, `.dts` | FFmpeg, loaded at run time (`crates/ffmpeg`) | without FFmpeg: not played ("Playing … needs FFmpeg, which is not installed") and not measured; still listed with their tags |
+
+**FFmpeg** (`crates/ffmpeg`: `sonkore_ffmpeg::Stream`, wrapped by `decode::FfmpegDecoder`)
+
+- Loaded the first time a file needs it, never linked: `libavutil` / `libavcodec` / `libavformat` `.so.<major>` with dlopen (Windows: `avutil-<major>.dll`… next to the exe or on the PATH, LoadLibrary). Releases tried newest first: FFmpeg 8 (libavformat 62, libavcodec 62, libavutil 60), 7 (61/61/59), 6 (60/60/58), 5 (59/59/57); the three libraries of one release, accepted only if `avformat_version()` and the others give those majors. 64-bit only. If none loads, one line on stderr and each such file fails to open.
+- ABI: only functions whose signature is the same in 5 to 8; struct fields read at offsets per major (`abi.rs`), taken from the real headers of 5.0, 5.1, 6.0, 6.1, 7.0, 7.1 and 8.0 (`tools/ffmpeg-offsets.sh`). The test `offsets_match_the_installed_headers` compiles the same program against the system's headers and the downloaded ones; at load, AVCodecContext's offsets are checked by setting fields through `av_opt_set*` and reading them back (a mismatch refuses FFmpeg). Channel counts: `channels` up to 6.x, `ch_layout.nb_channels` from 7.0.
+- I/O through Sonkore's own reader (custom AVIOContext): Play from memory applies, and FFmpeg opens no file, URL or protocol of its own. One decoding thread (`threads=1`), `pkt_timebase` set so skipped samples move the timestamps. FFmpeg's log is silent unless `SONKORE_FFMPEG_LOG` is set.
+- Output: lossless integer codecs (APE, WavPack, TTA, TAK, WMA Lossless, PCM in Wave64, DTS-HD MA) as left-justified s32 with `bits` = the decoder's `bits_per_raw_sample` (bit-perfect path); lossy ones (Opus at 48 kHz, WMA, Musepack, AC-3, E-AC-3, DTS core) and float WavPack as f64.
+- Length: the stream's duration (Ogg: minus `initial_padding`), else the container's (Matroska, estimated). Opus pre-skip and end trimming are FFmpeg's (skip-samples side data): the source's exact frame count.
+- Seek: `av_seek_frame(BACKWARD)` to the target (lossy codecs: 100 ms earlier, so the decoder settles), then the frames before it are dropped by their timestamps. When the time base is coarser than a sample (Matroska and ASF count milliseconds, Musepack packets), a landing timestamp is rounded to the grid of the codec's frames (learnt from the first two frames); a demuxer that lands after the target is sent further back.
 
 **Sample conventions**
 
@@ -286,14 +304,25 @@ Stereo only.
 - Neutral is an exact `==`. Speed = tempo × rate.
 - Built lazily, freed when neutral.
 
-**Resampler** (rubato)
+**Resampler** (`crates/dsp/src/resampler.rs`, `polyphase.rs`)
 
-- Filters (`playback/resampleFilter`): linear phase, intermediate, minimum phase, linear steep.
+- Filters (`playback/resampleFilter`): 0 linear phase, 1 intermediate phase, 2 minimum phase, 3 linear steep.
+- Linear and linear steep: rubato's FFT resampler, a Blackman-Harris² windowed sinc of ≥ 400 / ≥ 2048 taps at the lower rate (flat to 0.945–0.965 / 0.985 of its Nyquist, 184–215 / 192–195 dB down from 1.005).
+- Minimum and intermediate: a polyphase FIR of its own (rubato has linear phase only).
+  - Prototype: Kaiser-windowed sinc, 640 taps at the lower rate, β 19.98, cut-off 0.98 of Nyquist (transition 0.96–1.0, ~190 dB), designed at 8 points per lower-rate sample. When downsampling the kernel is stretched by in/out.
+  - Minimum phase by the cepstral (homomorphic) method on a 2¹⁸-point FFT (32× the prototype): log of the magnitude (floored at −240 dB, for the stop band's nulls) → real cepstrum → folded onto positive quefrencies (c₀, 2c₁ … 2c_{M/2−1}, c_{M/2}, 0 …) → `ln|H| + jφ_min` → `|H|·e^{jφ_min}`.
+  - Intermediate: soxr's (phase response 25 of 0–100), the phase halfway between minimum and linear: `φ = ½·φ_min − ½·ω·D`, D the prototype's centre; same magnitude.
+  - The kernel is the span from −0.5 to +1.5 prototype lengths around time 0 (the nulls alias the cepstrum: a ~10⁻⁵ copy of the response half the FFT away, left out), trimmed below 10⁻¹¹ of the peak: 622 taps (minimum), 1074 (intermediate). Both are designed once per run (~5 ms each).
+  - Each output phase (b of them, for the ratio a/b reduced) gets a row of coefficients read from the design points by 16-point Lagrange interpolation; rows sum to 1. Above 4M coefficients (rates of no common family, e.g. 44100 → 47999) 512 rows, four blended per output (cubic). f64 throughout; AVX2+FMA dot products when the CPU has them.
+  - Upsampling by more than 16× (PCM→DSD): the FIR to 2× the input rate, then the linear filter (its transition is at the input rate, where the FIR left nothing to ring).
+  - Measured (`tests/resampler_phase.rs`): ripple < 2·10⁻⁷ dB to 0.9, flat (0.1 dB) to 0.965, stop band 191–195 dB, within 2·10⁻⁷ dB of the linear filter up to 0.9. A click's energy more than 8 lower-rate samples before its peak: linear 4–6·10⁻³ (−23 dB), intermediate 7–10·10⁻⁶ (−51 dB), minimum 0 (3·10⁻¹⁹ through two stages).
+  - Speed, one core, stereo: 44.1 → 48 kHz minimum 154× real time; 44.1 → 192 kHz minimum 37×, intermediate 23× (linear 567×); → 705.6 kHz 11×; DSD64's rate 29× (linear 36×); DSD512's 3×.
+- Timing, every filter (soxr's rules): the output starts at the input's first frame, `drain` ends on exactly `round(in · out / in)` frames, and `delay_frames()` (soxr_delay) is the output still owed. Linear filters are aligned on their centre; minimum and intermediate on the kernel's peak (a click peaks on its own output frame), so they look ahead only 9 input frames (minimum) or ~440 (intermediate), × in/out when downsampling.
 - Used when:
   - the device refuses the rate (or a shared output runs at its mixer's rate);
   - upsampling is on: ×2; ×4 then ×2; Max tries ×16, ×8, ×4, ×2; ≤ 768 kHz, and only if the device opens at exactly that rate;
   - a fixed output rate is set;
-  - PCM→DSD (not done yet).
+  - PCM→DSD: straight to the 1-bit rate (2.8224 MHz for DSD64), with the chosen filter.
 
 **DSD→PCM**
 
@@ -303,11 +332,15 @@ Stereo only.
 - Stage-2 bands: DSD64 30 k; DSD128 50 k, stop at 70 k; DSD256/512 flat to 70 k.
 - All-ones input = PCM full scale.
 
-**PCM→DSD** (`playback/pcmToDsd`, not done yet: the sigma-delta modulator is in `crates/dsd`, the engine does not use it)
+**PCM→DSD** (`playback/pcmToDsd`: 0 off, 1 DSD64, 2 DSD128, 3 DSD256, 4 the highest the DAC takes up to DSD256, 5 DSD512)
 
-- 8th order, error feedback, four NTF tables (numerator and denominator, 9 coefficients each).
-- Input × 0.45, limit 0.5, reset when |state| > 8.
-- Max mode goes up to DSD256; DSD512 only when chosen explicitly.
+- Rates tried, best first: DSD64 → 64; DSD128 → 128, 64; DSD256 and Max → 256, 128, 64; DSD512 → 512, 256, 128, 64 (× 44.1 kHz).
+- The whole processed chain runs (headroom, EQ, convolver, crossfeed, volume × ReplayGain), then the resampler converts to the 1-bit rate and the limiter (if on) runs there; never bypassed, never bit-perfect.
+- On the worker, in place of the quantizer: 8th order, error feedback, four NTF tables (numerator and denominator, 9 coefficients each); packed like DSD files (native DSD_U32 words, or DoP words whose markers the device thread stamps).
+- Input × 0.45 (PCM full scale = 45 % modulation, -6.9 dB), limit 0.5, reset when |state| > 8; the resets are reported (the signal path's "Modulator" row).
+- The DSD rules hold: 60 ms pre-roll of the idle pattern at load and seek, silence and pauses as the idle pattern, DoP markers alternating across everything. At the end the last partial word is completed with the idle pattern.
+- Gapless: carries on into the next PCM track at the same rate and channels (the chain and the modulator go on); never into a DSD file.
+- The visualizer gets nothing while modulating (the device's samples are DSD words).
 
 **Quantizer**
 
@@ -386,7 +419,7 @@ Stereo only.
 **Volume modes**
 
 - Hardware on `alsa|` uses the ALSA mixer.
-- Non-Digital on PipeWire or `""` uses PipeWire's volume. It should follow the sink the stream is actually linked to, e.g. an Easy Effects filter (not done yet: it follows the chosen sink).
+- Non-Digital on PipeWire or `""` uses PipeWire's volume: of the sink Sonkore's stream (`node.name=sonkore`) is linked to, e.g. an Easy Effects filter's sink when it takes the streams over; else the chosen sink when it is there; else the desktop's default. Watched through the registry's links: a new link from the stream to another sink switches to it; a stream or link going away changes nothing by itself (between tracks the stream is made again and links back).
 - On WASAPI exclusive, the endpoint's own volume.
 - Fixed = Auto on a direct output, or Hardware with no control.
 - The engine is held at 1.0 while an external volume is in use. Engine volume range: 0–4.
@@ -428,7 +461,7 @@ Stereo only.
   - dB relative to the top, capped at 0 dB; 0 mutes via the switch.
   - Follows external changes.
 - **PipeWire volume:** watches the sink's Props. "Hardware" means a device sink whose softVolumes are all 1.
-- **RealtimeKit** (not done yet: the client is in `crates/platform`, nothing calls it): `org.freedesktop.RealtimeKit1` on the system bus, or `org.freedesktop.portal.Realtime` in Flatpak. Sets RLIMIT_RTTIME, then `MakeThreadRealtimeWithPID`.
+- **RealtimeKit** (`crates/platform/src/rtkit.rs`, installed by the app as the engine's real-time hook, see §1 Device thread): `org.freedesktop.RealtimeKit1` on the system bus, or `org.freedesktop.portal.Realtime` in Flatpak. Reads `MaxRealtimePriority` and `RTTimeUSecMax`, sets RLIMIT_RTTIME to the latter (the hard limit only comes down), then `MakeThreadRealtimeWithPID` at the highest priority allowed.
 - **Document portal:** maps `/run/user/*/doc/<id>/` paths to the host.
 
 ## 7. Subtleties

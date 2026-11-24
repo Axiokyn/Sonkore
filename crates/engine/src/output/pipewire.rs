@@ -296,6 +296,9 @@ const SPA_AUDIO_MAX_CHANNELS: usize = 64;
 const EPIPE: c_int = 32;
 const TYPE_NODE: &CStr = c"PipeWire:Interface:Node";
 const TYPE_METADATA: &CStr = c"PipeWire:Interface:Metadata";
+const TYPE_LINK: &CStr = c"PipeWire:Interface:Link";
+/// The node.name of Sonkore's own playback stream (PipeWireOutput).
+const STREAM_NODE_NAME: &str = "sonkore";
 
 // --- The library ---------------------------------------------------------------------
 
@@ -480,6 +483,10 @@ struct Connection {
     /// The sinks that belong to a device (ALSA...: "device.id" set), whose
     /// volume may sit on the DAC's own control.
     devices: Vec<u32>,
+    /// Sonkore's playback streams in the graph (their node ids).
+    streams: Vec<u32>,
+    /// The graph's links: (link id, output node, input node).
+    links: Vec<(u32, u32, u32)>,
     /// The sink volume watched over this connection (SinkVolume), or null.
     volume: std::sync::atomic::AtomicPtr<VolumeWatch>,
 }
@@ -536,7 +543,26 @@ unsafe extern "C" fn on_global(
     }
     let ty = unsafe { CStr::from_ptr(type_) };
     unsafe {
-        if ty == TYPE_NODE {
+        if ty == TYPE_NODE
+            && dict_lookup(props, "node.name") == Some(STREAM_NODE_NAME)
+            && dict_lookup(props, "media.class").is_some_and(|m| m.starts_with("Stream/Output/Audio"))
+        {
+            c.streams.push(id);
+        } else if ty == TYPE_LINK {
+            let node = |key| dict_lookup(props, key).and_then(|v| v.parse::<u32>().ok());
+            if let (Some(out), Some(input)) = (node("link.output.node"), node("link.input.node")) {
+                c.links.push((id, out, input));
+                if c.streams.contains(&out) {
+                    // The stream linked (or moved, as Easy Effects moves the
+                    // streams to its own sink): that sink's volume.
+                    if let Some(w) = c.volume.load(Ordering::Acquire).as_ref() {
+                        if retarget(c, w) {
+                            w.notify();
+                        }
+                    }
+                }
+            }
+        } else if ty == TYPE_NODE {
             let (Some("Audio/Sink"), Some(name)) = (dict_lookup(props, "media.class"), dict_lookup(props, "node.name"))
             else {
                 return;
@@ -555,10 +581,9 @@ unsafe extern "C" fn on_global(
             }
             if let Some(w) = c.volume.load(Ordering::Acquire).as_ref() {
                 // The sink asked for by name is back (the session manager
-                // moves a stream with that target back to it): its volume again.
-                if !w.follow_default && same_sink(name, &w.name) && !same_sink(&w.watched_name.lock().unwrap(), &w.name)
-                {
-                    watch_sink(c, w, &w.name.clone());
+                // moves a stream with that target back to it): its volume
+                // again, unless the stream is linked elsewhere.
+                if !w.follow_default && same_sink(name, &w.name) && retarget(c, w) {
                     w.notify();
                 }
             }
@@ -577,13 +602,17 @@ unsafe extern "C" fn on_global_remove(data: *mut c_void, id: u32) {
     let sink = c.sinks.iter().any(|s| s.id == id);
     c.sinks.retain(|s| s.id != id);
     c.devices.retain(|&d| d != id);
+    // (A stream or a link going away changes nothing by itself: between
+    // tracks the stream is made again and links to the same sink.)
+    c.streams.retain(|&s| s != id);
+    c.links.retain(|l| l.0 != id && l.1 != id && l.2 != id);
     if let Some(w) = unsafe { c.volume.load(Ordering::Acquire).as_ref() } {
         if sink && id == w.watched.load(Ordering::Acquire) {
-            // The sink being watched is gone: the desktop's default takes its
-            // place (where the session manager moves the streams too).
+            // The sink being watched is gone: the one the stream is linked
+            // to, else the one asked for, else the desktop's default (where
+            // the session manager moves the streams too).
             unwatch_sink(c, w);
-            let default = c.default_sink.clone();
-            watch_sink(c, w, &default);
+            retarget(c, w);
             w.notify();
         }
     }
@@ -626,10 +655,9 @@ unsafe extern "C" fn on_default(
         };
         c.default_sink = json_name(&json);
         if let Some(w) = unsafe { c.volume.load(Ordering::Acquire).as_ref() } {
-            if w.follow_default {
-                // The desktop chose another output: follow it.
-                let default = c.default_sink.clone();
-                watch_sink(c, w, &default);
+            // The desktop chose another output: follow it (unless the
+            // stream is linked to another sink).
+            if w.follow_default && retarget(c, w) {
                 w.notify();
             }
         }
@@ -681,6 +709,8 @@ impl Connection {
             setting_values: Vec::new(),
             default_sink: String::new(),
             devices: Vec::new(),
+            streams: Vec::new(),
+            links: Vec::new(),
             volume: std::sync::atomic::AtomicPtr::new(null_mut()),
         });
         unsafe {
@@ -901,6 +931,28 @@ fn watch_sink(c: &Connection, w: &VolumeWatch, name: &str) {
     }
 }
 
+/// The sink Sonkore's stream is linked to (the first one, when several):
+/// a sink's id among `sinks`, never another stream (a recorder).
+fn linked_sink(streams: &[u32], links: &[(u32, u32, u32)], sinks: &[u32]) -> Option<u32> {
+    links.iter().find(|l| streams.contains(&l.1) && sinks.contains(&l.2)).map(|l| l.2)
+}
+
+/// Watches the sink whose volume is heard (lock held): the one Sonkore's
+/// stream is linked to (an Easy Effects filter, for one, takes the streams
+/// over), else the one asked for when it is there, else the desktop's
+/// default. True when another sink is watched now.
+fn retarget(c: &Connection, w: &VolumeWatch) -> bool {
+    let before = w.watched.load(Ordering::Acquire);
+    let ids: Vec<u32> = c.sinks.iter().map(|s| s.id).collect();
+    let name = match linked_sink(&c.streams, &c.links, &ids) {
+        Some(id) => c.sinks.iter().find(|s| s.id == id).map(|s| s.name.clone()).unwrap_or_default(),
+        None if !w.follow_default && c.sinks.iter().any(|s| same_sink(&s.name, &w.name)) => w.name.clone(),
+        None => c.default_sink.clone(),
+    };
+    watch_sink(c, w, &name);
+    w.watched.load(Ordering::Acquire) != before
+}
+
 /// Stops watching the sink's node (lock held).
 fn unwatch_sink(_c: &Connection, w: &VolumeWatch) {
     let node = w.node.swap(null_mut(), Ordering::AcqRel);
@@ -1079,6 +1131,8 @@ impl SinkVolume {
         watch_sink(&connection, &watch, &name);
         let found = watch.watched.load(Ordering::Acquire) != u32::MAX;
         if found {
+            // Where the stream really goes, if it already plays.
+            retarget(&connection, &watch);
             connection.roundtrip(); // the first Props (the volume) arrive before this returns
         }
         connection.unlock();
@@ -1523,6 +1577,16 @@ impl Drop for PipeWireOutput {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_linked_sink_is_the_one_heard() {
+        // Stream 40 linked (two channels) to sink 7, and recorded by node 90.
+        let links = [(100, 40, 90), (101, 40, 7), (102, 40, 7), (103, 55, 8)];
+        assert_eq!(linked_sink(&[40], &links, &[7, 8]), Some(7));
+        assert_eq!(linked_sink(&[41], &links, &[7, 8]), None, "not our stream");
+        assert_eq!(linked_sink(&[40], &links[..1], &[7, 8]), None, "a recorder is no sink");
+        assert_eq!(linked_sink(&[], &links, &[7, 8]), None);
+    }
 
     #[test]
     fn format_pod_matches_spa() {

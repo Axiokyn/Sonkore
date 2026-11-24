@@ -17,7 +17,7 @@
 
 use std::cell::UnsafeCell;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicBool, AtomicU8, AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicI64, AtomicU8, AtomicU64, Ordering};
 use std::sync::{Arc, Condvar, Mutex, MutexGuard};
 use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
@@ -160,6 +160,12 @@ struct Shared {
     out_rate: u32,
     /// The worker sends the last block through the chain (the samples change).
     processing: AtomicBool,
+    /// PCM→DSD: times the sigma-delta loop overloaded and was restarted.
+    modulator_resets: AtomicU64,
+    /// The device thread's kernel id, from its first render call (0 before).
+    device_tid: AtomicI64,
+    /// The worker sent it to be made real-time (once per device thread).
+    rt_requested: AtomicBool,
 }
 
 // `device` is touched by the device thread only.
@@ -172,6 +178,8 @@ struct DeviceSide {
     ramp_in_pos: usize,
     rng: u32,
     dop_phase: bool,
+    /// The thread id is recorded (the first render call).
+    tid_known: bool,
 }
 
 impl Shared {
@@ -192,6 +200,9 @@ impl Shared {
             buffer_ms,
             out_rate: rate,
             processing: AtomicBool::new(false),
+            modulator_resets: AtomicU64::new(0),
+            device_tid: AtomicI64::new(0),
+            rt_requested: AtomicBool::new(false),
             ring: Ring::new(frames * channels),
             channels,
             mono_to_stereo: AtomicBool::new(false),
@@ -226,6 +237,7 @@ impl Shared {
                 ramp_in_pos: 0,
                 rng: 0x9E3779B9,
                 dop_phase: false,
+                tid_known: false,
             }),
         }
     }
@@ -290,6 +302,12 @@ impl Render for Shared {
     fn render(&self, out: &mut [i32]) {
         // SAFETY: only the device thread calls render().
         let dev = unsafe { &mut *self.device.get() };
+        if !dev.tid_known {
+            // For real-time priority, asked for off this thread (the worker
+            // passes it on to the engine's requester).
+            dev.tid_known = true;
+            self.device_tid.store(output::realtime::current_tid(), Ordering::Relaxed);
+        }
         if let Some(packing) = self.dsd {
             self.render_dsd(dev, out, packing);
             return;
@@ -473,10 +491,18 @@ struct Worker {
     clipped: u64,
     /// The stream is DSD words: they go to the ring untouched, always.
     dsd: bool,
+    /// PCM→DSD: the chain's output (at the DSD rate) is modulated to DSD
+    /// words instead of quantized; with what it was set up for.
+    modulator: Option<(sonkore_dsd::SigmaDelta, ModulatorSetup)>,
+    /// Device thread ids to make real-time go here (Engine::set_realtime_hook).
+    realtime: Option<std::sync::mpsc::Sender<i64>>,
     quit: bool,
     /// Times the worker woke up (the tests count them).
     wakeups: u64,
 }
+
+/// What a modulator was set up for: (DSD multiple, channels, packing).
+type ModulatorSetup = (u32, usize, DsdPacking);
 
 /// What the worker does after a step.
 enum Step {
@@ -490,16 +516,41 @@ enum Step {
 }
 
 impl Worker {
-    /// Quantizes what the chain produced into the backlog.
+    /// Quantizes what the chain produced into the backlog (or, for PCM→DSD,
+    /// modulates it into DSD words).
     fn stage(&mut self) {
         if self.staged.is_empty() {
             return;
         }
         let start = self.backlog.len();
-        self.backlog.resize(start + self.staged.len(), 0);
-        self.quantizer.process(&self.staged, &mut self.backlog[start..]);
-        self.clipped += self.quantizer.take_clipped();
+        if let Some((modulator, _)) = self.modulator.as_mut() {
+            let ch = modulator.channels().max(1);
+            // (frames / bits per word + 1) words per channel at most.
+            let room = (self.staged.len() / ch / modulator.bits_per_word() + 1) * ch;
+            self.backlog.resize(start + room, 0);
+            let words = modulator.process(&self.staged, &mut self.backlog[start..]);
+            self.backlog.truncate(start + words * ch);
+            if let Some(shared) = &self.shared {
+                shared.modulator_resets.store(modulator.resets(), Ordering::Relaxed);
+            }
+        } else {
+            self.backlog.resize(start + self.staged.len(), 0);
+            self.quantizer.process(&self.staged, &mut self.backlog[start..]);
+            self.clipped += self.quantizer.take_clipped();
+        }
         self.staged.clear();
+    }
+
+    /// PCM→DSD at the end of the stream: the last partial word, completed
+    /// with the idle pattern, into the backlog.
+    fn flush_modulator(&mut self) {
+        if let Some((modulator, _)) = self.modulator.as_mut() {
+            let ch = modulator.channels();
+            let start = self.backlog.len();
+            self.backlog.resize(start + ch, 0);
+            let frames = modulator.flush(&mut self.backlog[start..]);
+            self.backlog.truncate(start + frames * ch);
+        }
     }
 
     /// Samples in the backlog not written yet.
@@ -534,9 +585,25 @@ impl Worker {
         self.backlog_pos = 0;
     }
 
+    /// The device thread's id, once it has rendered, to the real-time
+    /// requester: once per device thread.
+    fn request_realtime(&self, shared: &Shared) {
+        if shared.rt_requested.load(Ordering::Relaxed) {
+            return;
+        }
+        let tid = shared.device_tid.load(Ordering::Relaxed);
+        if tid != 0 {
+            shared.rt_requested.store(true, Ordering::Relaxed);
+            if let Some(tx) = &self.realtime {
+                let _ = tx.send(tid);
+            }
+        }
+    }
+
     /// One block decoded into the ring; what to do next.
     fn step(&mut self, gains: &Gains) -> Step {
         let (Some(shared), Some(device)) = (self.shared.clone(), self.device) else { return Step::Idle };
+        self.request_realtime(&shared);
         let ch = shared.channels;
         let rate = device.rate.max(1) as f64 * self.device_speed;
         // Room comes as the device takes a period; a muted device takes none.
@@ -560,8 +627,10 @@ impl Worker {
             (i.rate, i.channels, i.float, i.source_bits())
         };
         let chain = self.chain.as_mut().expect("a chain with the decoder");
-        // Room for a block at the output rate (what does not fit waits in the backlog).
-        let need = block_need(chain.in_rate, chain.out_rate).min(shared.ring.capacity() / ch / 2);
+        // Room for a block at the device's rate (what does not fit waits in
+        // the backlog). PCM→DSD: the chain runs at the DSD rate, the ring in
+        // device words.
+        let need = block_need(chain.in_rate, device.rate).min(shared.ring.capacity() / ch / 2);
         let free = shared.ring.available_to_write() / ch;
         if free < need {
             return wait(need - free);
@@ -572,6 +641,7 @@ impl Worker {
         // gain, a source no deeper than the device at its rate; the gains
         // glide back to 1 first.
         let wanted = target == 1.0
+            && self.modulator.is_none()
             && chain.neutral()
             && !chain.resampling()
             && !float
@@ -622,10 +692,11 @@ impl Worker {
             self.stage();
             self.drain_backlog(&shared);
         }
-        shared.chain_pending.store(
-            self.chain.as_ref().map_or(0, |c| c.pending_out_frames()) + (self.backlog_len() / ch) as u64,
-            Ordering::Relaxed,
-        );
+        // (The chain's frames are at its output rate: the DSD rate when
+        // modulating, where a device frame is a word of 16 or 32 of them.)
+        let held =
+            self.chain.as_ref().map_or(0, |c| c.pending_out_frames() * device.rate as u64 / c.out_rate.max(1) as u64);
+        shared.chain_pending.store(held + (self.backlog_len() / ch) as u64, Ordering::Relaxed);
         shared.stretch_held.store(self.chain.as_ref().map_or(0.0, |c| c.stretch_held()).to_bits(), Ordering::Relaxed);
         shared
             .limiter_db
@@ -677,6 +748,11 @@ impl Worker {
             if !done {
                 return Step::Next;
             }
+            // The modulator's last bits make up one more word.
+            self.flush_modulator();
+            if !self.drain_backlog(&shared) {
+                return wait(self.backlog_len() / ch);
+            }
         }
         shared.eof.store(true, Ordering::Release);
         Step::Idle
@@ -710,7 +786,10 @@ pub struct OutputStatus {
     pub hdcd: bool,
     /// Resampled on purpose (upsampling), not because the device refused the rate.
     pub upsampled: bool,
+    /// PCM modulated to DSD at this 1-bit rate (Hz); 0 = no.
     pub pcm_to_dsd_rate: u32,
+    /// PCM→DSD: times the modulator overloaded (and was restarted) on this output.
+    pub modulator_resets: u64,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -739,6 +818,13 @@ pub struct Engine {
     hdcd: bool,
     /// playback/dsdOutput: 0 PCM, 1 native, 2 DoP.
     dsd_output: u8,
+    /// playback/pcmToDsd (0 off … 5 DSD512, as `PcmToDsd`).
+    pcm_to_dsd: u8,
+    /// The 1-bit rate PCM is modulated to on the open device, else 0.
+    to_dsd_rate: u32,
+    /// PCM→DSD found no DSD rate the device takes for (key, channels,
+    /// packing): later tracks keep the PCM device instead of trying again.
+    to_dsd_refused: Option<(String, usize, DsdPacking)>,
     /// The open device takes DSD words in this packing.
     dsd_packing: Option<DsdPacking>,
     /// The track's 1-bit rate when it is DSD (also played as PCM), else 0.
@@ -790,6 +876,8 @@ impl Engine {
                 backlog_pos: 0,
                 clipped: 0,
                 dsd: false,
+                modulator: None,
+                realtime: None,
                 quit: false,
                 wakeups: 0,
             }),
@@ -838,6 +926,9 @@ impl Engine {
             exclusive: true,
             hdcd: false,
             dsd_output: 1,
+            pcm_to_dsd: 0,
+            to_dsd_rate: 0,
+            to_dsd_refused: None,
             dsd_packing: None,
             dsd_rate: 0,
             device_label: (String::new(), String::new()),
@@ -915,6 +1006,20 @@ impl Engine {
         self.resync_ms = ms.min(3000);
     }
 
+    /// Device threads are made real-time through `hook` (rtkit on Linux),
+    /// called on a thread of its own once per device thread; see
+    /// [`output::realtime`].
+    pub fn set_realtime_hook(&mut self, hook: output::realtime::Hook) {
+        let tx = output::realtime::Requester::new(hook).spawn();
+        self.lock().realtime = tx;
+    }
+
+    /// The real-time priority the open device's thread runs at (0: none, or
+    /// it has not rendered yet).
+    pub fn device_rt_priority(&self) -> i32 {
+        self.shared.as_ref().map_or(0, |s| output::realtime::priority_of(s.device_tid.load(Ordering::Relaxed)))
+    }
+
     /// A device just opened at `rate`: silence first when the rate changed.
     fn note_output_rate(&mut self, shared: &Shared, rate: u32) {
         let frames = if rate != self.last_output_rate { rate as u64 * self.resync_ms as u64 / 1000 } else { 0 };
@@ -936,7 +1041,9 @@ impl Engine {
         let mode = mode.clamp(0, 2) as u8;
         if mode != self.dsd_output {
             self.dsd_output = mode;
-            if self.dsd_packing.is_some() {
+            self.to_dsd_refused = None;
+            // (PCM→DSD follows it: a PCM output may now go out as DSD.)
+            if self.dsd_packing.is_some() || (self.pcm_to_dsd != 0 && self.output.is_some()) {
                 self.close_output();
             }
         }
@@ -959,50 +1066,8 @@ impl Engine {
     fn open_dsd(&mut self, path: &Path, packing: DsdPacking) -> Option<(Box<dyn Decoder>, DsdPacking)> {
         let format = sonkore_dsd::probe(path)?;
         let rate = sonkore_dsd::frame_rate(format.dsd_rate, packing);
-        let channels = format.channels as usize;
-        if rate == 0 || rate > MAX_RATE || channels == 0 || channels > MAX_CHANNELS {
+        if !self.open_dsd_output(format.dsd_rate, format.channels as usize, packing, block_need(rate, rate)) {
             return None;
-        }
-        let reuse = self.dsd_packing.is_some_and(|p| p.is_native() == packing.is_native())
-            && self
-                .output
-                .as_ref()
-                .is_some_and(|o| !o.failed() && o.format().rate == rate && o.format().channels == channels);
-        if !reuse {
-            self.close_output();
-            // (DSD opens at its own rate or not at all: the ring is sized
-            // before, and the device's silence is the DSD idle pattern.)
-            let shared =
-                Arc::new(Shared::new(rate, channels, self.buffer_ms, 0, block_need(rate, rate), Some(packing)));
-            let request = Request { rate, channels, follow_rate: false, exclusive: true, dsd: Some(packing) };
-            let output = (self.factory)(&self.device_key, request, shared.clone()).ok()?;
-            let f = output.format();
-            let usable = f.rate == rate
-                && f.channels == channels
-                && f.exclusive
-                && match f.dsd {
-                    Some(p) if p.is_native() => packing.is_native(),
-                    Some(_) => {
-                        !packing.is_native()
-                            && sonkore_dsd::output::dop_device_ok(f.rate, format.dsd_rate, f.float, f.bits)
-                    }
-                    None => false,
-                };
-            if !usable {
-                return None; // dropping the output closes it
-            }
-            shared.latency_frames.store(output.latency_frames(), Ordering::Relaxed);
-            self.note_output_rate(&shared, f.rate);
-            {
-                let mut w = self.lock();
-                w.shared = Some(shared.clone());
-                w.device = Some(f);
-                w.device_speed = output.speed();
-            }
-            self.shared = Some(shared);
-            self.output = Some(output);
-            self.dsd_packing = f.dsd;
-            self.device_label = Self::label_for(&self.device_key, &f);
         }
         let packing = self.dsd_packing?;
         match decode::DsdRaw::open(path, packing) {
@@ -1012,6 +1077,118 @@ impl Engine {
                 None
             }
         }
+    }
+
+    /// A device taking DSD at `dsd_rate` in `packing` (native: whichever
+    /// endianness the card takes), the one open if it already does; its ring
+    /// has room for blocks of `need` frames. False leaves nothing open.
+    fn open_dsd_output(&mut self, dsd_rate: u32, channels: usize, packing: DsdPacking, need: usize) -> bool {
+        let rate = sonkore_dsd::frame_rate(dsd_rate, packing);
+        if rate == 0 || rate > MAX_RATE || channels == 0 || channels > MAX_CHANNELS {
+            return false;
+        }
+        let reuse = self.dsd_packing.is_some_and(|p| p.is_native() == packing.is_native())
+            && self
+                .output
+                .as_ref()
+                .is_some_and(|o| !o.failed() && o.format().rate == rate && o.format().channels == channels)
+            && self.shared.as_ref().is_some_and(|s| s.ring.capacity() / s.channels >= 2 * need);
+        if reuse {
+            return true;
+        }
+        self.close_output();
+        // (DSD opens at its own rate or not at all: the ring is sized
+        // before, and the device's silence is the DSD idle pattern.)
+        let shared = Arc::new(Shared::new(rate, channels, self.buffer_ms, 0, need, Some(packing)));
+        let request = Request { rate, channels, follow_rate: false, exclusive: true, dsd: Some(packing) };
+        let Ok(output) = (self.factory)(&self.device_key, request, shared.clone()) else { return false };
+        let f = output.format();
+        let usable = f.rate == rate
+            && f.channels == channels
+            && f.exclusive
+            && match f.dsd {
+                Some(p) if p.is_native() => packing.is_native(),
+                Some(_) => {
+                    !packing.is_native() && sonkore_dsd::output::dop_device_ok(f.rate, dsd_rate, f.float, f.bits)
+                }
+                None => false,
+            };
+        if !usable {
+            return false; // dropping the output closes it
+        }
+        shared.latency_frames.store(output.latency_frames(), Ordering::Relaxed);
+        self.note_output_rate(&shared, f.rate);
+        {
+            let mut w = self.lock();
+            w.shared = Some(shared.clone());
+            w.device = Some(f);
+            w.device_speed = output.speed();
+        }
+        self.shared = Some(shared);
+        self.output = Some(output);
+        self.dsd_packing = f.dsd;
+        self.device_label = Self::label_for(&self.device_key, &f);
+        true
+    }
+
+    /// playback/pcmToDsd (0 off, 1 DSD64, 2 DSD128, 3 DSD256, 4 the highest
+    /// up to DSD256, 5 DSD512): PCM tracks go out as DSD, modulated, where
+    /// the DSD output (playback/dsdOutput) can carry it; at the next load.
+    pub fn set_pcm_to_dsd(&mut self, mode: i64) {
+        let mode = mode.clamp(0, 5) as u8;
+        if mode != self.pcm_to_dsd {
+            self.pcm_to_dsd = mode;
+            self.to_dsd_refused = None;
+            self.close_output();
+        }
+    }
+
+    /// The DSD multiples PCM→DSD tries, best first (empty: off).
+    fn pcm_to_dsd_multiples(&self) -> &'static [u32] {
+        use sonkore_dsd::output::{PcmToDsd, pcm_to_dsd_multiples};
+        pcm_to_dsd_multiples(match self.pcm_to_dsd {
+            1 => PcmToDsd::Dsd64,
+            2 => PcmToDsd::Dsd128,
+            3 => PcmToDsd::Dsd256,
+            4 => PcmToDsd::Max,
+            5 => PcmToDsd::Dsd512,
+            _ => PcmToDsd::Off,
+        })
+    }
+
+    /// The packing the PCM track at `path` would be modulated to DSD in
+    /// (None: it stays PCM). As for DSD files: a direct output, the DSD
+    /// output on, no fixed output rate; never a DSD file (one that cannot go
+    /// out as DSD is converted to PCM, not back again).
+    fn pcm_to_dsd_wanted(&self, path: &Path) -> Option<DsdPacking> {
+        let packing = match self.dsd_output {
+            1 => DsdPacking::NativeU32Be,
+            2 => DsdPacking::Dop,
+            _ => return None,
+        };
+        (!self.pcm_to_dsd_multiples().is_empty()
+            && self.fixed_rate == 0
+            && output::is_direct_key(&self.device_key)
+            && !sonkore_dsd::is_dsd_extension(path))
+        .then_some(packing)
+    }
+
+    /// The device opened for PCM→DSD at the highest wanted DSD rate it takes;
+    /// that 1-bit rate, or None with nothing open.
+    fn open_pcm_to_dsd(&mut self, info: &StreamInfo, packing: DsdPacking) -> Option<u32> {
+        let attempt = (self.device_key.clone(), info.channels, packing);
+        if self.to_dsd_refused.as_ref() == Some(&attempt) {
+            return None;
+        }
+        for &multiple in self.pcm_to_dsd_multiples() {
+            let dsd_rate = sonkore_dsd::output::dsd_rate_for_multiple(multiple);
+            let rate = sonkore_dsd::frame_rate(dsd_rate, packing);
+            if self.open_dsd_output(dsd_rate, info.channels, packing, block_need(info.rate, rate)) {
+                return Some(dsd_rate);
+            }
+        }
+        self.to_dsd_refused = Some(attempt);
+        None
     }
 
     /// DSD silence ahead of the music while the DAC switches to DSD.
@@ -1090,8 +1267,9 @@ impl Engine {
     pub fn bit_perfect(&self) -> bool {
         let (Some(info), Some(device)) = (&self.info, self.device_format()) else { return false };
         if self.dsd_packing.is_some() {
-            // DSD words reach the DAC untouched (no DSP, no volume).
-            return device.exclusive;
+            // DSD words reach the DAC untouched (no DSP, no volume); PCM
+            // modulated to DSD is anything but.
+            return device.exclusive && self.to_dsd_rate == 0;
         }
         info.lossless
             && !info.codec.ends_with(" HDCD")
@@ -1143,6 +1321,7 @@ impl Engine {
                     w.previous_path = None;
                     w.chain = Some(Chain::new(self.dsp.clone(), info.rate, info.rate, info.channels));
                     w.dsd = true;
+                    w.modulator = None;
                     w.clear_output();
                     shared.in_rate.store(info.rate as u64, Ordering::Relaxed);
                     shared.processing.store(false, Ordering::Relaxed);
@@ -1154,13 +1333,9 @@ impl Engine {
                 self.info = Some(info.clone());
                 self.path = Some(path.to_owned());
                 self.state = State::Paused;
+                self.to_dsd_rate = 0;
                 return Ok(info);
             }
-        }
-        if self.dsd_packing.is_some() {
-            // From DSD back to PCM: the device is opened again for PCM.
-            self.fade_out();
-            self.close_output();
         }
         let mut decoder = decode::open(path)?;
         Self::check_format(decoder.info())?;
@@ -1172,6 +1347,19 @@ impl Engine {
             decoder.seek((start * info.rate as f64) as u64)?;
         }
         self.fade_out();
+        if let Some(packing) = self.pcm_to_dsd_wanted(path) {
+            if let Some(dsd_rate) = self.open_pcm_to_dsd(&info, packing) {
+                if self.start_pcm_to_dsd(decoder, path, &info, dsd_rate, start) {
+                    return Ok(info);
+                }
+                return Err(EngineError::output("PCM to DSD: the resampler could not be set up"));
+            }
+        }
+        if self.dsd_packing.is_some() {
+            // From DSD back to PCM: the device is opened again for PCM.
+            self.close_output();
+        }
+        self.to_dsd_rate = 0;
         let wanted = self.wanted_rates(info.rate);
         // The device as it is, if it is still there, takes one of the rates
         // and its ring has room for this track's blocks.
@@ -1251,6 +1439,7 @@ impl Engine {
             w.previous = None;
             w.previous_path = None;
             w.dsd = false;
+            w.modulator = None;
             // A new chain for the stream, at its gain from the first sample.
             let mut chain = Chain::new(self.dsp.clone(), info.rate, out_rate, info.channels);
             chain.applied_gain = self.gains.target();
@@ -1267,6 +1456,61 @@ impl Engine {
         self.path = Some(path.to_owned());
         self.state = State::Paused;
         Ok(info)
+    }
+
+    /// PCM→DSD on the DSD device just opened: the chain resamples the
+    /// stream to `dsd_rate` and the worker modulates it; DSD silence first.
+    /// False (nothing left open) when the chain cannot convert to that rate.
+    fn start_pcm_to_dsd(
+        &mut self,
+        decoder: Box<dyn Decoder>,
+        path: &Path,
+        info: &StreamInfo,
+        dsd_rate: u32,
+        start: f64,
+    ) -> bool {
+        let (Some(shared), Some(packing)) = (self.shared.clone(), self.dsd_packing) else { return false };
+        let mut chain = Chain::new(self.dsp.clone(), info.rate, dsd_rate, info.channels);
+        if !chain.resampling() {
+            self.close_output();
+            return false;
+        }
+        chain.applied_gain = self.gains.target();
+        chain.applied_headroom = chain.headroom();
+        let setup = (dsd_rate / 44_100, info.channels, packing);
+        {
+            let mut w = self.lock();
+            match w.modulator.as_mut() {
+                // (Its worker threads stay: only the loops start again.)
+                Some((modulator, made)) if *made == setup => modulator.reset(),
+                _ => {
+                    let mut modulator = sonkore_dsd::SigmaDelta::new();
+                    modulator.setup(setup.0, setup.1, setup.2);
+                    w.modulator = Some((modulator, setup));
+                }
+            }
+            w.decoder = Some(decoder);
+            w.path = Some(path.to_owned());
+            w.next = None;
+            w.next_path = None;
+            w.previous = None;
+            w.previous_path = None;
+            w.dsd = false;
+            w.chain = Some(chain);
+            w.clear_output();
+            shared.in_rate.store(info.rate as u64, Ordering::Relaxed);
+            shared.processing.store(true, Ordering::Relaxed);
+            shared.modulator_resets.store(0, Ordering::Relaxed);
+            shared.ring.clear();
+            Self::reset_counters(&shared, (start.max(0.0) * info.rate as f64) as u64);
+            Self::push_dsd_preroll(&shared, packing, shared.out_rate);
+        }
+        self.wake();
+        self.to_dsd_rate = dsd_rate;
+        self.info = Some(info.clone());
+        self.path = Some(path.to_owned());
+        self.state = State::Paused;
+        true
     }
 
     fn reset_counters(shared: &Shared, decoded: u64) {
@@ -1286,6 +1530,12 @@ impl Engine {
         }
         let hdcd = self.hdcd;
         let decoder = match (self.dsd_packing, path) {
+            // PCM→DSD carries on into PCM that would be modulated alike (the
+            // rate is checked at the join); never into DSD words.
+            (Some(_), Some(p)) if self.to_dsd_rate != 0 => (self.pcm_to_dsd_wanted(p).is_some())
+                .then(|| decode::open(p).ok())
+                .flatten()
+                .map(|d| if hdcd { decode::HdcdDecoder::wrap(d) } else { d }),
             // DSD carries on only into DSD in the same packing (the rate is checked at the join).
             (Some(packing), Some(p)) => {
                 if sonkore_dsd::is_dsd_extension(p) && self.dsd_wanted(p).is_some() {
@@ -1372,7 +1622,8 @@ impl Engine {
     /// What the output does now.
     pub fn output_status(&self) -> OutputStatus {
         let (Some(device), Some(info)) = (self.device_format(), &self.info) else { return OutputStatus::default() };
-        let resampled = self.dsd_packing.is_none() && device.rate != info.rate;
+        let to_dsd = self.to_dsd_rate != 0;
+        let resampled = (self.dsd_packing.is_none() && device.rate != info.rate) || to_dsd;
         let channels_ok = device.channels == info.channels || device.mono_to_stereo;
         OutputStatus {
             backend: self.device_label.0.clone(),
@@ -1386,13 +1637,23 @@ impl Engine {
             source_rate: info.rate,
             path_can_be_bit_perfect: device.exclusive
                 && channels_ok
+                && !to_dsd
                 && (self.dsd_packing.is_some()
                     || (info.lossless && device.rate == info.rate && info.source_bits() <= device.depth())),
             bit_perfect_now: self.bit_perfect(),
-            dsd: if self.dsd_packing.is_some() { info.codec.clone() } else { String::new() },
+            dsd: match self.dsd_packing {
+                Some(p) if to_dsd => format!(
+                    "{} {}",
+                    sonkore_dsd::rate_label(self.to_dsd_rate),
+                    if p.is_native() { "native" } else { "DoP" }
+                ),
+                Some(_) => info.codec.clone(),
+                None => String::new(),
+            },
             hdcd: info.codec.ends_with(" HDCD"),
-            upsampled: resampled && self.upsampling > 0 && self.fixed_rate == 0 && device.rate > info.rate,
-            pcm_to_dsd_rate: 0,
+            upsampled: resampled && !to_dsd && self.upsampling > 0 && self.fixed_rate == 0 && device.rate > info.rate,
+            pcm_to_dsd_rate: self.to_dsd_rate,
+            modulator_resets: self.shared.as_ref().map_or(0, |s| s.modulator_resets.load(Ordering::Relaxed)),
         }
     }
 
@@ -1471,9 +1732,13 @@ impl Engine {
             shared.ring.clear();
             Self::reset_counters(&shared, frame);
             if let Some(packing) = self.dsd_packing {
-                Self::push_dsd_preroll(&shared, packing, rate as u32);
+                // (At the device's frame rate: PCM→DSD's stream is PCM.)
+                Self::push_dsd_preroll(&shared, packing, shared.out_rate);
             }
             w.quantizer.reset();
+            if let Some((modulator, _)) = w.modulator.as_mut() {
+                modulator.reset();
+            }
             w.clear_output();
             let target = self.gains.target();
             if let Some(chain) = w.chain.as_mut() {
@@ -1602,6 +1867,7 @@ impl Engine {
         drop(w);
         self.shared = None;
         self.dsd_packing = None;
+        self.to_dsd_rate = 0;
         self.device_label = (String::new(), String::new());
     }
 }
@@ -1772,6 +2038,50 @@ mod tests {
         for p in [a, b, c] {
             let _ = std::fs::remove_file(p);
         }
+    }
+
+    #[test]
+    fn each_device_thread_is_made_real_time_once() {
+        // rtkit's client existed and nothing called it. The device thread's
+        // id goes to the hook (on a thread of its own) once per device
+        // thread: a device kept for the next track is not asked for again.
+        let path = wav("realtime", 44100);
+        let calls = Arc::new(Mutex::new(Vec::<(i64, String)>::new()));
+        let log = calls.clone();
+        let mut e = engine();
+        e.set_realtime_hook(Box::new(move |tid| {
+            let name = std::thread::current().name().unwrap_or("").to_owned();
+            log.lock().unwrap().push((tid, name));
+            0 // refused: playing goes on as before
+        }));
+        let wait_for = |n: usize| {
+            let deadline = Instant::now() + Duration::from_secs(3);
+            while calls.lock().unwrap().len() < n && Instant::now() < deadline {
+                std::thread::sleep(Duration::from_millis(5));
+            }
+        };
+        e.load(&path, 0.0).unwrap();
+        e.play();
+        wait_for(1);
+        e.load(&path, 0.0).unwrap(); // the same device
+        e.play();
+        std::thread::sleep(Duration::from_millis(200));
+        e.close_output(); // another device thread
+        e.load(&path, 0.0).unwrap();
+        e.play();
+        wait_for(2);
+        std::thread::sleep(Duration::from_millis(100));
+        let calls = calls.lock().unwrap().clone();
+        if cfg!(target_os = "linux") {
+            assert_eq!(calls.len(), 2, "{calls:?}");
+            assert!(calls.iter().all(|(tid, name)| *tid > 0 && name == "sonkore-rtkit"), "{calls:?}");
+            assert_ne!(calls[0].0, calls[1].0, "two device threads");
+            assert_ne!(calls[0].0, output::realtime::current_tid(), "not the control thread");
+            assert_eq!(e.device_rt_priority(), 0, "refused");
+        } else {
+            assert!(calls.is_empty());
+        }
+        let _ = std::fs::remove_file(&path);
     }
 
     #[test]

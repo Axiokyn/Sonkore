@@ -8,6 +8,7 @@
 pub mod convolver;
 pub mod crossfeed;
 pub mod limiter;
+mod polyphase;
 pub mod resampler;
 pub mod test_signals;
 

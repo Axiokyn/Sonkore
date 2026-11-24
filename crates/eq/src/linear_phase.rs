@@ -413,7 +413,21 @@ impl LinearPhaseEq {
         self.pass.clear();
         match self.mode {
             Mode::Off => self.pass.extend_from_slice(samples),
-            Mode::Engaged => self.feed(samples),
+            Mode::Engaged => {
+                // Room for a drain, made while engaged: switching the curve
+                // off then allocates nothing (the worker's blocks stay free
+                // of allocations). The drain holds up to `latency` frames
+                // and hands them back with the rest of its last block.
+                let held = self.latency * ch;
+                if self.held.capacity() < held {
+                    self.held.reserve(held);
+                }
+                let handed = (self.latency + 2 * frames) * ch;
+                if self.pass.capacity() < handed {
+                    self.pass.reserve(handed);
+                }
+                self.feed(samples)
+            }
             Mode::Draining => {
                 let n = frames.min(self.drain_left);
                 self.held.extend_from_slice(&samples[..n * ch]);
@@ -421,11 +435,12 @@ impl LinearPhaseEq {
                 self.drain_left -= n;
                 if self.drain_left == 0 {
                     // Everything it held is out: the input fed meanwhile goes
-                    // on unfiltered, then the rest of this block.
+                    // on unfiltered, then the rest of this block. The
+                    // convolver stays (dropping it would free on this
+                    // thread) until it is engaged again or reset.
                     self.mode = Mode::Off;
                     self.busy.store(false, Ordering::Relaxed);
-                    self.conv = None;
-                    std::mem::swap(&mut self.pass, &mut self.held);
+                    self.pass.extend_from_slice(&self.held);
                     self.held.clear();
                     self.pass.extend_from_slice(&samples[n * ch..]);
                 }
@@ -449,6 +464,18 @@ impl LinearPhaseEq {
         &mut self.pass
     }
 
+    /// The passed frames as a Vec of its own, so the caller can work on them
+    /// while it uses the filter; [`give_back`](Self::give_back) returns the
+    /// buffer (its capacity kept: no allocation per block).
+    pub fn take_passed(&mut self) -> Vec<f64> {
+        std::mem::take(&mut self.pass)
+    }
+
+    pub fn give_back(&mut self, mut passed: Vec<f64>) {
+        passed.clear();
+        self.pass = passed;
+    }
+
     /// Engaged or draining: the frames have to come through process().
     pub fn active(&self) -> bool {
         self.mode != Mode::Off
@@ -461,6 +488,9 @@ impl LinearPhaseEq {
 
     /// Frames still owed after the input ends.
     pub fn tail(&self) -> usize {
+        if !self.active() {
+            return 0;
+        }
         self.conv.as_ref().map_or(0, |c| c.tail())
     }
 

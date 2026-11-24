@@ -23,7 +23,7 @@ Linux · Windows 10/11 · Free software (GPL-3.0)
 - **Reference DSP.** Graphic or parametric equalizer, optionally linear-phase, with AutoEQ for about 7,000 headphones; FIR convolution, crossfeed, oversampling, true-peak limiter, noise-shaped dither, ReplayGain 2.0 and HDCD.
 - **Signal path** in plain sight: every stage from the file to the DAC, with its quality.
 - **Sample-exact gapless playback**, also with the equalizer or volume in use.
-- **The formats that matter:** FLAC, WAV, AIFF, ALAC, AAC, MP3, Vorbis, DSF/DFF (DST too) and CUE images.
+- **The formats that matter:** FLAC, WAV, AIFF, ALAC, AAC, MP3, Vorbis, DSF/DFF (DST too) and CUE images; Opus, APE, WavPack, TTA, TAK, Musepack, WMA, AC-3 and DTS through FFmpeg when it is installed.
 - **A comfortable library:** watched folders, folder tree, 20 columns, M3U playlists, a mini player and 39 themes.
 
 <p align="center">

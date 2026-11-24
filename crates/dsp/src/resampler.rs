@@ -1,5 +1,6 @@
 //! Sample-rate conversion (in place of libsoxr's "very high quality"),
-//! built on rubato, double in and out, interleaved.
+//! built on rubato (linear phase) and on a polyphase FIR of its own
+//! (minimum and intermediate phase), double in and out, interleaved.
 //!
 //! The engine builds one only when it is needed (an output that refuses the
 //! track's rate, upsampling, PCM→DSD, the convolver's impulse response at
@@ -42,9 +43,26 @@
 //! [`Resampler::delay_frames`] is soxr_delay(): the output frames still owed
 //! for the input taken so far (filter delay plus what is buffered).
 //!
-//! **Phase.** rubato's filters are linear phase only: [`Filter::Intermediate`]
-//! and [`Filter::Minimum`] are accepted (they are saved settings) but convert
-//! as [`Filter::Linear`], so they keep pre-ringing.
+//! **Phase.** rubato's filters are linear phase only, so [`Filter::Minimum`]
+//! and [`Filter::Intermediate`] use the polyphase FIR of
+//! `polyphase.rs`: a Kaiser-windowed sinc with the linear filter's
+//! specification (flat to 0.96 of the lower Nyquist, ~190 dB down from it)
+//! turned minimum phase by the cepstral method, or halfway between that and
+//! linear phase (soxr's intermediate phase). Measured as above: ripple
+//! < 2·10⁻⁷ dB to 0.9, flat to 0.965, stop band 191–195 dB; up to 0.9 they
+//! differ from `Linear` by < 2·10⁻⁷ dB. A click's energy more than 8
+//! lower-rate samples before its peak: `Linear` 4–6·10⁻³ (−23 dB),
+//! intermediate 7–10·10⁻⁶ (−51 dB), minimum none. The peak is the alignment
+//! point (a click peaks on its own time), so the timing rules hold the same;
+//! the look-ahead is 9 input frames for minimum phase and ~440 for
+//! intermediate (×in/out when downsampling). The FIR costs its length per
+//! output frame, so past 16× (PCM→DSD's rates) it only doubles the rate and
+//! `Linear` does the rest; that filter's transition is at the input rate,
+//! where nothing is left to ring (a click's energy ahead of its peak:
+//! 3·10⁻¹⁹). Speed on one core, stereo (`tests/bench.rs`): 44.1 → 48 kHz
+//! minimum 154× real time; 44.1 → 192 kHz minimum 37×, intermediate 23×
+//! (`Linear` 567×); 44.1 → 705.6 kHz 11×; DSD64's rate 29× (`Linear` 36×),
+//! DSD512's 3×.
 //!
 //! Real-time use: everything is allocated by the constructor; `process` and
 //! `drain` only write into the caller's `Vec`, which does not reallocate once
@@ -56,15 +74,18 @@ use rubato::{
     WindowFunction,
 };
 
+use crate::polyphase::{self, Phase, Polyphase};
+
 /// The filter's phase response and steepness (`playback/resampleFilter` 0–3).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub enum Filter {
     /// Symmetric: pre- and post-ringing. Flat to ~0.95 of Nyquist.
     #[default]
     Linear,
-    /// soxr's intermediate phase; converted as `Linear` here.
+    /// soxr's intermediate phase: the phase halfway between linear and
+    /// minimum, a little pre-ringing (−51 dB of a click's energy).
     Intermediate,
-    /// soxr's minimum phase; converted as `Linear` here.
+    /// Minimum phase: no pre-ringing, all the ringing after the peak.
     Minimum,
     /// Linear with a steeper transition: flat to ~0.985 of Nyquist
     /// (21.7 kHz at 44.1 kHz instead of ~21 kHz).
@@ -119,13 +140,43 @@ fn mod_inverse(x: u64, m: u64) -> u64 {
 }
 
 pub struct Resampler {
-    engine: Box<dyn rubato::Resampler<f64>>,
+    engine: Engine,
     channels: usize,
     in_rate: u32,
     out_rate: u32,
     /// in / gcd and out / gcd: the exact ratio is b / a.
     a: u64,
     b: u64,
+    in_total: u64,
+    out_total: u64,
+    drained: bool,
+}
+
+/// What converts: rubato (linear phase) or the polyphase FIR (minimum and
+/// intermediate phase).
+enum Engine {
+    Rubato(Rubato),
+    Fir(Polyphase),
+    /// Upsampling by more than [`FIR_RATIO_MAX`] (PCM→DSD): the FIR to twice
+    /// the input rate, then rubato's linear filter the rest of the way. The
+    /// FIR costs its length per output frame, which at the 1-bit rates would
+    /// not keep up; the second filter's transition is up at the input rate,
+    /// where the first one left nothing (190 dB down) to ring.
+    TwoStage {
+        fir: Box<Resampler>,
+        rest: Box<Resampler>,
+        mid: Vec<f64>,
+    },
+}
+
+/// The largest upsampling the polyphase FIR does in one stage (44.1 → 705.6
+/// kHz).
+const FIR_RATIO_MAX: u64 = 16;
+/// Input frames the two-stage converter passes through at a time.
+const STAGE_CHUNK: usize = 1024;
+
+struct Rubato {
+    engine: Box<dyn rubato::Resampler<f64>>,
     /// Input frames the engine takes per call (always the same).
     block_in: usize,
     /// The most output frames one engine call gives.
@@ -140,9 +191,6 @@ pub struct Resampler {
     /// Leading output frames to drop (the filter's delay).
     skip: usize,
     skip_left: usize,
-    in_total: u64,
-    out_total: u64,
-    drained: bool,
 }
 
 impl Resampler {
@@ -161,6 +209,20 @@ impl Resampler {
         // centre (half the block) is a whole number of output frames.
         let low = a.min(b) as usize;
         let k = taps.div_ceil(low).next_multiple_of(2);
+        if let Some(phase) = match filter {
+            Filter::Minimum => Some(Phase::Minimum),
+            Filter::Intermediate => Some(Phase::Intermediate),
+            _ => None,
+        } {
+            if b > FIR_RATIO_MAX * a {
+                let fir = Box::new(Self::new(in_rate, in_rate * 2, channels, filter)?);
+                let rest = Box::new(Self::new(in_rate * 2, out_rate, channels, Filter::Linear)?);
+                let mid = Vec::with_capacity(fir.max_output_frames(STAGE_CHUNK) * channels);
+                return Ok(Self::build(Engine::TwoStage { fir, rest, mid }, in_rate, out_rate, channels, a, b));
+            }
+            let fir = Polyphase::new(polyphase::kernel(phase), a, b, channels);
+            return Ok(Self::build(Engine::Fir(fir), in_rate, out_rate, channels, a, b));
+        }
         let fft_in = k * a as usize;
         let fft_out = k * b as usize;
         let engine = Fft::<f64>::new_custom(
@@ -176,7 +238,7 @@ impl Resampler {
         debug_assert_eq!(engine.input_frames_next(), fft_in);
         debug_assert_eq!(engine.output_frames_next(), fft_out);
         let skip = engine.output_delay();
-        Ok(Self::build(Box::new(engine), in_rate, out_rate, channels, a, b, 0, skip))
+        Ok(Self::build(Rubato::new(Box::new(engine), channels, 0, skip), in_rate, out_rate, channels, a, b))
     }
 
     /// A linear-phase low-pass of its own (DSD→PCM's second stage): flat to
@@ -236,7 +298,7 @@ impl Resampler {
         let chunk = SINC_CHUNK.max(pad);
         let engine = Async::<f64>::new_sinc(ratio, 1.0, &params, chunk, channels, FixedAsync::Input)
             .map_err(|e| format!("Resampler: {e}"))?;
-        Ok(Self::build(Box::new(engine), in_rate, out_rate, channels, a, b, pad, skip))
+        Ok(Self::build(Rubato::new(Box::new(engine), channels, pad, skip), in_rate, out_rate, channels, a, b))
     }
 
     fn check(in_rate: u32, out_rate: u32, channels: usize) -> Result<(), String> {
@@ -249,38 +311,8 @@ impl Resampler {
         Ok(())
     }
 
-    #[allow(clippy::too_many_arguments)]
-    fn build(
-        engine: Box<dyn rubato::Resampler<f64>>,
-        in_rate: u32,
-        out_rate: u32,
-        channels: usize,
-        a: u64,
-        b: u64,
-        pad: usize,
-        skip: usize,
-    ) -> Self {
-        let block_in = engine.input_frames_max();
-        let block_out_max = engine.output_frames_max();
-        let mut r = Resampler {
-            engine,
-            channels,
-            in_rate,
-            out_rate,
-            a,
-            b,
-            block_in,
-            block_out_max,
-            fifo: vec![0.0; block_in * channels],
-            fifo_frames: 0,
-            scratch: vec![0.0; block_out_max * channels],
-            pad,
-            skip,
-            skip_left: skip,
-            in_total: 0,
-            out_total: 0,
-            drained: false,
-        };
+    fn build(engine: Engine, in_rate: u32, out_rate: u32, channels: usize, a: u64, b: u64) -> Self {
+        let mut r = Resampler { engine, channels, in_rate, out_rate, a, b, in_total: 0, out_total: 0, drained: false };
         r.clear();
         r
     }
@@ -306,31 +338,61 @@ impl Resampler {
     /// frames (or a `drain`) writes: reserve this much to keep the path free
     /// of allocations.
     pub fn max_output_frames(&self, input_frames: usize) -> usize {
-        let calls = (self.fifo_frames.max(self.block_in) + input_frames).div_ceil(self.block_in) + 1;
-        let drain_calls = (self.skip + self.block_out_max).div_ceil(self.block_out_max.max(1)) + 2;
-        calls.max(drain_calls) * self.block_out_max
+        match &self.engine {
+            Engine::Rubato(r) => {
+                let calls = (r.fifo_frames.max(r.block_in) + input_frames).div_ceil(r.block_in) + 1;
+                let drain_calls = (r.skip + r.block_out_max).div_ceil(r.block_out_max.max(1)) + 2;
+                calls.max(drain_calls) * r.block_out_max
+            }
+            // Every output the input completes, and the look-ahead's when
+            // draining.
+            Engine::Fir(f) => ((input_frames + f.lead() + 2) as u64 * self.b).div_ceil(self.a) as usize + 2,
+            Engine::TwoStage { fir, rest, .. } => {
+                rest.max_output_frames(fir.max_output_frames(input_frames)) + rest.max_output_frames(0)
+            }
+        }
     }
 
     /// Converts interleaved frames; `output` is cleared and gets what is
     /// ready. Returns the frames written.
     pub fn process(&mut self, input: &[f64], output: &mut Vec<f64>) -> usize {
         output.clear();
+        self.feed(input, output);
+        output.len() / self.channels
+    }
+
+    /// `process`, appending to `output`.
+    fn feed(&mut self, input: &[f64], output: &mut Vec<f64>) {
         let ch = self.channels;
-        let mut rest = &input[..input.len() / ch * ch];
+        let rest = &input[..input.len() / ch * ch];
         self.in_total += (rest.len() / ch) as u64;
         self.drained = false;
-        while !rest.is_empty() {
-            let room = (self.block_in - self.fifo_frames) * ch;
-            let n = room.min(rest.len());
-            let at = self.fifo_frames * ch;
-            self.fifo[at..at + n].copy_from_slice(&rest[..n]);
-            self.fifo_frames += n / ch;
-            rest = &rest[n..];
-            if self.fifo_frames == self.block_in {
-                self.run(output, u64::MAX);
+        match &mut self.engine {
+            Engine::Rubato(r) => {
+                let mut rest = rest;
+                while !rest.is_empty() {
+                    let room = (r.block_in - r.fifo_frames) * ch;
+                    let n = room.min(rest.len());
+                    let at = r.fifo_frames * ch;
+                    r.fifo[at..at + n].copy_from_slice(&rest[..n]);
+                    r.fifo_frames += n / ch;
+                    rest = &rest[n..];
+                    if r.fifo_frames == r.block_in {
+                        self.out_total += r.run(ch, output, u64::MAX, self.out_total);
+                    }
+                }
+            }
+            Engine::Fir(f) => self.out_total += f.push(Some(rest), rest.len() / ch, output, u64::MAX),
+            Engine::TwoStage { fir, rest: next, mid } => {
+                let before = output.len();
+                for chunk in rest.chunks(STAGE_CHUNK * ch) {
+                    mid.clear();
+                    fir.feed(chunk, mid);
+                    next.feed(mid, output);
+                }
+                self.out_total += ((output.len() - before) / ch) as u64;
             }
         }
-        output.len() / ch
     }
 
     /// End of input: everything still owed, up to exactly
@@ -338,55 +400,58 @@ impl Resampler {
     /// 0 once drained (so `while drain() > 0` loops end as with soxr).
     pub fn drain(&mut self, output: &mut Vec<f64>) -> usize {
         output.clear();
+        self.finish(output);
+        output.len() / self.channels
+    }
+
+    /// `drain`, appending to `output`.
+    fn finish(&mut self, output: &mut Vec<f64>) {
         if self.drained {
-            return 0;
+            return;
         }
         let ch = self.channels;
         // round(in · b / a), exactly.
         let target = ((self.in_total as u128 * self.b as u128 * 2 + self.a as u128) / (2 * self.a as u128)) as u64;
-        // (Bounded: each call gives output once the filter is primed.)
-        let mut calls = (self.skip + self.block_in * 2) / self.block_out_max.max(1) + 8;
-        while self.out_total < target && calls > 0 {
-            self.fifo[self.fifo_frames * ch..].fill(0.0);
-            self.fifo_frames = self.block_in;
-            self.run(output, target);
-            calls -= 1;
+        match &mut self.engine {
+            Engine::Rubato(r) => {
+                // (Bounded: each call gives output once the filter is primed.)
+                let mut calls = (r.skip + r.block_in * 2) / r.block_out_max.max(1) + 8;
+                while self.out_total < target && calls > 0 {
+                    r.fifo[r.fifo_frames * ch..].fill(0.0);
+                    r.fifo_frames = r.block_in;
+                    self.out_total += r.run(ch, output, target, self.out_total);
+                    calls -= 1;
+                }
+            }
+            Engine::Fir(f) => {
+                // Silence past the end, as far as the last output looks.
+                let owed = target.saturating_sub(self.out_total);
+                self.out_total += f.push(None, f.lead() + 2, output, owed);
+            }
+            Engine::TwoStage { fir, rest, mid } => {
+                // Both stages keep the length rule, so the second ends on
+                // round(in · out / in) too.
+                let before = output.len();
+                mid.clear();
+                fir.finish(mid);
+                rest.feed(mid, output);
+                rest.finish(output);
+                self.out_total += ((output.len() - before) / ch) as u64;
+            }
         }
         self.drained = true;
-        output.len() / ch
-    }
-
-    /// One engine call over the full FIFO; what it gives (past the frames to
-    /// skip, and up to `limit` in all) is appended to `output`.
-    fn run(&mut self, output: &mut Vec<f64>, limit: u64) {
-        let ch = self.channels;
-        let produced = {
-            let input = InterleavedSlice::new(&self.fifo[..], ch, self.block_in).expect("resampler input");
-            let mut out =
-                InterleavedSlice::new_mut(&mut self.scratch[..], ch, self.block_out_max).expect("resampler output");
-            match self.engine.process_into_buffer(&input, &mut out, None) {
-                Ok((_, written)) => written,
-                Err(_) => 0,
-            }
-        };
-        self.fifo_frames = 0;
-        let mut from = 0;
-        if self.skip_left > 0 {
-            from = self.skip_left.min(produced);
-            self.skip_left -= from;
-        }
-        let keep = ((produced - from) as u64).min(limit.saturating_sub(self.out_total)) as usize;
-        output.extend_from_slice(&self.scratch[from * ch..(from + keep) * ch]);
-        self.out_total += keep as u64;
     }
 
     /// Back to the start: no input held, the filter's delay to drop again.
     pub fn clear(&mut self) {
-        self.engine.reset();
-        self.fifo.fill(0.0);
-        // The alignment's silent lead-in (never longer than a block).
-        self.fifo_frames = self.pad;
-        self.skip_left = self.skip;
+        match &mut self.engine {
+            Engine::Rubato(r) => r.clear(),
+            Engine::Fir(f) => f.clear(),
+            Engine::TwoStage { fir, rest, .. } => {
+                fir.clear();
+                rest.clear();
+            }
+        }
         self.in_total = 0;
         self.out_total = 0;
         self.drained = false;
@@ -405,5 +470,55 @@ impl Resampler {
     /// The same delay in input frames (for position arithmetic).
     pub fn delay_input_frames(&self) -> f64 {
         self.delay_frames() / self.ratio()
+    }
+}
+
+impl Rubato {
+    fn new(engine: Box<dyn rubato::Resampler<f64>>, channels: usize, pad: usize, skip: usize) -> Engine {
+        let block_in = engine.input_frames_max();
+        let block_out_max = engine.output_frames_max();
+        Engine::Rubato(Rubato {
+            engine,
+            block_in,
+            block_out_max,
+            fifo: vec![0.0; block_in * channels],
+            fifo_frames: 0,
+            scratch: vec![0.0; block_out_max * channels],
+            pad,
+            skip,
+            skip_left: skip,
+        })
+    }
+
+    /// One engine call over the full FIFO; what it gives (past the frames to
+    /// skip, and up to `limit` in all, `out_total` given so far) is appended
+    /// to `output`. Returns the frames appended.
+    fn run(&mut self, ch: usize, output: &mut Vec<f64>, limit: u64, out_total: u64) -> u64 {
+        let produced = {
+            let input = InterleavedSlice::new(&self.fifo[..], ch, self.block_in).expect("resampler input");
+            let mut out =
+                InterleavedSlice::new_mut(&mut self.scratch[..], ch, self.block_out_max).expect("resampler output");
+            match self.engine.process_into_buffer(&input, &mut out, None) {
+                Ok((_, written)) => written,
+                Err(_) => 0,
+            }
+        };
+        self.fifo_frames = 0;
+        let mut from = 0;
+        if self.skip_left > 0 {
+            from = self.skip_left.min(produced);
+            self.skip_left -= from;
+        }
+        let keep = ((produced - from) as u64).min(limit.saturating_sub(out_total)) as usize;
+        output.extend_from_slice(&self.scratch[from * ch..(from + keep) * ch]);
+        keep as u64
+    }
+
+    fn clear(&mut self) {
+        self.engine.reset();
+        self.fifo.fill(0.0);
+        // The alignment's silent lead-in (never longer than a block).
+        self.fifo_frames = self.pad;
+        self.skip_left = self.skip;
     }
 }

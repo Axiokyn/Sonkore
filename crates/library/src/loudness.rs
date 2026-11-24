@@ -9,13 +9,14 @@
 //! file's peaks above full scale are measured, not clipped. A CD image
 //! track (`<sheet>.cue#<n>`) is its stretch of the image file.
 //!
-//! Formats symphonia does not decode (Opus, Speex, Monkey's Audio, WavPack,
-//! TTA, TAK, Musepack, WMA, AC-3, DTS, DSD) cannot be measured by this
-//! crate alone: they come back not measured, as an unreadable file does in
-//! earlier versions (which decoded them through FFmpeg), unless the
-//! application lends its own decoders with `set_decoder_hook` (the engine's,
-//! FFmpeg included), which are then tried first. Only the formats symphonia reads
-//! are opened at all: its probe would otherwise find "MP3 frames" in the
+//! Formats symphonia does not decode (Opus, Monkey's Audio, WavPack, TTA,
+//! TAK, Musepack, WMA, AC-3, DTS) are decoded by FFmpeg when it is installed
+//! (`sonkore_ffmpeg`, loaded at run time), as earlier versions did; Opus in
+//! an Ogg or WebM file too, when symphonia finds no decoder for it. Without
+//! FFmpeg they come back not measured, as an unreadable file. DSD is not
+//! measured. The application can lend its own decoders with
+//! `set_decoder_hook`, which are then tried first. Symphonia only opens the
+//! formats it reads: its probe would otherwise find "MP3 frames" in the
 //! noise of a file it does not know.
 
 use std::fs::File;
@@ -158,13 +159,69 @@ fn measure_file(path: &str, cancel: &AtomicBool) -> Option<(EbuR128, f64)> {
         return measure_w64(&file, cancel);
     }
     if !SYMPHONIA_FORMATS.contains(&ext.as_str()) {
-        return None;
+        return measure_ffmpeg(&file, range, cancel);
     }
+    match measure_symphonia(&file, &ext, range, cancel) {
+        // Opus in an .ogg or a .webm: symphonia has no decoder for it.
+        None if matches!(ext.as_str(), "ogg" | "oga" | "mka" | "webm") && !cancel.load(Ordering::Relaxed) => {
+            measure_ffmpeg(&file, range, cancel)
+        }
+        m => m,
+    }
+}
+
+/// FFmpeg's decoding of a file, or of the stretch [start, end) (CD frames)
+/// of a CD image.
+fn measure_ffmpeg(file: &str, range: Option<(u64, u64)>, cancel: &AtomicBool) -> Option<(EbuR128, f64)> {
+    let mut stream = sonkore_ffmpeg::Stream::open_path(Path::new(file)).ok()?;
+    let rate = stream.info().rate as u64;
+    let mut left = None;
+    if let Some((start, end)) = range {
+        let first = cd_to_frames(start, rate);
+        stream.seek(first).ok()?;
+        if end > 0 {
+            left = Some(cd_to_frames(end, rate).saturating_sub(first));
+        }
+    }
+    measure_source(Box::new(FfmpegPcm { stream, left }), cancel)
+}
+
+/// FFmpeg's samples, up to `left` frames.
+struct FfmpegPcm {
+    stream: sonkore_ffmpeg::Stream,
+    left: Option<u64>,
+}
+
+impl PcmSource for FfmpegPcm {
+    fn rate(&self) -> u32 {
+        self.stream.info().rate
+    }
+    fn channels(&self) -> usize {
+        self.stream.info().channels
+    }
+    fn read(&mut self, out: &mut [f64]) -> usize {
+        let ch = self.channels();
+        let want = match self.left {
+            Some(left) => (out.len() / ch).min(left as usize),
+            None => out.len() / ch,
+        };
+        let got = self.stream.read_f64(&mut out[..want * ch]).unwrap_or(0);
+        if let Some(left) = &mut self.left {
+            *left -= got as u64;
+        }
+        got
+    }
+}
+
+/// Symphonia's decoding of a file it reads (`ext`), or of the stretch
+/// [start, end) (CD frames) of a CD image.
+fn measure_symphonia(file: &str, ext: &str, range: Option<(u64, u64)>, cancel: &AtomicBool) -> Option<(EbuR128, f64)> {
+    let file = file.to_string();
     // AIFF: the frames its COMM chunk states (symphonia reads past them).
-    let aiff_frames = if matches!(ext.as_str(), "aif" | "aiff" | "aifc") { aiff_frames(&file) } else { None };
+    let aiff_frames = if matches!(ext, "aif" | "aiff" | "aifc") { aiff_frames(&file) } else { None };
     // MP4: the edit list says what is played (the encoder's priming and
     // padding are not), as FFmpeg's decoding has it.
-    let mp4_edit = if matches!(ext.as_str(), "m4a" | "m4b" | "mp4") {
+    let mp4_edit = if matches!(ext, "m4a" | "m4b" | "mp4") {
         crate::metadata::probe::mp4::edit_range(Path::new(&file))
     } else {
         None
@@ -385,7 +442,9 @@ pub fn measure_album(paths: &[String], cancel: &AtomicBool) -> AlbumMeasurement 
         AlbumMeasurement { tracks: vec![Measurement::default(); paths.len()], album: Measurement::default() };
     let mut states: Vec<EbuR128> = Vec::new();
     for (i, path) in paths.iter().enumerate() {
-        let measured = measure_file(path, cancel);
+        // A damaged file can make symphonia panic: it is not measured, and
+        // the scan thread goes on with the others.
+        let measured = sonkore_core::panic_guard::catch(|| measure_file(path, cancel)).unwrap_or(None);
         if cancel.load(Ordering::Relaxed) {
             return result;
         }

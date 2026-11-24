@@ -71,8 +71,13 @@ fn elements(d: &[u8], start: usize, end: usize) -> Vec<(u64, usize, usize)> {
         let Some(size) = vint(d, &mut p, false) else {
             break;
         };
+        // A header that runs past its parent's end is damage (its size
+        // borrowed the next element's bytes): stop there.
+        if p > end {
+            break;
+        }
         let body_end = match size {
-            Some(s) => (p as u64 + s).min(end as u64) as usize,
+            Some(s) => (p as u64).saturating_add(s).min(end as u64) as usize,
             None => end,
         };
         out.push((id, p, body_end));

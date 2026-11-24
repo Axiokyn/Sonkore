@@ -305,15 +305,15 @@ impl Chain {
         let mut filtered = std::mem::take(&mut self.work);
         filtered.clear();
         filtered.extend_from_slice(self.linear.filtered());
-        let passed: Vec<f64> = self.linear.passed().to_vec();
+        let mut passed = self.linear.take_passed();
         if !filtered.is_empty() {
             self.rest(&mut filtered, false, gain, to_unity, out);
         }
         self.work = filtered;
         if !passed.is_empty() {
-            let mut passed = passed;
             self.rest(&mut passed, !linear, gain, to_unity, out);
         }
+        self.linear.give_back(passed);
     }
 
     fn rest(&mut self, samples: &mut [f64], biquads: bool, gain: f64, to_unity: bool, out: &mut dyn FnMut(&[f64])) {

@@ -25,7 +25,7 @@ and these:
 | Crates | License | Notes |
 |---|---|---|
 | [Slint](https://slint.dev) (`slint`, `i-slint-*`) — the interface | GPL-3.0-only, Slint Royalty-free 2.0 or Slint Software 3.0 | Used under the GPL-3.0. `vendor/` holds three of them (and `parley`, `softbuffer`) with small changes, marked "Sonkore:" |
-| [Symphonia](https://github.com/pdeljanov/Symphonia) (`symphonia-*`) — decoding of FLAC, MP3, AAC, ALAC, Vorbis, WAV, AIFF, CAF, MKV | MPL-2.0 | Unmodified |
+| [Symphonia](https://github.com/pdeljanov/Symphonia) (`symphonia-*`) — decoding of FLAC, MP3, AAC, ALAC, Vorbis, WAV, AIFF, CAF, MKV | MPL-2.0 | Unmodified, but for `symphonia-format-caf`, `symphonia-format-isomp4` and `symphonia-metadata` in `vendor/` (allocations sized by the file read as the data comes; changes marked "Sonkore:", the source is in this repository) |
 | [ebur128](https://github.com/sdroege/ebur128) — EBU R128 loudness and true peak (a port of libebur128) | MIT | |
 | [rubato](https://github.com/HEnquist/rubato), [rustfft](https://github.com/ejmahler/RustFFT) / realfft — resampling and the convolution engine's FFT | MIT / MIT OR Apache-2.0 | |
 
@@ -35,6 +35,7 @@ and these:
 |---|---|---|
 | [alsa-lib](https://www.alsa-project.org) | LGPL-2.1-or-later | Linux only, loaded from the system (also by the AppImage): ALSA output and the DAC's volume control |
 | [PipeWire](https://pipewire.org) | MIT | Linux only, `libpipewire-0.3` loaded from the system when present |
+| [FFmpeg](https://ffmpeg.org) (libavformat, libavcodec, libavutil) | LGPL-2.1-or-later (GPL-2.0-or-later for some builds) | Loaded from the system when present (Windows: its DLLs next to `sonkore.exe` or on the PATH), never shipped with Sonkore: Opus, APE, WavPack, TTA, TAK, Musepack, WMA, AC-3, DTS |
 | [AutoEq](https://github.com/jaakkopasanen/AutoEq) by Jaakko Pasanen | MIT | Headphone correction profiles, downloaded only when you search for them |
 | [MusicBrainz](https://musicbrainz.org) and [Cover Art Archive](https://coverartarchive.org) | Web services (CC0 data; each cover belongs to its rights holder) | Only with "Missing covers" turned on (off by default): the album is looked up by artist and album name and its cover is kept in Sonkore's cache, for personal use |
 

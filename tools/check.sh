@@ -51,6 +51,10 @@ step "clippy" no_warnings clippy --keep-going --workspace --all-targets
 # (crates/dsd/tests/reference/make_reference.sh).
 dsd_corpus="$root/target/dsd-corpus"
 [ -d "$dsd_corpus" ] || dsd_corpus=
+# Licenses compatible with the GPL, security advisories, crate sources
+# (deny.toml), when cargo-deny is installed (cargo install cargo-deny --locked).
+deny="$(command -v cargo-deny || echo "$HOME/.cargo/bin/cargo-deny")"
+[ -x "$deny" ] && step "dependencias (cargo-deny)" "$deny" deny --log-level error check
 step "tests" env SONKORE_TEST_CORPUS="$corpus" SONKORE_LIBRARY_CORPUS="$library_corpus" \
     ${dsd_corpus:+SONKORE_DSD_CORPUS="$dsd_corpus"} cargo test --quiet --workspace
 step "Windows (cargo check)" "$here/check-windows.sh" --quiet

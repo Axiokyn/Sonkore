@@ -1,0 +1,52 @@
+// Files dragged over the window (src/dropped.rs, src/drop_files.rs): the
+// window dims, a rounded frame in the accent 12 px in, and in its middle an
+// arrow and what the drop will do.
+
+import { Theme } from "theme.slint";
+import { Icons } from "icons.slint";
+
+export global Drops {
+    in property <bool> shown;
+    in property <string> hint;
+}
+
+export component DropOverlay inherits Rectangle {
+    in property <length> corner;
+    border-radius: root.corner;
+    background: Theme.bg.with-alpha(0.82);
+    // Under it nothing takes the pointer meanwhile.
+    TouchArea { }
+    Rectangle {
+        x: 12px;
+        y: 12px;
+        width: root.width - 24px;
+        height: root.height - 24px;
+        border-radius: max(Theme.radius, root.corner - 12px);
+        border-width: 2px;
+        border-color: Theme.accent;
+        background: Theme.accent-soft;
+    }
+    VerticalLayout {
+        x: 24px;
+        width: root.width - 48px;
+        alignment: center;
+        spacing: 12px;
+        HorizontalLayout {
+            alignment: center;
+            Image {
+                width: 40px;
+                height: 40px;
+                source: Icons.download;
+                colorize: Theme.accent;
+            }
+        }
+        Text {
+            text: Drops.hint;
+            font-size: 17px;
+            font-weight: 600;
+            color: Theme.text;
+            horizontal-alignment: center;
+            wrap: word-wrap;
+        }
+    }
+}

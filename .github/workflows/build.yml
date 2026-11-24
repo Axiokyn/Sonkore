@@ -36,9 +36,11 @@ jobs:
       - name: Tools and libraries
         run: |
           sudo apt-get update -q
-          sudo apt-get install -y -q pkg-config libasound2-dev libxkbcommon-dev libwayland-dev libfontconfig-dev ffmpeg flac lame wavpack
+          sudo apt-get install -y -q pkg-config libasound2-dev libxkbcommon-dev libwayland-dev libfontconfig-dev ffmpeg flac lame wavpack libavformat-dev libavcodec-dev libavutil-dev
       - name: Formatting
         run: cargo fmt --all --check
+      - name: Dependencies (licenses, advisories, sources)
+        uses: EmbarkStudios/cargo-deny-action@v2
       - name: Corpus
         run: |
           tests/make_corpus.sh "$PWD/target/test-corpus" > /dev/null

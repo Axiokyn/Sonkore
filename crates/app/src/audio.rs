@@ -38,7 +38,7 @@ pub fn engine() -> Engine {
             let _ = wait.recv_timeout(std::time::Duration::from_secs(2));
         }
     });
-    Engine::with_outputs(Box::new(move |key, request, render| {
+    let engine = Engine::with_outputs(Box::new(move |key, request, render| {
         let card = key.strip_prefix("alsa|").and_then(sonkore_platform::reservation::card_index_of);
         let given_back = card.is_none() && reservation.held();
         if let Err(busy) = reservation.acquire_with_retry(card) {
@@ -57,7 +57,16 @@ pub fn engine() -> Engine {
             crate::tap::opened(&tap, out.key(), &out.format(), !key.starts_with("pipewire|") && !key.is_empty());
         }
         opened
-    }))
+    }));
+    // The device threads get real-time priority through rtkit (its portal
+    // in a Flatpak), asked for off the audio threads; refused: as before.
+    #[cfg(target_os = "linux")]
+    let engine = {
+        let mut engine = engine;
+        engine.set_realtime_hook(Box::new(sonkore_platform::rtkit::make_realtime));
+        engine
+    };
+    engine
 }
 
 /// No sound server to wait for (no card is reserved off Linux).
@@ -201,6 +210,9 @@ pub fn apply(settings: &Settings, engine: &mut Engine) {
     );
     // DSD: 0 as PCM, 1 native (the default), 2 DoP.
     engine.set_dsd_output(settings.int(&p("dsdOutput"), 1));
+    // PCM to DSD through that DSD output: 0 off, 1 DSD64, 2 DSD128, 3 DSD256,
+    // 4 the highest the DAC takes (up to DSD256), 5 DSD512.
+    engine.set_pcm_to_dsd(settings.int(&p("pcmToDsd"), 0));
     let crossfeed = settings.int(&p("crossfeed"), 0).clamp(0, 3);
     let limiter = settings.flag(&p("limiter"), false);
     let ceiling = settings.number(&p("limiterCeilingDb"), -1.0).clamp(-6.0, 0.0);

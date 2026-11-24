@@ -28,11 +28,11 @@ clic 796 456
 esperar 0.4
 clic 796 285
 guardado ui/startPage=albums
-# Velocidad de la rueda: Muy rápida, después Normal.
-clic 828 494
+# Velocidad de la rueda (bajo los filtros de Pistas): Muy rápida, después Normal.
+clic 828 616
 guardado ui/wheelStep=300
 estado wheel-step=300
-clic 669 494
+clic 669 616
 guardado ui/wheelStep=100
 estado wheel-step=100
 # Escala: 125 % pide reiniciar.

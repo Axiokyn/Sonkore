@@ -20,10 +20,14 @@ use crate::tracklist::{self, DEFAULT_KEYS, TrackListModel};
 use crate::{App, FolderRow, MainWindow, NavItem, PlaylistRow};
 
 // The pages, menus and dialogs: child modules, so they reach the state here.
+#[path = "drop_files.rs"]
+mod drop_files;
 #[path = "menus.rs"]
 mod menus;
 #[path = "pages.rs"]
 mod pages;
+#[path = "track_filters.rs"]
+mod track_filters;
 
 const VOLUME_RANGE_DB: f64 = 60.0;
 
@@ -54,6 +58,15 @@ pub struct Controller {
     page: RefCell<(String, String)>,
     search: RefCell<String>,
     expanded: RefCell<std::collections::HashSet<String>>,
+    /// The folder tree's track counts and children, per library generation.
+    folder_index: RefCell<Option<FolderIndex>>,
+    /// widest_badge per (library generation, font): it went over every
+    /// track's format label at each list refresh and twice per pointer move
+    /// while dragging a column divider.
+    widest_badge_cache: RefCell<Option<(u64, String, f64)>>,
+    /// The sidebar's models, kept: only the rows that change are told (a new
+    /// model destroyed and rebuilt every folder row, twice per track change).
+    sidebar_models: SidebarModels,
     list_width: RefCell<f32>,
     unmuted: RefCell<f64>,
     anchor: RefCell<Option<usize>>,
@@ -81,6 +94,8 @@ pub struct Controller {
     visual: RefCell<crate::spectrum::View>,
     commands: std::sync::mpsc::Receiver<sonkore_platform::Command>,
     ui: RefCell<pages::PageState>,
+    /// The Tracks page's filters (Genres → Artists → Albums).
+    filters: RefCell<track_filters::FilterState>,
     /// Samples the quantizer clipped in this track (the signal path's warning).
     clipped: std::cell::Cell<u64>,
     /// The tags of the file playing when it is not in the library (for ReplayGain).
@@ -169,6 +184,9 @@ impl Controller {
             page: RefCell::new(("tracks".into(), String::new())),
             search: RefCell::new(String::new()),
             expanded: RefCell::new(Default::default()),
+            folder_index: RefCell::new(None),
+            widest_badge_cache: RefCell::new(None),
+            sidebar_models: SidebarModels::default(),
             list_width: RefCell::new(900.0),
             unmuted: RefCell::new(1.0),
             anchor: RefCell::new(None),
@@ -186,6 +204,7 @@ impl Controller {
             poll_timer: Timer::default(),
             session_dirty: RefCell::new(false),
             ui: RefCell::new(pages::PageState::new()),
+            filters: RefCell::new(Default::default()),
             clipped: std::cell::Cell::new(0),
             mpris,
             mpris_track: RefCell::new(None),
@@ -218,6 +237,8 @@ impl Controller {
         });
         c.connect(window);
         c.connect_pages(window);
+        c.connect_filters(window);
+        c.connect_drops();
         c.refresh_sidebar();
         let start = c.start_page();
         c.open(&start.0, &start.1);
@@ -502,6 +523,7 @@ impl Controller {
                         let prefix = format!("{arg}/");
                         (0..lib.tracks.len()).filter(|&i| lib.tracks[i].path.starts_with(&prefix)).collect()
                     }
+                    "tracks" => self.filtered_rows(&lib).unwrap_or_else(|| (0..lib.tracks.len()).collect()),
                     _ => (0..lib.tracks.len()).collect(),
                 },
                 Some(self.sort_order()),
@@ -738,11 +760,20 @@ impl Controller {
     /// The widest format badge in the library, at least a long hi-res one.
     pub(super) fn widest_badge(&self) -> f64 {
         let lib = self.library.borrow();
+        let font = self.window().global::<crate::Theme>().get_font_family().to_string();
+        if let Some((generation, f, w)) = &*self.widest_badge_cache.borrow()
+            && *generation == lib.generation
+            && *f == font
+        {
+            return *w;
+        }
         let mut labels: std::collections::HashSet<String> = lib.tracks.iter().map(|t| t.format_label()).collect();
         labels.insert("FLAC 24/192".into());
         let widest = labels.iter().map(|l| crate::metrics::badge_width(l) as f64 - 12.0).fold(0.0, f64::max);
         let cap = crate::metrics::badge_width("WavPack 24/352.8") as f64 - 12.0;
-        widest.min(cap)
+        let w = widest.min(cap);
+        *self.widest_badge_cache.borrow_mut() = Some((lib.generation, font, w));
+        w
     }
 
     pub(super) fn layout_columns(&self) {
@@ -850,43 +881,28 @@ impl Controller {
                 badge: badge.into(),
             })
             .collect();
-        app.set_nav(ModelRc::new(VecModel::from(nav)));
+        sync_model(&self.sidebar_models.nav, nav);
+        app.set_nav(ModelRc::from(self.sidebar_models.nav.clone()));
 
         // The folder tree: each watched folder and the folders under it that
-        // hold music, with their track counts.
+        // hold music, with their track counts (computed once per library change).
         let (page, arg) = self.page.borrow().clone();
         let playing = self.player.borrow().current_path().unwrap_or("").to_owned();
         let expanded = self.expanded.borrow();
-        let mut counts: BTreeMap<String, usize> = BTreeMap::new();
-        for t in &lib.tracks {
-            let mut dir = t.folder();
-            loop {
-                *counts.entry(dir.to_owned()).or_default() += 1;
-                if lib.folders.iter().any(|f| f == dir) {
-                    break;
-                }
-                match dir.rsplit_once('/') {
-                    Some((parent, _)) if !parent.is_empty() => dir = parent,
-                    _ => break,
-                }
-            }
+        if self.folder_index.borrow().as_ref().is_none_or(|f| f.generation != lib.generation) {
+            *self.folder_index.borrow_mut() = Some(FolderIndex::new(&lib));
         }
-        let mut rows = Vec::new();
-        let mut roots: Vec<&String> = lib.folders.iter().collect();
-        roots.sort_by(|a, b| natural_cmp(&a.to_lowercase(), &b.to_lowercase()));
-        fn children<'a>(counts: &'a BTreeMap<String, usize>, dir: &str) -> Vec<&'a String> {
-            let prefix = format!("{dir}/");
-            let mut c: Vec<&String> =
-                counts.keys().filter(|k| k.starts_with(&prefix) && !k[prefix.len()..].contains('/')).collect();
-            c.sort_by(|a, b| natural_cmp(&a.to_lowercase(), &b.to_lowercase()));
-            c
-        }
-        let mut stack: Vec<(String, i32)> = roots.into_iter().rev().map(|r| (r.clone(), 0)).collect();
-        // Subfolders on or off, and how many levels.
         drop(lib);
+        let index = self.folder_index.borrow();
+        let index = index.as_ref().expect("built above");
+        let counts = &index.counts;
+        let children = |dir: &str| -> &[String] { index.children.get(dir).map_or(&[], Vec::as_slice) };
+        let mut rows = Vec::new();
+        let mut stack: Vec<(String, i32)> = index.roots.iter().rev().map(|r| (r.clone(), 0)).collect();
+        // Subfolders on or off, and how many levels.
         let max_depth = self.tree_max_depth();
         while let Some((dir, depth)) = stack.pop() {
-            let kids = if depth < max_depth { children(&counts, &dir) } else { Vec::new() };
+            let kids: &[String] = if depth < max_depth { children(&dir) } else { &[] };
             let is_open = depth == 0 && !expanded.contains(&format!("!{dir}")) || expanded.contains(&dir);
             let selected = page == "folders" && arg == dir;
             let holds = !playing.is_empty() && playing.starts_with(&format!("{dir}/"));
@@ -910,7 +926,8 @@ impl Controller {
                 }
             }
         }
-        app.set_folders(ModelRc::new(VecModel::from(rows)));
+        sync_model(&self.sidebar_models.folders, rows);
+        app.set_folders(ModelRc::from(self.sidebar_models.folders.clone()));
         let playlists: Vec<PlaylistRow> = self
             .playlist_rows()
             .into_iter()
@@ -920,7 +937,8 @@ impl Controller {
                 count: n.to_string().into(),
             })
             .collect();
-        app.set_playlists(ModelRc::new(VecModel::from(playlists)));
+        sync_model(&self.sidebar_models.playlists, playlists);
+        app.set_playlists(ModelRc::from(self.sidebar_models.playlists.clone()));
     }
 
     // --- The player --------------------------------------------------------------------
@@ -1125,6 +1143,11 @@ impl Controller {
         } else if changes.error {
             let e = self.player.borrow().last_error().to_owned();
             if !e.is_empty() {
+                // A file only FFmpeg decodes, and it is not installed.
+                let e = match sonkore_engine::decode::ffmpeg_missing_file(&e) {
+                    Some(name) => trf("DspController", "Playing {0} needs FFmpeg, which is not installed", &[name]),
+                    None => e,
+                };
                 self.show_message(&e);
             }
         }
@@ -1317,6 +1340,14 @@ impl Controller {
             ("crossfeed", self.settings.borrow().int("playback/crossfeed", 0).to_string()),
             ("eq", self.ctx.equalizer.borrow().enabled().to_string()),
             ("tracks", self.library.borrow().tracks.len().to_string()),
+            // The rows the list shows, and the Tracks page's filters (genre|artist|album).
+            ("rows", self.list.state.borrow().indices.len().to_string()),
+            ("filters", self.filters_probe()),
+            // What the drop overlay says while files are dragged over the window.
+            ("drop", {
+                let d = w.global::<crate::Drops>();
+                if d.get_shown() { d.get_hint().to_string() } else { String::new() }
+            }),
             ("cursor", self.cursor.get().map(|i| i.to_string()).unwrap_or_default()),
             ("covers", w.global::<App>().get_cover_width().to_string()),
             ("density", w.global::<crate::Theme>().get_list_density().to_string()),
@@ -1712,6 +1743,10 @@ impl Controller {
         if session_writer().send(SessionWrite::Flush(done)).is_ok() {
             let _ = wait.recv_timeout(std::time::Duration::from_secs(5));
         }
+        // Restoring every setting: what was cleared stays cleared.
+        if crate::settings_ui::restoring_defaults() {
+            return;
+        }
         // This output's sound as it is now: a restart does not bring back
         // what it had when it was last left.
         if crate::sound_profiles::enabled(&self.settings.borrow()) {
@@ -1881,4 +1916,70 @@ fn session_writer() -> &'static std::sync::mpsc::Sender<SessionWrite> {
         });
         tx
     })
+}
+
+/// The sidebar's lists, one model each for the window's life.
+#[derive(Default)]
+struct SidebarModels {
+    nav: Rc<VecModel<NavItem>>,
+    folders: Rc<VecModel<FolderRow>>,
+    playlists: Rc<VecModel<PlaylistRow>>,
+}
+
+/// Puts `rows` into `model`: with as many rows as before only the ones that
+/// differ are told (their items stay), else the model is replaced.
+fn sync_model<T: Clone + PartialEq + 'static>(model: &VecModel<T>, rows: Vec<T>) {
+    if model.row_count() == rows.len() {
+        for (i, row) in rows.into_iter().enumerate() {
+            if model.row_data(i).as_ref() != Some(&row) {
+                model.set_row_data(i, row);
+            }
+        }
+    } else {
+        model.set_vec(rows);
+    }
+}
+
+/// What the folder tree derives from the library: tracks under each folder
+/// (up to its watched root) and each folder's subfolders, in natural order.
+struct FolderIndex {
+    generation: u64,
+    roots: Vec<String>,
+    counts: BTreeMap<String, usize>,
+    children: std::collections::HashMap<String, Vec<String>>,
+}
+
+impl FolderIndex {
+    fn new(lib: &crate::lib_shim::Library) -> FolderIndex {
+        let roots_set: std::collections::HashSet<&str> = lib.folders.iter().map(String::as_str).collect();
+        let mut counts: BTreeMap<String, usize> = BTreeMap::new();
+        for t in &lib.tracks {
+            let mut dir = t.folder();
+            loop {
+                *counts.entry(dir.to_owned()).or_default() += 1;
+                if roots_set.contains(dir) {
+                    break;
+                }
+                match dir.rsplit_once('/') {
+                    Some((parent, _)) if !parent.is_empty() => dir = parent,
+                    _ => break,
+                }
+            }
+        }
+        let natural = |a: &String, b: &String| natural_cmp(&a.to_lowercase(), &b.to_lowercase());
+        let mut children: std::collections::HashMap<String, Vec<String>> = std::collections::HashMap::new();
+        for dir in counts.keys() {
+            if let Some((parent, _)) = dir.rsplit_once('/')
+                && counts.contains_key(parent)
+            {
+                children.entry(parent.to_owned()).or_default().push(dir.clone());
+            }
+        }
+        for kids in children.values_mut() {
+            kids.sort_by(natural);
+        }
+        let mut roots = lib.folders.clone();
+        roots.sort_by(natural);
+        FolderIndex { generation: lib.generation, roots, counts, children }
+    }
 }

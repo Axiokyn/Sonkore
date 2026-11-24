@@ -1,7 +1,9 @@
 /* A tiny PipeWire daemon for tests (run.sh): full access for every client
  * (module-access's job); the sink's and the streams' ports set up in DSP mode
  * and stream ports linked to test-sink's by channel (a session manager's job).
- * Config from argv[1]. */
+ * Writing another sink's node.name to $XDG_RUNTIME_DIR/test-link-target moves
+ * the streams there (as Easy Effects moves them to its own sink); removing
+ * the file moves them back. Config from argv[1]. */
 #include <pipewire/pipewire.h>
 #include <pipewire/impl.h>
 #include <spa/utils/string.h>
@@ -9,11 +11,30 @@
 #include <spa/param/param.h>
 #include <spa/pod/builder.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 static struct pw_context *ctx;
 static struct pw_loop *loop;
 static struct spa_source *timer;
+static char linked_to[256] = "test-sink";
+
+/* The sink the streams go to: the file's name, else test-sink. */
+static void link_target(char *out, size_t size) {
+    snprintf(out, size, "test-sink");
+    const char *dir = getenv("XDG_RUNTIME_DIR");
+    if (!dir) return;
+    char path[512];
+    snprintf(path, sizeof(path), "%s/test-link-target", dir);
+    FILE *f = fopen(path, "r");
+    if (!f) return;
+    char name[256] = "";
+    if (fgets(name, sizeof(name), f)) {
+        name[strcspn(name, " \r\n")] = 0;
+        if (name[0]) snprintf(out, size, "%s", name);
+    }
+    fclose(f);
+}
 
 static void check_access(void *data, struct pw_impl_client *client) {
     struct pw_permission p = PW_PERMISSION_INIT(PW_ID_ANY, PW_PERM_ALL);
@@ -32,7 +53,7 @@ static int find_sink_port(void *data, struct pw_global *g) {
     struct pw_impl_port *port = pw_global_get_object(g);
     if (pw_impl_port_get_direction(port) != PW_DIRECTION_INPUT) return 0;
     const struct pw_properties *np = pw_impl_node_get_properties(pw_impl_port_get_node(port));
-    if (!spa_streq(pw_properties_get(np, PW_KEY_NODE_NAME), "test-sink")) return 0;
+    if (!spa_streq(pw_properties_get(np, PW_KEY_NODE_NAME), linked_to)) return 0;
     const char *ch = pw_properties_get(pw_impl_port_get_properties(port), PW_KEY_AUDIO_CHANNEL);
     if (ch && spa_streq(ch, f->channel)) { f->found = port; return 1; }
     return 0;
@@ -96,8 +117,37 @@ static int configure_node(void *data, struct pw_global *g) {
     return 0;
 }
 
+/* The links from the streams' ports, to be undone (collected first: a
+ * link is not destroyed while the globals are walked). */
+struct stream_links { struct pw_impl_link *links[64]; int n; };
+
+static int find_stream_link(void *data, struct pw_global *g) {
+    struct stream_links *l = data;
+    if (!pw_global_is_type(g, PW_TYPE_INTERFACE_Link) || l->n == 64) return 0;
+    struct pw_impl_link *link = pw_global_get_object(g);
+    struct pw_impl_port *port = pw_impl_link_get_output(link);
+    const char *cls = pw_properties_get(pw_impl_node_get_properties(pw_impl_port_get_node(port)), PW_KEY_MEDIA_CLASS);
+    if (cls && spa_streq(cls, "Stream/Output/Audio")) l->links[l->n++] = link;
+    return 0;
+}
+
 static void on_timer(void *data, uint64_t expirations) {
     pw_context_for_each_global(ctx, configure_node, NULL);
+    char target[256];
+    link_target(target, sizeof(target));
+    if (!spa_streq(target, linked_to)) {
+        struct stream_links l = { .n = 0 };
+        pw_context_for_each_global(ctx, find_stream_link, &l);
+        for (int i = 0; i < l.n; i++) {
+            struct pw_impl_port *port = pw_impl_link_get_output(l.links[i]);
+            struct spa_dict_item item = SPA_DICT_ITEM_INIT("test.linked", NULL);
+            struct spa_dict d = SPA_DICT_INIT(&item, 1);
+            pw_impl_port_update_properties(port, &d);
+            pw_impl_link_destroy(l.links[i]);
+        }
+        snprintf(linked_to, sizeof(linked_to), "%s", target);
+        fprintf(stderr, "streams to %s\n", linked_to);
+    }
     pw_context_for_each_global(ctx, link_stream_port, NULL);
 }
 

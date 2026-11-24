@@ -33,6 +33,9 @@ Scenario lines (coordinates in the app's logical pixels at Interface scale
     arrastrar X Y               a press there must ask to move the window
     arrastre X0 Y0 X1 Y1        press, move, let go (sliders, the EQ's points)
     tecla [ctrl+][shift+]NAME   a key (names in wl-headless/headless.c)
+    soltar-encima X Y RUTA…     files dragged over the window from a pretend file
+                                manager ({rt}, {repo}; quotes for spaces); then
+    soltar | soltar-fuera       drops them, or the drag leaves
     foco main|last|lasttop|N    which surface gets the input
     escala N                    the screen's scale, in %
     tamaño W H                  the compositor resizes the main window
@@ -47,9 +50,11 @@ Scenario lines (coordinates in the app's logical pixels at Interface scale
                                 every COND: CLAVE=V, CLAVE=N±T, CLAVE<N, CLAVE>N,
                                 CLAVE~REGEX, CLAVE!=V. Keys: salida tasa canales
                                 bits flotante dsd dop salidas silencio duracion,
-                                and nivel- pico- frec- desvio- with -i (left) or
-                                -d (right); see sound(). A scenario using it
-                                gets SONKORE_OUTPUT_TAP (crates/app/src/tap.rs).
+                                and nivel- pico- frec- desvio- preeco- with -i
+                                (left) or -d (right); see sound() (DSD: nivel, pico and
+                                frec from the 1-bit density, dsd_measures()).
+                                A scenario using it gets SONKORE_OUTPUT_TAP
+                                (crates/app/src/tap.rs).
                                 Without COND it prints every measure.
     ventanas N [S]              waits until N toplevels are on screen
     latencia NOMBRE MAX_MS [ventana]  the next input must give a new frame
@@ -153,7 +158,7 @@ class Adopted:
 
 
 class Session:
-    def __init__(self, app, scale, ui_scale, audio, run_dir, say, settings=(), app_vars=(), prepare=(), screen=None, args=(), tap=False):
+    def __init__(self, app, scale, ui_scale, audio, run_dir, say, settings=(), app_vars=(), prepare=(), screen=None, args=(), tap=False, dnd=False):
         self.app, self.audio, self.run_dir, self.say = app, audio, run_dir, say
         self.rt = Path(tempfile.mkdtemp(prefix="sk-live", dir="/tmp"))  # sockets: short paths
         self.prof = self.rt / "p"
@@ -182,6 +187,8 @@ class Session:
                    RESULT_FILE=str(self.result_file), DUMP_DIR=str(run_dir))
         if screen:
             env["OUTPUT"] = screen
+        if dnd:
+            env["DND"] = "1"  # the compositor offers drag and drop (wl_data_device_manager)
         self.procs = []
         if audio:
             conf_dir = self.rt / "pwconf"
@@ -416,8 +423,10 @@ def sound(sess, seconds):
     """What the app's last output got over its last `seconds` (crates/app/src/tap.rs):
     format, and per channel (i = left, d = right) the level (dB of a sine: RMS
     + 3.01 dB, so a -12 dBFS tone reads -12), the peak (dBFS), the frequency
-    (Hz, from rising zero crossings) and the spread in LSBs of the quantizer's
-    grid (desvio: 0 for a constant without dither)."""
+    (Hz, from rising zero crossings), the spread in LSBs of the quantizer's
+    grid (desvio: 0 for a constant without dither) and, for a click, the
+    pre-ringing (preeco: dB of the energy ahead of its peak, -200 for none;
+    the conversion filter's phase, escenarios/sonido-filtro.txt)."""
     import json
     from array import array
     folder = sess.rt / "tap"
@@ -461,6 +470,7 @@ def sound(sess, seconds):
         # DoP: the marker byte (0x05 / 0xFA, in turn) atop each word.
         top = [(v >> 24) & 0xFF for v in a[0::ch]]
         out["dop"] = f"{sum(t in (0x05, 0xFA) for t in top) / len(top):.2f}"
+        dsd_measures(out, a, ch, rate, fmt["dsd"] == "Dop")
         return out
     lsb = float(1 << (32 - fmt["quantizer"]))
     for c, name in zip(range(min(ch, 2)), "id"):
@@ -474,7 +484,51 @@ def sound(sess, seconds):
         out[f"desvio-{name}"] = f"{(sum((v - mean) ** 2 for v in x) / frames) ** 0.5 / lsb:.2f}"
         ups = [i - x[i - 1] / (x[i] - x[i - 1]) for i in range(1, frames) if x[i - 1] < 0 <= x[i]]
         out[f"frec-{name}"] = f"{(len(ups) - 1) * rate / (ups[-1] - ups[0]):.1f}" if len(ups) > 2 and ups[-1] > ups[0] else "0"
+        # Pre-ringing of a click: the energy from 20 ms to 0.2 ms before the
+        # loudest sample, in dB of the energy within 20 ms of it.
+        p = max(range(frames), key=lambda i: abs(x[i]))
+        lo, hi, lobe = max(0, p - rate // 50), min(frames, p + rate // 50), round(rate * 0.0002)
+        pre = sum(v * v for v in x[lo:max(lo, p - lobe)])
+        total = sum(v * v for v in x[lo:hi])
+        out[f"preeco-{name}"] = f"{10 * __import__('math').log10(pre / total):.1f}" if pre > 0 and total > 0 else "-200.0"
     return out
+
+
+def dsd_measures(out, a, ch, rate, dop):
+    """DSD words (native DSD_U32 or DoP) back to a level and a frequency per
+    channel: the 1-bit density of each word (which order the bits go out in
+    does not matter for it), a third-order CIC down to ~11 kHz, then the same
+    measures as PCM. 50 % modulation reads -6 dB (all ones is full scale, as
+    DSD to PCM converts); the CIC's droop at the measured frequency is taken
+    back out. No desvio: there is no grid."""
+    import math
+    bits = 16 if dop else 32
+    mask = 0x00FFFF00 if dop else 0xFFFFFFFF
+    m = max(1, round(rate / 11025))  # words per output sample
+    for c, name in zip(range(min(ch, 2)), "id"):
+        x = [(2 * bin(v & mask).count("1") - bits) / bits for v in a[c::ch]]
+        for _ in range(3):  # moving averages of m words
+            run, acc = [], 0.0
+            for i, v in enumerate(x):
+                acc += v - (x[i - m] if i >= m else 0.0)
+                run.append(acc / m)
+            x = run
+        y = x[3 * m::m]
+        if len(y) < 4:
+            continue
+        out_rate = rate / m
+        ups = [i - y[i - 1] / (y[i] - y[i - 1]) for i in range(1, len(y)) if y[i - 1] < 0 <= y[i]]
+        freq = (len(ups) - 1) * out_rate / (ups[-1] - ups[0]) if len(ups) > 2 and ups[-1] > ups[0] else 0.0
+        # Droop of three boxcars of m·bits bits at the 1-bit rate.
+        span = m * bits
+        w = math.pi * freq / (rate * bits)
+        droop = (math.sin(w * span) / (span * math.sin(w))) ** 3 if freq > 0 else 1.0
+        rms = (sum(v * v for v in y) / len(y)) ** 0.5 / max(droop, 1e-9)
+        peak = max(abs(v) for v in y)
+        db = lambda v: 20 * math.log10(v) if v > 0 else -200.0
+        out[f"nivel-{name}"] = f"{db(rms * 2 ** 0.5):.1f}"
+        out[f"pico-{name}"] = f"{db(peak):.1f}"
+        out[f"frec-{name}"] = f"{freq:.1f}"
 
 
 def check_sound(sess, seconds, specs, timeout):
@@ -585,7 +639,8 @@ def run_scenario(path, app, scale, ui_scale, audio, tag):
         app_args = [a for l in text if l.startswith("argumentos ") for a in shlex.split(l)[1:]]
         sess = Session(app, scale, ui_scale, audio, run_dir, say, settings, env, prepare,
                        screen=f"{screen[-1][0]}x{screen[-1][1]}" if screen else None, args=app_args,
-                       tap=any(l.split()[:1] == ["sonido"] for l in text))
+                       tap=any(l.split()[:1] == ["sonido"] for l in text),
+                       dnd=any(l.split()[:1] in (["soltar-encima"], ["soltar"]) for l in text))
         for n, raw in enumerate(text, 1):
             line = raw.split("#", 1)[0].strip()
             if not line:
@@ -648,6 +703,20 @@ def run_scenario(path, app, scale, ui_scale, audio, tag):
                 elif cmd == "rueda":
                     sess.input(f"move {float(a[0]) * ui_scale} {float(a[1]) * ui_scale}", f"axis {a[2]}")
                     time.sleep(0.15)
+                elif cmd == "soltar-encima":
+                    # Files dragged from a "file manager" over the window
+                    # (Wayland: wl_data_device), to X Y.
+                    from urllib.parse import quote
+                    paths = shlex.split(sess.expand(line.split(None, 3)[3]))
+                    uris = " ".join("file://" + quote(p) for p in paths)
+                    sess.send(f"dnd-enter {float(a[0]) * ui_scale} {float(a[1]) * ui_scale} {uris}")
+                    time.sleep(0.3)
+                elif cmd == "soltar":
+                    sess.send("dnd-drop")
+                    time.sleep(0.3)
+                elif cmd == "soltar-fuera":
+                    sess.send("dnd-leave")
+                    time.sleep(0.2)
                 elif cmd == "tecla":
                     sess.input(f"key {a[0]}")
                     time.sleep(0.15)

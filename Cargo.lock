@@ -4664,6 +4664,8 @@ dependencies = [
  "sonkore-ui",
  "tiny-skia 0.11.4",
  "ttf-parser",
+ "wayland-backend",
+ "wayland-client",
  "windows",
  "windows-core",
  "zbus",
@@ -4696,9 +4698,11 @@ version = "1.0.7"
 dependencies = [
  "alsa",
  "libc",
+ "sonkore-core",
  "sonkore-dsd",
  "sonkore-dsp",
  "sonkore-eq",
+ "sonkore-ffmpeg",
  "sonkore-hdcd",
  "sonkore-soundtouch",
  "symphonia",
@@ -4715,6 +4719,13 @@ dependencies = [
  "serde_json",
  "sonkore-core",
  "ureq",
+]
+
+[[package]]
+name = "sonkore-ffmpeg"
+version = "1.0.7"
+dependencies = [
+ "libloading",
 ]
 
 [[package]]
@@ -4737,6 +4748,7 @@ dependencies = [
  "serde_json",
  "sha1_smol",
  "sonkore-core",
+ "sonkore-ffmpeg",
  "symphonia",
  "unicode-normalization",
  "ureq",
@@ -4978,8 +4990,6 @@ dependencies = [
 [[package]]
 name = "symphonia-format-caf"
 version = "0.5.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b8faf379316b6b6e6bbc274d00e7a592e0d63ff1a7e182ce8ba25e24edd3d096"
 dependencies = [
  "log",
  "symphonia-core",
@@ -4989,8 +4999,6 @@ dependencies = [
 [[package]]
 name = "symphonia-format-isomp4"
 version = "0.5.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "243739585d11f81daf8dac8d9f3d18cc7898f6c09a259675fc364b382c30e0a5"
 dependencies = [
  "encoding_rs",
  "log",
@@ -5039,8 +5047,6 @@ dependencies = [
 [[package]]
 name = "symphonia-metadata"
 version = "0.5.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "36306ff42b9ffe6e5afc99d49e121e0bd62fe79b9db7b9681d48e29fa19e6b16"
 dependencies = [
  "encoding_rs",
  "lazy_static",

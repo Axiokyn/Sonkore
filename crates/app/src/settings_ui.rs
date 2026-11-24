@@ -185,6 +185,23 @@ pub fn current() -> Option<Rc<SettingsUi>> {
     CURRENT.with(|c| c.borrow().clone())
 }
 
+/// Settings › Restore all settings is restarting the app: the close must not
+/// write back what was just cleared (the window's geometry, the output's sound
+/// profile from the equalizer still in memory).
+pub static RESTORING_DEFAULTS: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+pub fn restoring_defaults() -> bool {
+    RESTORING_DEFAULTS.load(std::sync::atomic::Ordering::Relaxed)
+}
+
+/// An audio setting changed elsewhere (the volume menus): the open window
+/// shows it (its radio kept the old mode).
+pub fn refresh_audio() {
+    if let Some(ui) = current() {
+        ui.fill_audio();
+    }
+}
+
 pub struct SettingsUi {
     window: SettingsWindow,
     ctx: Rc<Ctx>,
@@ -898,6 +915,7 @@ impl SettingsUi {
                     }
                     let _ = s.save();
                 }
+                RESTORING_DEFAULTS.store(true, std::sync::atomic::Ordering::Relaxed);
                 self.hooks.restore_defaults();
             }
             "select-device" => {

@@ -356,6 +356,209 @@ fn alsa_hardware() -> Vec<AlsaPcm> {
     result
 }
 
+// --- Channel order --------------------------------------------------------------
+
+/// Multichannel order: the engine's samples are in WAVE / FLAC order (what
+/// Symphonia, the DSD files and FFmpeg hand over); a device may want them in
+/// another (ALSA's own: FL FR RL RR FC LFE). Samples are only moved, never
+/// mixed; side and back (rear) surrounds stand in for each other.
+///
+/// PipeWire is given the positions with the format (`pipewire::format_pod`)
+/// and WASAPI a WAVEFORMATEXTENSIBLE channel mask, both in WAVE order, so
+/// only ALSA `hw:` devices need it: their channel map is set to the source's
+/// when the driver lets it be chosen, otherwise the frames are reordered on
+/// the device thread from the map the device reports (or, when it reports
+/// none, ALSA's standard order for 5, 6 and 8 channels).
+pub mod channels {
+    /// A speaker position (the ones WAVE / FLAC layouts and ALSA maps use).
+    #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+    pub enum Pos {
+        Mono,
+        FL,
+        FR,
+        FC,
+        Lfe,
+        /// Rear (WAVE's "back") left / right / centre.
+        RL,
+        RR,
+        RC,
+        SL,
+        SR,
+        Other,
+    }
+
+    use Pos::*;
+
+    /// The order of a source with `channels` channels (WAVE / FLAC).
+    pub fn source_layout(channels: usize) -> &'static [Pos] {
+        match channels {
+            1 => &[Mono],
+            2 => &[FL, FR],
+            3 => &[FL, FR, FC],
+            4 => &[FL, FR, RL, RR],
+            5 => &[FL, FR, FC, RL, RR],
+            6 => &[FL, FR, FC, Lfe, RL, RR],
+            7 => &[FL, FR, FC, Lfe, RC, SL, SR],
+            8 => &[FL, FR, FC, Lfe, RL, RR, SL, SR],
+            _ => &[],
+        }
+    }
+
+    /// ALSA's standard order (the surround50 / 51 / 71 devices), for a
+    /// device that reports no channel map.
+    pub fn alsa_standard(channels: usize) -> Option<&'static [Pos]> {
+        match channels {
+            5 => Some(&[FL, FR, RL, RR, FC]),
+            6 => Some(&[FL, FR, RL, RR, FC, Lfe]),
+            8 => Some(&[FL, FR, RL, RR, FC, Lfe, SL, SR]),
+            _ => None,
+        }
+    }
+
+    /// Side and rear surrounds stand in for each other.
+    pub fn alias(p: Pos) -> Pos {
+        match p {
+            SL => RL,
+            SR => RR,
+            RL => SL,
+            RR => SR,
+            other => other,
+        }
+    }
+
+    /// An ALSA channel map as `snd_pcm_chmap_print` writes it ("FL FR RL RR
+    /// FC LFE"); anything else (driver-specific, phase-inverted) is Other.
+    pub fn parse_alsa(text: &str) -> Vec<Pos> {
+        text.split_whitespace()
+            .map(|name| match name {
+                "MONO" => Mono,
+                "FL" => FL,
+                "FR" => FR,
+                "FC" => FC,
+                "LFE" => Lfe,
+                "RL" => RL,
+                "RR" => RR,
+                "RC" => RC,
+                "SL" => SL,
+                "SR" => SR,
+                _ => Other,
+            })
+            .collect()
+    }
+
+    /// For each device channel, the source channel that goes there (exact
+    /// positions first, then the side/rear aliases). None when the layouts
+    /// differ in length or some channel would have nowhere to go (the device
+    /// would have to mix), or when nothing moves.
+    pub fn plan(source: &[Pos], device: &[Pos]) -> Option<Vec<usize>> {
+        let n = source.len();
+        if n != device.len() || n < 2 || source.contains(&Other) || device.contains(&Other) {
+            return None;
+        }
+        let mut order = vec![usize::MAX; n];
+        let mut used = vec![false; n];
+        for pass in 0..2 {
+            for d in 0..n {
+                if order[d] != usize::MAX {
+                    continue;
+                }
+                let found = (0..n).find(|&s| {
+                    !used[s] && if pass == 0 { source[s] == device[d] } else { alias(source[s]) == device[d] }
+                });
+                if let Some(s) = found {
+                    order[d] = s;
+                    used[s] = true;
+                }
+            }
+        }
+        if order.contains(&usize::MAX) || order.iter().enumerate().all(|(d, &s)| d == s) {
+            return None;
+        }
+        Some(order)
+    }
+
+    /// The device's names for the source's channels, in the source's order
+    /// (a map to ask a driver that lets its map be chosen for); None when
+    /// some source channel has no place among `available`.
+    pub fn in_source_order(source: &[Pos], available: &[Pos]) -> Option<Vec<Pos>> {
+        let mut left = available.to_vec();
+        let mut out = Vec::with_capacity(source.len());
+        for &s in source {
+            let at = left.iter().position(|&p| p == s).or_else(|| left.iter().position(|&p| p == alias(s)))?;
+            out.push(left.remove(at));
+        }
+        Some(out)
+    }
+
+    /// Moves the samples of each frame of `block` (interleaved, `order.len()`
+    /// channels): device channel d gets source channel `order[d]`.
+    pub fn reorder(block: &mut [i32], order: &[usize]) {
+        let ch = order.len();
+        let mut frame = [0i32; 8];
+        if ch == 0 || ch > frame.len() {
+            return;
+        }
+        for f in block.chunks_exact_mut(ch) {
+            frame[..ch].copy_from_slice(f);
+            for (d, &s) in order.iter().enumerate() {
+                f[d] = frame[s];
+            }
+        }
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+
+        #[test]
+        fn five_one_to_alsas_order() {
+            // FLAC/WAV 5.1 (FL FR FC LFE RL RR) on an HDA card (FL FR RL RR FC LFE).
+            let device = parse_alsa("FL FR RL RR FC LFE");
+            let order = plan(source_layout(6), &device).unwrap();
+            assert_eq!(order, vec![0, 1, 4, 5, 2, 3]);
+            let mut block: Vec<i32> = (0..12).collect(); // two frames, sample = source index
+            reorder(&mut block, &order);
+            assert_eq!(block, vec![0, 1, 4, 5, 2, 3, 6, 7, 10, 11, 8, 9]);
+        }
+
+        #[test]
+        fn side_and_rear_stand_in_for_each_other() {
+            // A 5.1 device with side surrounds: the source's rears go there.
+            let order = plan(source_layout(6), &parse_alsa("FL FR FC LFE SL SR"));
+            assert_eq!(order, None, "same places: nothing moves");
+            let order = plan(source_layout(6), &parse_alsa("FL FR SL SR FC LFE")).unwrap();
+            assert_eq!(order, vec![0, 1, 4, 5, 2, 3]);
+            // 7.1 keeps rears and sides apart when the device has both.
+            let order = plan(source_layout(8), &parse_alsa("FL FR RL RR FC LFE SL SR")).unwrap();
+            assert_eq!(order, vec![0, 1, 4, 5, 2, 3, 6, 7]);
+            // 7 channels: the rear centre.
+            let order = plan(source_layout(7), &parse_alsa("FL FR SL SR FC LFE RC")).unwrap();
+            assert_eq!(order, vec![0, 1, 5, 6, 2, 3, 4]);
+        }
+
+        #[test]
+        fn what_cannot_be_moved_is_left_alone() {
+            assert_eq!(plan(source_layout(2), &parse_alsa("FL FR")), None);
+            assert_eq!(plan(source_layout(6), &parse_alsa("FL FR FC LFE RL")), None, "a channel short");
+            assert_eq!(plan(source_layout(6), &parse_alsa("FL FR FC LFE FLC FRC")), None, "nowhere to go");
+            assert_eq!(plan(source_layout(4), &parse_alsa("FL FR Ch3 Ch4")), None, "driver-specific");
+            assert_eq!(plan(source_layout(6), &alsa_standard(6).unwrap()), Some(vec![0, 1, 4, 5, 2, 3]));
+            let mut block = vec![1, 2, 3];
+            reorder(&mut block, &[]);
+            assert_eq!(block, vec![1, 2, 3]);
+        }
+
+        #[test]
+        fn a_choosable_map_in_the_sources_order() {
+            let available = parse_alsa("FL FR RL RR FC LFE");
+            assert_eq!(in_source_order(source_layout(6), &available), Some(source_layout(6).to_vec()));
+            let sides = parse_alsa("FL FR SL SR FC LFE");
+            assert_eq!(in_source_order(source_layout(6), &sides), Some(vec![FL, FR, FC, Lfe, SL, SR]));
+            assert_eq!(in_source_order(source_layout(6), &parse_alsa("FL FR FC LFE")), None);
+        }
+    }
+}
+
 // --- ALSA ------------------------------------------------------------------------
 
 #[cfg(target_os = "linux")]
@@ -477,6 +680,8 @@ mod alsa {
                     sample.1,
                 )
             };
+            // Multichannel in the card's order (moved, never mixed).
+            let reorder = if direct { channel_order(&pcm, format.channels) } else { None };
             {
                 let sw = pcm.sw_params_current().map_err(|e| err("software parameters", e))?;
                 sw.set_start_threshold((format.buffer_frames - format.period_frames).max(format.period_frames) as i64)
@@ -490,10 +695,57 @@ mod alsa {
             let (thread_stop, thread_failed) = (stop.clone(), failed.clone());
             let thread = std::thread::Builder::new()
                 .name("sonkore-alsa".into())
-                .spawn(move || device_loop(pcm, format, sample, render, thread_stop, thread_failed))
+                .spawn(move || device_loop(pcm, format, sample, reorder, render, thread_stop, thread_failed))
                 .map_err(|e| OutputError(e.to_string()))?;
             Ok(AlsaOutput { key: key.to_owned(), format, stop, failed, thread: Some(thread) })
         }
+    }
+
+    /// How a direct device takes a multichannel stream (see
+    /// [`channels`](super::channels)): a map the driver lets be chosen is set
+    /// to the source's order; otherwise the frames are reordered from the
+    /// map it reports (ALSA's standard order when it reports none). None:
+    /// as they come.
+    fn channel_order(pcm: &PCM, channels: usize) -> Option<Vec<usize>> {
+        use super::channels::{Pos, alsa_standard, in_source_order, parse_alsa, plan, source_layout};
+        use ::alsa::pcm::{Chmap, ChmapPosition, ChmapType};
+        use std::fmt::Write as _;
+        let source = source_layout(channels);
+        if channels < 3 || source.is_empty() {
+            return None;
+        }
+        let text = |map: &Chmap| {
+            let mut t = String::new();
+            write!(t, "{map}").ok().map(|_| t)
+        };
+        let alsa_pos = |p: &Pos| match p {
+            Pos::Mono => ChmapPosition::Mono,
+            Pos::FL => ChmapPosition::FL,
+            Pos::FR => ChmapPosition::FR,
+            Pos::FC => ChmapPosition::FC,
+            Pos::Lfe => ChmapPosition::LFE,
+            Pos::RL => ChmapPosition::RL,
+            Pos::RR => ChmapPosition::RR,
+            Pos::RC => ChmapPosition::RC,
+            Pos::SL => ChmapPosition::SL,
+            Pos::SR => ChmapPosition::SR,
+            Pos::Other => ChmapPosition::Unknown,
+        };
+        let choosable = pcm
+            .query_chmaps()
+            .filter(|(kind, _)| *kind == ChmapType::Var)
+            .filter_map(|(_, map)| text(&map))
+            .map(|t| parse_alsa(&t))
+            .find(|available| available.len() == channels);
+        if let Some(wanted) = choosable.and_then(|available| in_source_order(source, &available)) {
+            let positions: Vec<ChmapPosition> = wanted.iter().map(alsa_pos).collect();
+            let _ = pcm.set_chmap(&Chmap::from(&positions[..]));
+        }
+        let device = match pcm.get_chmap().ok().and_then(|m| text(&m)) {
+            Some(t) => parse_alsa(&t),
+            None => alsa_standard(channels)?.to_vec(),
+        };
+        plan(source, &device)
     }
 
     /// How long a device may keep failing to recover before it counts as gone.
@@ -507,6 +759,7 @@ mod alsa {
         pcm: PCM,
         format: DeviceFormat,
         sample: Sample,
+        reorder: Option<Vec<usize>>,
         render: Arc<dyn Render>,
         stop: Arc<AtomicBool>,
         failed: Arc<AtomicBool>,
@@ -523,6 +776,9 @@ mod alsa {
         let mut failing_since: Option<std::time::Instant> = None;
         'periods: while !stop.load(Ordering::Acquire) {
             render.render(&mut block);
+            if let Some(order) = &reorder {
+                super::channels::reorder(&mut block, order);
+            }
             let mut written = 0;
             while written < frames && !stop.load(Ordering::Acquire) {
                 let result = match sample {
@@ -679,9 +935,118 @@ impl Drop for MemoryOutput {
 
 // --- Thread priority -------------------------------------------------------------
 
-pub(crate) mod realtime {
-    /// SCHED_FIFO when the system allows it (rtkit comes with the platform
-    /// layer); otherwise the thread keeps its priority.
+/// Real-time priority for the device threads.
+///
+/// A device thread first tries SCHED_FIFO itself ([`raise_priority`]), which
+/// an ordinary user is usually not allowed. Its first render call records its
+/// kernel thread id (`Shared::render` in the engine); the worker hands that
+/// id to a [`Requester`] thread, which asks the hook the app installed
+/// (`Engine::set_realtime_hook`: rtkit, or its portal in a Flatpak) to make
+/// it real-time. The D-Bus round trips never run on the device thread nor
+/// on the worker. A thread already real-time (PipeWire's data loop, which
+/// PipeWire sets up itself, or SCHED_FIFO granted directly) is not asked
+/// for; each thread is asked for once; a refusal is logged once per process
+/// and otherwise silent.
+pub mod realtime {
+    use std::collections::HashSet;
+    use std::sync::atomic::{AtomicBool, Ordering};
+    use std::sync::mpsc;
+
+    /// Makes thread `tid` (of this process) real-time; the priority granted,
+    /// 0 when refused or unavailable. May block (D-Bus).
+    pub type Hook = Box<dyn Fn(i64) -> i32 + Send>;
+
+    /// The calling thread's kernel id; 0 where there is none to ask for.
+    pub fn current_tid() -> i64 {
+        #[cfg(target_os = "linux")]
+        // SAFETY: gettid has no preconditions.
+        return i64::from(unsafe { libc::gettid() });
+        #[cfg(not(target_os = "linux"))]
+        0
+    }
+
+    /// The real-time priority thread `tid` runs at (SCHED_FIFO / SCHED_RR),
+    /// else 0.
+    pub fn priority_of(tid: i64) -> i32 {
+        #[cfg(target_os = "linux")]
+        {
+            let Ok(tid) = libc::pid_t::try_from(tid) else { return 0 };
+            if tid <= 0 {
+                return 0;
+            }
+            // SAFETY: plain syscalls on a thread id; `param` is a valid out pointer.
+            unsafe {
+                // rtkit sets SCHED_RR with SCHED_RESET_ON_FORK, which comes back or'ed in.
+                let policy = libc::sched_getscheduler(tid);
+                if policy < 0 {
+                    return 0;
+                }
+                let policy = policy & !libc::SCHED_RESET_ON_FORK;
+                if policy != libc::SCHED_FIFO && policy != libc::SCHED_RR {
+                    return 0;
+                }
+                let mut param = libc::sched_param { sched_priority: 0 };
+                if libc::sched_getparam(tid, &mut param) == 0 { param.sched_priority } else { 0 }
+            }
+        }
+        #[cfg(not(target_os = "linux"))]
+        {
+            let _ = tid;
+            0
+        }
+    }
+
+    /// A refusal was logged already (once per process).
+    static LOGGED: AtomicBool = AtomicBool::new(false);
+
+    /// What the requester thread does with each thread id.
+    pub struct Requester {
+        hook: Hook,
+        /// The priority a thread runs at already (`priority_of`; tests replace it).
+        current: fn(i64) -> i32,
+        asked: HashSet<i64>,
+    }
+
+    impl Requester {
+        pub fn new(hook: Hook) -> Self {
+            Requester { hook, current: priority_of, asked: HashSet::new() }
+        }
+
+        /// Asks for `tid` unless it is real-time already or was asked for
+        /// before; the priority it runs at afterwards (0: none).
+        pub fn handle(&mut self, tid: i64) -> i32 {
+            if tid <= 0 {
+                return 0;
+            }
+            let now = (self.current)(tid);
+            if now > 0 || !self.asked.insert(tid) {
+                return now;
+            }
+            let granted = (self.hook)(tid);
+            if granted <= 0 && !LOGGED.swap(true, Ordering::Relaxed) {
+                eprintln!("sonkore: no real-time priority for the audio thread (rtkit unavailable or refused)");
+            }
+            granted.max(0)
+        }
+
+        /// The requester's own thread: ids sent to the returned channel are
+        /// handled there, in order, until the channel is dropped.
+        pub fn spawn(mut self) -> Option<mpsc::Sender<i64>> {
+            let (tx, rx) = mpsc::channel::<i64>();
+            std::thread::Builder::new()
+                .name("sonkore-rtkit".into())
+                .spawn(move || {
+                    while let Ok(tid) = rx.recv() {
+                        self.handle(tid);
+                    }
+                })
+                .ok()?;
+            Some(tx)
+        }
+    }
+
+    /// SCHED_FIFO when the system allows it; otherwise the thread keeps its
+    /// priority (and rtkit is asked through the engine's requester).
     #[cfg(unix)]
     pub fn raise_priority() {
         // SAFETY: plain libc calls on the current thread.
@@ -700,6 +1065,64 @@ pub(crate) mod realtime {
         let mut index = 0u32;
         // SAFETY: a constant wide string and a local out value.
         let _ = unsafe { AvSetMmThreadCharacteristicsW(windows::core::w!("Pro Audio"), &mut index) };
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+        use std::sync::{Arc, Mutex};
+
+        fn counting(calls: &Arc<Mutex<Vec<i64>>>, grant: i32) -> Hook {
+            let calls = calls.clone();
+            Box::new(move |tid| {
+                calls.lock().unwrap().push(tid);
+                grant
+            })
+        }
+
+        #[test]
+        fn each_thread_is_asked_for_once() {
+            let calls = Arc::new(Mutex::new(Vec::new()));
+            let mut r = Requester::new(counting(&calls, 0));
+            r.current = |_| 0;
+            assert_eq!(r.handle(1234), 0, "refused");
+            assert_eq!(r.handle(1234), 0);
+            assert_eq!(r.handle(0), 0, "no id: nothing to ask");
+            assert_eq!(r.handle(77), 0);
+            assert_eq!(*calls.lock().unwrap(), vec![1234, 77]);
+        }
+
+        #[test]
+        fn a_real_time_thread_is_not_asked_for() {
+            let calls = Arc::new(Mutex::new(Vec::new()));
+            let mut r = Requester::new(counting(&calls, 5));
+            r.current = |tid| if tid == 9 { 20 } else { 0 };
+            assert_eq!(r.handle(9), 20, "already real-time (PipeWire's own loop)");
+            assert_eq!(r.handle(10), 5, "granted");
+            assert_eq!(*calls.lock().unwrap(), vec![10]);
+        }
+
+        #[test]
+        fn the_requester_thread_handles_what_it_is_sent() {
+            let calls = Arc::new(Mutex::new(Vec::new()));
+            let tx = Requester::new(counting(&calls, 0)).spawn().unwrap();
+            // A real thread of this process, not real-time: asked for.
+            tx.send(current_tid()).unwrap();
+            drop(tx);
+            let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+            while calls.lock().unwrap().is_empty() && std::time::Instant::now() < deadline {
+                std::thread::sleep(std::time::Duration::from_millis(5));
+            }
+            if cfg!(target_os = "linux") {
+                assert_eq!(*calls.lock().unwrap(), vec![current_tid()]);
+            }
+        }
+
+        #[test]
+        fn an_ordinary_thread_has_no_rt_priority() {
+            assert_eq!(priority_of(current_tid()), 0);
+            assert_eq!(priority_of(-1), 0);
+        }
     }
 }
 

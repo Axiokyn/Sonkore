@@ -1,0 +1,22 @@
+# Ajustes › General › Restaurar todos los ajustes: después del reinicio no
+# vuelve nada de lo borrado. El cierre volvía a guardar la geometría de la
+# ventana y el perfil de sonido de la salida (con el ecualizador que estaba en
+# memoria).
+pantalla 2546 4200
+ajuste widgets/windows/settings=@Size(920 2700)
+ajuste appearance/language=es
+ajuste ui/stopButton=true
+ventanas 1
+estado stop-button=true
+clic 1074 795
+ventanas 2
+foco last
+esperar 0.8
+# «Restaurar…» y, en el aviso, el botón de aceptar.
+clic 816 1244
+esperar 0.6
+clic 574 1402
+se-reinicia
+estado stop-button=false
+guardado ui/stopButton!~.
+guardado widgets/geometry!~.

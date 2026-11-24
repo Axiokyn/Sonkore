@@ -58,10 +58,12 @@ import { MiniPlayer, Mini, MiniRow, MiniCell, MiniColumn, MiniFolder, MiniChoice
 import { EqualizerWindow, EqUi, EqBand, EqMark, EqMenuEntry, AutoEqRow } from "equalizer.slint";
 import { PitchWindow, PitchUi } from "pitch.slint";
 import { TextMetrics } from "panels.slint";
+import { Filters, FilterEntry, FilteredTracks } from "filters.slint";
+import { Drops, DropOverlay } from "dropzone.slint";
 
 export { Theme, Visual, Pointer, Icons, Skins, Skin, App, NavItem, FolderRow, PlaylistRow, Column, Cell, TrackRow, WindowActions, Pages, Menus, Dialogs, AlbumTile, BrowseEntry, PathStage, MenuEntry, Mini, MiniRow, MiniCell, MiniColumn, MiniFolder, MiniChoice }
 export { SettingsWindow, SettingsData, OutputDevice, ColumnLine, Opt, SettingsOverlay, Appearance, SkinTile } from "settings.slint";
-export { EqualizerWindow, EqUi, EqBand, EqMark, EqMenuEntry, AutoEqRow, PitchWindow, PitchUi, TextMetrics }
+export { EqualizerWindow, EqUi, EqBand, EqMark, EqMenuEntry, AutoEqRow, PitchWindow, PitchUi, TextMetrics, Filters, FilterEntry, Drops }
 
 export component MainWindow inherits Window {
     title: App.loaded ? App.title + "  ·  " + App.artist : "Sonkore";
@@ -214,8 +216,11 @@ export component MainWindow inherits Window {
                     }
                     if App.page == "playlist": PlaylistPage {
                     }
+                    // Tracks with its filters (Genres → Artists → Albums over the list).
+                    if App.page == "tracks" && Filters.on: FilteredTracks {
+                    }
                     if App.page != "albums" && App.page != "artists" && App.page != "genres" && App.page != "playing"
-                        && App.page != "queue" && App.page != "playlist": TrackTable {
+                        && App.page != "queue" && App.page != "playlist" && !(App.page == "tracks" && Filters.on): TrackTable {
                     }
                 }
             }
@@ -262,6 +267,14 @@ export component MainWindow inherits Window {
                 horizontal-alignment: center;
                 vertical-alignment: center;
             }
+        }
+        // Files dragged over the window: what a drop will do.
+        if Drops.shown: DropOverlay {
+            x: 0;
+            y: 0;
+            width: parent.width;
+            height: parent.height;
+            corner: root.corner;
         }
         DialogLayer { }
         MenuLayer { }

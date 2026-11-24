@@ -26,7 +26,7 @@ pub struct DsdFormat {
 impl DsdFormat {
     /// 64, 128, 256, 512 (or 48 kHz-family multiples) times 44.1 kHz, rounded.
     pub fn multiple(&self) -> u32 {
-        (self.dsd_rate + 22050) / 44100
+        ((self.dsd_rate as u64 + 22050) / 44100) as u32
     }
 }
 
@@ -64,7 +64,15 @@ pub fn silence(packing: DsdPacking, phase: bool) -> i32 {
 
 /// "DSD64", "DSD128"…
 pub fn rate_label(dsd_rate: u32) -> String {
-    format!("DSD{}", (dsd_rate + 22050) / 44100)
+    format!("DSD{}", (dsd_rate as u64 + 22050) / 44100)
+}
+
+/// The highest rate a file may claim: DSD1024 of the 48 kHz family, twice
+/// over. Anything above is damage, not a stream to play.
+const MAX_DSD_RATE: u32 = 2048 * 48000;
+
+fn sane_rate(rate: u32) -> bool {
+    (2_822_400..=MAX_DSD_RATE).contains(&rate)
 }
 
 // --- parsing -----------------------------------------------------------------
@@ -123,7 +131,7 @@ fn parse_dsf(f: &mut dyn Source, out: &mut Layout) -> bool {
     if !read_at(f, data_chunk, &mut d) || &d[0..4] != b"data" {
         return false;
     }
-    if channels == 0 || channels > 8 || rate < 2_822_400 || block == 0 || (bits != 1 && bits != 8) {
+    if channels == 0 || channels > 8 || !sane_rate(rate) || block == 0 || (bits != 1 && bits != 8) {
         return false;
     }
     out.dsf = true;
@@ -189,7 +197,7 @@ fn parse_dff(f: &mut dyn Source, out: &mut Layout) -> bool {
                 }
             }
             b"DSD " => {
-                if channels == 0 || channels > 8 || rate < 2_822_400 || compressed {
+                if channels == 0 || channels > 8 || !sane_rate(rate) || compressed {
                     return false;
                 }
                 out.dsf = false;
@@ -204,7 +212,7 @@ fn parse_dff(f: &mut dyn Source, out: &mut Layout) -> bool {
                 let mut frte = [0u8; 12 + 6];
                 if channels == 0
                     || channels as usize > DST_MAX_CHANNELS
-                    || rate < 2_822_400
+                    || !sane_rate(rate)
                     || rate % 44100 != 0
                     || !read_at(f, body, &mut frte)
                     || &frte[0..4] != b"FRTE"
@@ -234,11 +242,29 @@ fn parse_dff(f: &mut dyn Source, out: &mut Layout) -> bool {
 
 fn parse(f: &mut dyn Source) -> Option<Layout> {
     let mut l = Layout::default();
-    if parse_dsf(f, &mut l) {
-        return Some(l);
+    if !parse_dsf(f, &mut l) {
+        l = Layout::default();
+        if !parse_dff(f, &mut l) {
+            return None;
+        }
     }
-    let mut l = Layout::default();
-    if parse_dff(f, &mut l) { Some(l) } else { None }
+    // The stream ends with the file at the latest, whatever length its
+    // header claims (a damaged one says up to 2^64 bytes, and the offsets a
+    // seek then computes overflow).
+    if !l.dst {
+        let len = f.seek(SeekFrom::End(0)).unwrap_or(u64::MAX);
+        let room = len.saturating_sub(l.data_start);
+        let ch = l.format.channels.max(1) as u64;
+        let most = if l.dsf {
+            // Whole blocks per channel, the last one padded.
+            let group = l.block_size as u64 * ch;
+            room.div_ceil(group) * l.block_size as u64
+        } else {
+            room / ch
+        };
+        l.format.bytes_per_channel = l.format.bytes_per_channel.min(most);
+    }
+    Some(l)
 }
 
 // --- the decoder ---------------------------------------------------------------

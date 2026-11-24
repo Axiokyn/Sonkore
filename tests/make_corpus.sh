@@ -51,3 +51,37 @@ FILE "imagen.wav" WAVE
     TITLE "Tres"
     INDEX 01 00:08:37
 CUE
+
+# --- The formats only FFmpeg decodes (crates/ffmpeg, its tests and the
+# engine's and library's ffmpeg tests). Lengths that are no multiple of any
+# block size; each source WAV next to its encodings, for bit-exact checks.
+F="$out/ffmpeg"
+mkdir -p "$F"
+noise() { # rate frames sample_fmt -> stereo pink noise with a tone, exactly <frames> long
+    ff -filter_complex "anoisesrc=color=pink:sample_rate=$1:duration=$(( $2 / $1 + 1 )):amplitude=0.4:seed=7,aformat=channel_layouts=stereo[n];sine=frequency=997:sample_rate=$1:duration=$(( $2 / $1 + 1 ))[s];[n][s]amix=inputs=2:normalize=0,atrim=end_sample=$2" \
+        -c:a "$3" "$4"
+}
+noise 44100 220501 pcm_s16le "$F/src-16-44.wav"
+noise 96000 300007 pcm_s24le "$F/src-24-96.wav"
+noise 48000 240013 pcm_s16le "$F/src-16-48.wav"
+tags=(-metadata title="Título FFmpeg" -metadata artist="Artista FF" -metadata album="Álbum FF" -metadata track=3 -metadata date=2021 -metadata genre=Jazz)
+ff -i "$F/src-16-44.wav" -c:a wavpack "${tags[@]}" "$F/wavpack-16.wv"
+ff -i "$F/src-24-96.wav" -c:a wavpack -bits_per_raw_sample 24 "$F/wavpack-24.wv"
+ff -i "$F/src-16-44.wav" -c:a tta "${tags[@]}" "$F/tta-16.tta"
+ff -i "$F/src-24-96.wav" -c:a tta "$F/tta-24.tta"
+ff -i "$F/src-24-96.wav" -c:a pcm_s24le -f w64 "$F/pcm-24.w64"
+ff -i "$F/src-16-48.wav" -c:a libopus -b:a 128k "${tags[@]}" "$F/opus.opus"
+ff -i "$F/src-16-44.wav" -c:a wmav2 -b:a 192k "${tags[@]}" "$F/wma.wma"
+ff -i "$F/src-16-48.wav" -c:a ac3 -b:a 384k "$F/ac3.ac3"
+ff -i "$F/src-16-48.wav" -c:a dca -strict -2 "$F/dts.dts" 2>/dev/null || true
+ff -i "$F/src-16-48.wav" -c:a eac3 -b:a 256k "$F/eac3.eac3" 2>/dev/null || true
+# Opus in an .ogg (symphonia opens Ogg but has no Opus decoder) and in WebM.
+ff -i "$F/src-16-48.wav" -c:a libopus -b:a 128k "$F/opus-in-ogg.ogg"
+ff -i "$F/src-16-48.wav" -c:a libopus -b:a 128k "$F/opus.webm"
+# A WavPack CD image with its sheet (the sheet names a .wav).
+mkdir -p "$F/cue"
+ff -i "$out/album/long.wav" -c:a wavpack "$F/cue/imagen.wv"
+sed 's/^PERFORMER .*/PERFORMER "Banda WV"/' "$out/cue/imagen.cue" > "$F/cue/imagen.cue"
+# The album's three tracks as WavPack: gapless through FFmpeg too.
+mkdir -p "$F/album"
+for i in 1 2 3; do ff -i "$out/album/part$i.wav" -c:a wavpack "$F/album/0$i.wv"; done

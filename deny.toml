@@ -1,0 +1,92 @@
+# cargo-deny (https://embarkstudios.github.io/cargo-deny/): licenses,
+# security advisories, duplicate crates and where crates come from.
+#   cargo install cargo-deny --locked
+#   cargo deny check                 # everything
+#   cargo deny check licenses        # one section (advisories, bans, sources)
+# Sonkore is GPL-3.0-or-later: every dependency's license has to be one a
+# GPL-3.0 program can include.
+
+[graph]
+# The two platforms Sonkore ships on (Linux-only and Windows-only crates both count).
+targets = [
+    "x86_64-unknown-linux-gnu",
+    "x86_64-pc-windows-msvc",
+]
+all-features = false
+no-default-features = false
+
+[output]
+feature-depth = 1
+
+[advisories]
+# RUSTSEC advisories: vulnerabilities fail; unmaintained crates are reported
+# for the dependencies Sonkore uses directly ("workspace"), not for every
+# crate deep in Slint's or winit's tree.
+unmaintained = "workspace"
+yanked = "warn"
+ignore = [
+    # Unmaintained, not vulnerable. It only reads the fonts bundled in the
+    # binary (fonts.rs, equalizer_ui.rs: widths for the tabular digits), never
+    # a file from the user. To replace with skrifa when convenient.
+    { id = "RUSTSEC-2026-0192", reason = "ttf-parser reads only Sonkore's own bundled fonts" },
+]
+
+[licenses]
+# GPL-3.0-compatible licenses, only those the tree uses (an unused entry is a
+# warning). Others a new dependency may bring and that are fine to add:
+# LGPL-2.1-or-later, LGPL-3.0-or-later, MIT-0, OFL-1.1, Unicode-DFS-2016,
+# bzip2-1.0.6. Never: GPL-2.0-only, AGPL, SSPL, proprietary.
+# Slint is offered as "GPL-3.0-only OR LicenseRef-Slint-…": the GPL-3.0-only
+# branch is the one Sonkore takes.
+allow = [
+    "GPL-3.0-or-later",
+    "GPL-3.0-only",
+    "MPL-2.0",
+    "MIT",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "BSL-1.0",
+    "ISC",
+    "Zlib",
+    "Unicode-3.0",
+    "CC0-1.0",
+    "Unlicense",
+    "CDLA-Permissive-2.0",
+]
+confidence-threshold = 0.8
+exceptions = [
+]
+
+[licenses.private]
+# Sonkore's own crates (and the patched vendor/ copies) are path
+# dependencies: their licenses are checked like any other.
+ignore = false
+registries = [
+]
+
+[bans]
+# Two versions of one crate are common in a GUI stack (windows-sys, bitflags…):
+# reported, not fatal.
+multiple-versions = "warn"
+wildcards = "allow"
+highlight = "all"
+workspace-default-features = "allow"
+external-default-features = "allow"
+allow = [
+]
+deny = [
+]
+skip = [
+]
+skip-tree = [
+]
+
+[sources]
+# crates.io only; vendor/ holds the patched copies as path dependencies
+# ([patch.crates-io] in Cargo.toml), which need no entry here.
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+allow-git = []

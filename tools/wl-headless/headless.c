@@ -10,6 +10,8 @@
 //   dump NAME | list | quit |
 //   key [ctrl+][shift+][alt+]NAME (a-z 0-9 space enter escape tab comma period minus up down
 //       left right delete backspace home end pageup pagedown f1..f12) |
+//   dnd-enter X Y URI… | dnd-drop | dnd-leave (with env DND=1: files dragged
+//       over the main window, as from a file manager)
 //   (a toplevel's move request is printed as "moved toplevel 1")
 //   lat NAME: the time to the next buffer committed, printed as
 //       "lat NAME MS" (stderr, or RESULT_FILE) | latnew NAME: the same, to
@@ -475,7 +477,11 @@ static void seat_get_pointer(struct wl_client* c, struct wl_resource* r, uint32_
 {
     struct wl_resource* p = wl_resource_create(c, &wl_pointer_interface, wl_resource_get_version(r), id);
     wl_resource_set_implementation(p, &pointer_impl, NULL, pointer_destroy);
-    pointer_res = p;
+    // A client's first one gets the input: the window's (winit's). With
+    // DND=1 the clipboard (smithay-clipboard) binds a pointer and a keyboard
+    // of its own afterwards, only for their serials. A new client (the app
+    // restarted) takes over.
+    if (!pointer_res || wl_resource_get_client(pointer_res) != c) pointer_res = p;
 }
 // --- keyboard (a US keymap from xkbcommon)
 static struct wl_resource* keyboard_res = NULL;
@@ -488,8 +494,7 @@ static void seat_get_keyboard(struct wl_client* c, struct wl_resource* r, uint32
 {
     struct wl_resource* k = wl_resource_create(c, &wl_keyboard_interface, wl_resource_get_version(r), id);
     wl_resource_set_implementation(k, &keyboard_impl, NULL, keyboard_destroy);
-    keyboard_res = k;
-    kb_entered = NULL;
+    if (!keyboard_res || wl_resource_get_client(keyboard_res) != c) { keyboard_res = k; kb_entered = NULL; }
     size_t size = strlen(keymap_text) + 1;
     int fd = memfd_create("keymap", MFD_CLOEXEC);
     if (fd >= 0 && write(fd, keymap_text, size) == (ssize_t)size) {
@@ -507,6 +512,85 @@ static void bind_seat(struct wl_client* c, void* d, uint32_t v, uint32_t id)
     wl_seat_send_capabilities(r, WL_SEAT_CAPABILITY_POINTER | WL_SEAT_CAPABILITY_KEYBOARD);
     if (v >= 2) wl_seat_send_name(r, "seat0");
 }
+// --- drag and drop (env DND=1): files dragged from a pretend file manager.
+// Every data device of the client gets its own offer of "text/uri-list";
+// a receive gets the URIs written and its pipe closed.
+#define MAXD 8
+static struct wl_resource* data_devices[MAXD];
+static struct wl_resource* drag_offers[MAXD];
+static char drag_uris[8192];
+static void offer_receive(struct wl_client* c, struct wl_resource* r, const char* mime, int32_t fd)
+{
+    (void)c; (void)r;
+    if (!strcmp(mime, "text/uri-list")) { ssize_t n = write(fd, drag_uris, strlen(drag_uris)); (void)n; }
+    close(fd);
+}
+static void offer_gone(struct wl_resource* r)
+{
+    for (int i = 0; i < MAXD; ++i) if (drag_offers[i] == r) drag_offers[i] = NULL;
+}
+static const struct wl_data_offer_interface offer_impl = {
+    .accept = (void*)noop, .receive = offer_receive, .destroy = res_destroy, .finish = (void*)noop, .set_actions = (void*)noop };
+static const struct wl_data_source_interface source_impl = { .offer = (void*)noop, .destroy = res_destroy, .set_actions = (void*)noop };
+static const struct wl_data_device_interface ddev_impl = { .start_drag = (void*)noop, .set_selection = (void*)noop, .release = res_destroy };
+static void ddev_gone(struct wl_resource* r)
+{
+    for (int i = 0; i < MAXD; ++i) if (data_devices[i] == r) data_devices[i] = NULL;
+}
+static void ddm_get_device(struct wl_client* c, struct wl_resource* r, uint32_t id, struct wl_resource* seat)
+{
+    (void)seat;
+    struct wl_resource* d = wl_resource_create(c, &wl_data_device_interface, wl_resource_get_version(r), id);
+    wl_resource_set_implementation(d, &ddev_impl, NULL, ddev_gone);
+    for (int i = 0; i < MAXD; ++i) if (!data_devices[i]) { data_devices[i] = d; break; }
+}
+static void ddm_create_source(struct wl_client* c, struct wl_resource* r, uint32_t id)
+{
+    struct wl_resource* s = wl_resource_create(c, &wl_data_source_interface, wl_resource_get_version(r), id);
+    wl_resource_set_implementation(s, &source_impl, NULL, NULL);
+}
+static const struct wl_data_device_manager_interface ddm_impl = { .create_data_source = ddm_create_source, .get_data_device = ddm_get_device };
+static void bind_ddm(struct wl_client* c, void* d, uint32_t v, uint32_t id)
+{
+    (void)d;
+    struct wl_resource* r = wl_resource_create(c, &wl_data_device_manager_interface, v, id);
+    wl_resource_set_implementation(r, &ddm_impl, NULL, NULL);
+}
+// "dnd-enter X Y URI…": the drag comes over the main window; "dnd-drop", "dnd-leave".
+static void dnd_enter(double x, double y, const char* uris)
+{
+    struct surface* m = main_surface();
+    if (!m) return;
+    drag_uris[0] = 0;
+    for (const char* u = uris; *u;) {
+        while (*u == ' ' || *u == '\n') ++u;
+        size_t n = strcspn(u, " \n");
+        if (n && strlen(drag_uris) + n + 3 < sizeof drag_uris) { strncat(drag_uris, u, n); strcat(drag_uris, "\r\n"); }
+        u += n;
+    }
+    for (int i = 0; i < MAXD; ++i) {
+        struct wl_resource* d = data_devices[i];
+        if (!d) continue;
+        int v = wl_resource_get_version(d);
+        struct wl_resource* o = wl_resource_create(wl_resource_get_client(d), &wl_data_offer_interface, v, 0);
+        wl_resource_set_implementation(o, &offer_impl, NULL, offer_gone);
+        drag_offers[i] = o;
+        wl_data_device_send_data_offer(d, o);
+        wl_data_offer_send_offer(o, "text/uri-list");
+        if (v >= 3) wl_data_offer_send_source_actions(o, WL_DATA_DEVICE_MANAGER_DND_ACTION_COPY);
+        wl_data_device_send_enter(d, next_serial(), m->res, wl_fixed_from_double(x), wl_fixed_from_double(y), o);
+        if (v >= 3) wl_data_offer_send_action(o, WL_DATA_DEVICE_MANAGER_DND_ACTION_COPY);
+    }
+}
+static void dnd_end(int drop)
+{
+    for (int i = 0; i < MAXD; ++i)
+        if (data_devices[i] && drag_offers[i]) {
+            if (drop) wl_data_device_send_drop(data_devices[i]);
+            else wl_data_device_send_leave(data_devices[i]);
+        }
+}
+
 static const struct { const char* name; int code; } key_codes[] = {
     {"escape", 1}, {"1", 2}, {"2", 3}, {"3", 4}, {"4", 5}, {"5", 6}, {"6", 7}, {"7", 8}, {"8", 9}, {"9", 10}, {"0", 11},
     {"backspace", 14}, {"tab", 15}, {"q", 16}, {"w", 17}, {"e", 18}, {"r", 19}, {"t", 20}, {"y", 21}, {"u", 22},
@@ -624,6 +708,12 @@ static void handle_line(char* line)
                 if (surfaces[i] && surfaces[i]->role == ROLE_TOPLEVEL && surfaces[i]->screen) { focus = surfaces[i]; break; }
         }
         else { int i = atoi(name); focus = i >= 0 && i < MAXS ? surfaces[i] : NULL; }
+    } else if (sscanf(line, "dnd-enter %lf %lf %n", &x, &y, &a) >= 2) {
+        dnd_enter(x, y, line + a);
+    } else if (strncmp(line, "dnd-drop", 8) == 0) {
+        dnd_end(1);
+    } else if (strncmp(line, "dnd-leave", 9) == 0) {
+        dnd_end(0);
     } else if (strncmp(line, "leave", 5) == 0) {
         if (pointer_res && entered) { wl_pointer_send_leave(pointer_res, next_serial(), entered->res); frame_ev(); entered = NULL; }
     } else if (sscanf(line, "button %d", &a) == 1) {
@@ -751,6 +841,7 @@ int main(int argc, char** argv)
     wl_global_create(display, &wl_output_interface, 2, NULL, bind_output);
     wl_global_create(display, &wl_subcompositor_interface, 1, NULL, bind_subcompositor);
     wl_global_create(display, &wl_seat_interface, 5, NULL, bind_seat);
+    if (getenv("DND")) wl_global_create(display, &wl_data_device_manager_interface, 3, NULL, bind_ddm);
     struct wl_event_loop* loop = wl_display_get_event_loop(display);
     static struct wl_event_source* tick;
     tick = wl_event_loop_add_timer(loop, frame_tick, &tick);

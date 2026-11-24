@@ -10,10 +10,12 @@ mod audio;
 mod context;
 mod controller;
 mod covers;
+mod dropped;
 mod equalizer_model;
 mod equalizer_ui;
 mod extras;
 mod file_dialog;
+mod filters;
 mod fonts;
 mod geometry;
 mod hinted_advances;
@@ -85,6 +87,18 @@ fn attach_console() {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // A panic where a file is read (a damaged file) is caught there and is an
+    // error; any other panic is a bug and ends the app, rather than leaving
+    // it running with a dead thread (sonkore_core::panic_guard).
+    let default_hook = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        if sonkore_core::panic_guard::catching() {
+            eprintln!("sonkore: damaged file: {info}");
+        } else {
+            default_hook(info);
+            std::process::abort();
+        }
+    }));
     #[cfg(windows)]
     attach_console();
     // Files to play, and the desktop entry's quick actions: an instance
@@ -240,6 +254,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let extras = extras::Extras::new(&window, controller.clone(), &mini);
     connect_window_actions(&window, &controller, &mini, &extras);
     window.show()?;
+    // Files dropped on the window, on Wayland (winit has no drops there).
+    dropped::watch_wayland(window.as_weak());
     if !start_compact && restored.is_some_and(|g| g.maximized) {
         window.window().set_maximized(true);
         window.global::<WindowActions>().set_maximized(true);
@@ -310,7 +326,10 @@ fn connect_window_actions(
             }
             return;
         }
-        if let Some(w) = weak.upgrade() {
+        let restoring = settings_ui::restoring_defaults();
+        if let Some(w) = weak.upgrade()
+            && !restoring
+        {
             if !m.is_compact() {
                 c.save_geometry(&w);
             } else if let Some((width, height, maximized)) = m.full_size() {
@@ -318,7 +337,9 @@ fn connect_window_actions(
             }
         }
         c.save_session();
-        c.save_settings();
+        if !restoring {
+            c.save_settings();
+        }
         if let Some(w) = weak.upgrade() {
             let _ = w.hide();
         }

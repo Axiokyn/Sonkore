@@ -919,6 +919,33 @@ impl Library {
         self.set_favorite(path, on)
     }
 
+    /// Several at once (Delete on the Favorites page): favorites.json is
+    /// written once, not once per track.
+    pub fn set_favorites(&mut self, paths: &[String], on: bool) -> Vec<Event> {
+        let mut ev = Vec::new();
+        let mut changed = false;
+        for path in paths {
+            if path.is_empty() || on == self.favorites.contains(path.as_str()) {
+                continue;
+            }
+            if on {
+                self.favorites.insert(path.clone());
+            } else {
+                self.favorites.remove(path.as_str());
+            }
+            changed = true;
+            if self.index.contains_key(path.as_str()) {
+                ev.push(Event::TrackChanged(path.clone()));
+            }
+        }
+        if changed {
+            self.save_favorites();
+            self.favorites_revision += 1;
+            ev.push(Event::FavoritesChanged);
+        }
+        ev
+    }
+
     // --- Scanning --------------------------------------------------------------------
 
     /// Scans the folders again (in the background). While a scan runs, one

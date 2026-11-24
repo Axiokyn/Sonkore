@@ -1,6 +1,6 @@
 //! Damaged and crafted files: the probe gives up on them (or reads what it
-//! can) without panicking or looping forever. Release builds abort on a
-//! panic, and a file in the library is read on every start.
+//! can) without panicking or looping forever. A panic leaves the file out of
+//! the library, and a file in the library is read on every start.
 
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};

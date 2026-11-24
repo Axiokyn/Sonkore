@@ -157,7 +157,14 @@ fn read_probed(path: &str, t: &mut TrackMeta, cover: Option<&mut Cover>) -> bool
     true
 }
 
+/// A file's format and tags; false when it is not readable audio. A reader
+/// that panics on a damaged file counts as that (the scan threads go on, and
+/// the file is left out as any other unreadable one).
 pub(crate) fn read_any(path: &str, t: &mut TrackMeta, cover: Option<&mut Cover>) -> bool {
+    sonkore_core::panic_guard::catch(|| read_any_unguarded(path, t, cover)).unwrap_or(false)
+}
+
+fn read_any_unguarded(path: &str, t: &mut TrackMeta, cover: Option<&mut Cover>) -> bool {
     let ext = extension_of(path);
     if uses_probe(&ext) {
         return read_probed(path, t, cover);

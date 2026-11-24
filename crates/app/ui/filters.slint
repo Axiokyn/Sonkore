@@ -1,0 +1,268 @@
+// The filters over the Tracks page (ui/trackBrowser): Genres → Artists →
+// Albums in three panes over the list, as classic music players have them.
+// Set and handled in Rust (src/track_filters.rs, the logic in src/filters.rs).
+
+import { Theme, TextMetrics } from "theme.slint";
+import { OverlayScrollBar } from "controls.slint";
+import { App } from "data.slint";
+import { TrackTable } from "tracks.slint";
+import { ListView } from "std-widgets.slint";
+
+// An entry of a pane: "All genres (12)" first, then each one and its tracks.
+export struct FilterEntry {
+    key: string,
+    name: string,
+    count: string,     // its tracks ("" for All)
+    unknown: bool,     // the empty tag, dim
+    selected: bool,
+}
+
+export global Filters {
+    in property <bool> on;
+    in property <[FilterEntry]> genres;
+    in property <[FilterEntry]> artists;
+    in property <[FilterEntry]> albums;
+    // Bumped when a pane's entries are new: it scrolls to `*-reveal` (the
+    // pick, centred), else to the top.
+    in property <int> genres-serial;
+    in property <int> artists-serial;
+    in property <int> albums-serial;
+    in property <int> genres-reveal: -1;
+    in property <int> artists-reveal: -1;
+    in property <int> albums-reveal: -1;
+    // The panes' height, the splitter dragged (-1: 30 % of the page).
+    in-out property <length> height: -1px;
+    callback pick(int, int);            // pane (0 genres, 1 artists, 2 albums), row
+    callback activate(int, int);        // double click: picked, and its tracks play
+    callback height-changed(length);    // let go of the splitter (-1: the default again)
+}
+
+// A row: a rounded highlight on the pick (the hover colour under the
+// pointer), the name, its tracks on the right in tabular figures, the
+// baselines together.
+component EntryRow inherits Rectangle {
+    in property <FilterEntry> entry;
+    in property <int> index;
+    in property <int> pane;
+    in property <length> pitch;
+    property <bool> list: Theme.list-density == "list";
+    height: root.pitch;
+    ground := Rectangle {
+        x: 0;
+        y: 0;
+        width: parent.width;
+        height: root.pitch - (root.list ? 0px : 2px);
+        border-radius: root.list ? 0px : Theme.radius-small;
+        background: root.entry.selected ? Theme.accent-soft : area.has-hover ? Theme.hover : transparent;
+    }
+    // Line boxes at full hinting: 13 px is 13 + 3, 11 px is 11 + 3; the count
+    // 2 px lower shares the name's baseline.
+    property <length> top: floor((ground.height - 16px) / 2 / 1px) * 1px;
+    property <length> count-w: root.entry.count == "" ? 0px
+        : ceil(TextMetrics.tnum-width(root.entry.count, 11px, 400) / 1px) * 1px;
+    Text {
+        x: 8px;
+        y: root.top;
+        width: max(0px, ground.width - 16px - (root.count-w > 0 ? root.count-w + 8px : 0px));
+        height: 16px;
+        text: root.entry.name;
+        font-size: 13px;
+        font-weight: root.entry.selected || root.index == 0 ? 600 : 400;
+        color: !root.entry.selected && root.entry.unknown ? Theme.text-dim : Theme.text;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+    if root.count-w > 0: Text {
+        x: ground.width - 8px - root.count-w;
+        y: root.top + 2px;
+        width: root.count-w;
+        height: 14px;
+        text: root.entry.count;
+        font-family: Theme.tnum-family;
+        font-size: 11px;
+        color: Theme.text-faint;
+        horizontal-alignment: right;
+        vertical-alignment: center;
+    }
+    area := TouchArea {
+        width: ground.width;
+        height: ground.height;
+        clicked => { Filters.pick(root.pane, root.index); }
+        double-clicked => { Filters.activate(root.pane, root.index); }
+    }
+}
+
+// A pane: its list and the overlay scroll bar in its last 10 px. The rows
+// 8 px in; 8 px short of a line between panes (the bar's thumb, 2 px in
+// from its right, clears them), 14 px short of the page's edge as the
+// track list's rows.
+component Pane inherits Rectangle {
+    in property <[FilterEntry]> entries;
+    in property <length> right: 8px;
+    in property <int> pane;
+    in property <int> serial;
+    in property <int> reveal;
+    in property <length> pitch;
+    changed serial => {
+        let top = root.reveal * root.pitch;
+        list.content-y = root.reveal < 0 ? 0px
+            : -clamp(top - (list.visible-height - root.pitch) / 2, 0px, max(0px, root.entries.length * root.pitch - list.visible-height));
+    }
+    list := ListView {
+        vertical-scrollbar-policy: always-off;
+        horizontal-scrollbar-policy: always-off;
+        for e[i] in root.entries: EntryRow {
+            x: 8px;
+            width: max(0px, root.width - 8px - root.right);
+            entry: e;
+            index: i;
+            pane: root.pane;
+            pitch: root.pitch;
+        }
+    }
+    property <length> range: max(0px, root.entries.length * root.pitch - list.visible-height);
+    if root.range > 0: OverlayScrollBar {
+        x: root.width - 10px;
+        y: 0;
+        width: 10px;
+        height: root.height;
+        position: -list.content-y;
+        page: list.visible-height;
+        range: root.range;
+        scroll-to(y) => { list.content-y = -clamp(y, 0px, root.range); }
+    }
+}
+
+// The Tracks page with its filters: the panes' header band at the panel's
+// top (as the list's header: the surface, a hairline under it), the three
+// panes, the splitter, and the track list under them.
+export component FilteredTracks inherits Rectangle {
+    property <length> band: Theme.list-density == "list" ? 28px : 34px;
+    property <length> pitch: Theme.list-density == "list" ? 22px : Theme.list-density == "compact" ? 26px : 28px;
+    // The panes: 30 % of the page by default; at least the band and three
+    // rows, at most what leaves the list its header and four rows.
+    property <length> least: root.band + 4px + 3 * root.pitch + 4px;
+    property <length> most: max(root.least, root.height - root.band - 4px - 4 * Theme.row-pitch);
+    property <length> wanted: Filters.height < 0 ? round(root.height * 0.3 / 1px) * 1px : Filters.height;
+    property <length> panes-h: clamp(root.wanted, root.least, root.most);
+    // Three panes with a 1 px line between them.
+    property <length> pane-w: floor((root.width - 2px) / 3 / 1px) * 1px;
+    property <[length]> xs: [0px, root.pane-w + 1px, 2 * root.pane-w + 2px];
+    property <length> last-w: root.width - root.xs[2];
+    // The band.
+    Rectangle {
+        x: 0;
+        y: 0;
+        width: root.width;
+        height: root.band;
+        background: Theme.surface;
+        border-top-left-radius: 14px;
+        Rectangle {
+            y: parent.height - 1px;
+            height: 1px;
+            background: Theme.border;
+        }
+    }
+    // The titles, over the names (the rows' 8 px and the name's 8 px).
+    for title[i] in [@tr("Sidebar" => "Genres"), @tr("Sidebar" => "Artists"), @tr("Sidebar" => "Albums")]: Text {
+        x: root.xs[i] + 16px;
+        y: 0;
+        width: max(0px, (i == 2 ? root.last-w : root.pane-w) - 30px);
+        height: root.band;
+        text: title;
+        font-size: 11px;
+        font-weight: 500;
+        color: Theme.text-dim;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+    // The lines between the panes: short in the band (as the list's column
+    // dividers), the panes' height below it.
+    for i in 2: Rectangle {
+        x: root.xs[i + 1] - 1px;
+        y: round((root.band - self.height) / 2 / 1px) * 1px;
+        width: 1px;
+        height: round(root.band * 0.42 / 1px) * 1px;
+        background: Theme.border;
+    }
+    for i in 2: Rectangle {
+        x: root.xs[i + 1] - 1px;
+        y: root.band;
+        width: 1px;
+        height: root.panes-h - root.band;
+        background: Theme.border;
+    }
+    Pane {
+        x: root.xs[0];
+        y: root.band + 4px;
+        width: root.pane-w;
+        height: root.panes-h - root.band - 8px;
+        entries: Filters.genres;
+        pane: 0;
+        serial: Filters.genres-serial;
+        reveal: Filters.genres-reveal;
+        pitch: root.pitch;
+    }
+    Pane {
+        x: root.xs[1];
+        y: root.band + 4px;
+        width: root.pane-w;
+        height: root.panes-h - root.band - 8px;
+        entries: Filters.artists;
+        pane: 1;
+        serial: Filters.artists-serial;
+        reveal: Filters.artists-reveal;
+        pitch: root.pitch;
+    }
+    Pane {
+        x: root.xs[2];
+        y: root.band + 4px;
+        width: root.last-w;
+        height: root.panes-h - root.band - 8px;
+        entries: Filters.albums;
+        right: 14px;
+        pane: 2;
+        serial: Filters.albums-serial;
+        reveal: Filters.albums-reveal;
+        pitch: root.pitch;
+    }
+    // The list under the panes: its header joins them (no rounded corner).
+    TrackTable {
+        y: root.panes-h;
+        height: root.height - self.y;
+        corner: 0px;
+    }
+    // The splitter: its line is the list header's top edge; 8 px to grab.
+    Rectangle {
+        y: root.panes-h;
+        height: 1px;
+        background: Theme.border;
+    }
+    property <length> drag-start;
+    property <length> press-abs;
+    TouchArea {
+        y: root.panes-h - 4px;
+        height: 8px;
+        mouse-cursor: ns-resize;
+        pointer-event(e) => {
+            if (e.kind == PointerEventKind.down && e.button == PointerEventButton.left) {
+                root.drag-start = root.panes-h;
+                root.press-abs = self.absolute-position.y + self.mouse-y;
+            }
+            if (e.kind == PointerEventKind.up && e.button == PointerEventButton.left) {
+                Filters.height-changed(Filters.height);
+            }
+        }
+        // (It moves with the line: the pointer in window terms.)
+        moved => {
+            if (self.pressed) {
+                Filters.height = clamp(root.drag-start + self.absolute-position.y + self.mouse-y - root.press-abs, root.least, root.most);
+            }
+        }
+        // Double click: 30 % of the page again.
+        double-clicked => {
+            Filters.height = -1px;
+            Filters.height-changed(-1px);
+        }
+    }
+}

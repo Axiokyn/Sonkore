@@ -216,9 +216,9 @@ pub(super) fn read(src: &mut Src, start: u64) -> Option<Demuxed> {
         d.channels = le(head, 48, 4) as u32;
         // The first page's granule counts its packets' samples, less the
         // codec's look-ahead: the stream starts before 0.
-        let per_packet = le(head, 56, 4) as i64 * le(head, 64, 4).max(1) as i64;
+        let per_packet = (le(head, 56, 4) as i64).saturating_mul(le(head, 64, 4).max(1) as i64);
         if let Some((granule, done)) = &first_audio {
-            first_pts = granule - done.len() as i64 * per_packet;
+            first_pts = granule.saturating_sub((done.len() as i64).saturating_mul(per_packet));
         }
         if let Some(c) = packets.get(1) {
             vorbis_comment(c, &mut tags, &mut pictures);

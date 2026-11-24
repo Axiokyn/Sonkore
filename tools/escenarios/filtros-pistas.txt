@@ -1,0 +1,84 @@
+# Pistas con filtros (Ajustes › General › Filtros en la página Pistas):
+# Géneros → Artistas → Álbumes sobre la lista. La opción estaba escondida
+# porque no hacía nada. Se prende con el mouse, cada panel filtra a los
+# siguientes y a la lista, el buscador sigue filtrando la lista, doble clic
+# reproduce, la elección vuelve al abrir de nuevo, y se apaga.
+# Biblioteca de ui-tour: Pop (Aurora Sur, Luz de Norte), Rock (Los Ruidos,
+# Calle Ruido), Ambient (Aurora Sur, Verde Agua), Jazz (Marea, Noche Larga),
+# 3 pistas cada álbum. Filas de los paneles: 28 px desde y=99 («Todos»).
+ajuste appearance/language=es
+ventanas 1
+estado page=tracks
+estado rows=12
+estado filters=
+clic 1074 795
+ventanas 2
+foco last
+esperar 0.8
+clic 220 550                # «Con filtros»
+guardado ui/trackBrowser=true
+estado filters=||
+foco main
+# Género Jazz: Marea, Noche Larga, sus 3 pistas.
+clic 287 155
+estado filters=Jazz||
+estado rows=3
+captura jazz
+# Todos los géneros; el artista Aurora Sur: dos álbumes, 6 pistas.
+clic 287 99
+estado filters=||
+estado rows=12
+clic 647 127
+estado filters=|Aurora Sur|
+estado rows=6
+# Su álbum Verde Agua (el segundo de los dos).
+clic 1020 155
+estado filters=|Aurora Sur|aurora sur/verde agua
+estado rows=3
+# Otro género deja el artista (lo tiene) y suelta el álbum.
+clic 287 183
+estado filters=Pop|Aurora Sur|
+estado rows=3
+captura pop
+# El buscador sigue filtrando la lista.
+clic 785 23
+tecla t
+tecla e
+tecla m
+tecla a
+tecla space
+tecla 2
+estado search~^tema.2$
+estado rows=1
+tecla escape
+estado rows=3
+# Doble clic en Rock: sus pistas suenan.
+dclic 287 211
+estado filters=Rock||
+estado queue=3
+estado bar-title~Calle Ruido
+captura rock
+# La fila resaltada del panel del medio deja 8 px a cada lado, hasta las
+# líneas entre paneles. (En el primero, el fondo del panel se confunde con el
+# de la barra lateral y `centrado` no encuentra el borde: medido a mano,
+# 12 y 12 px de pantalla.)
+centrado rock 99 611 964
+# El borde entre los paneles y la lista (y=259: 30 % de la página) se
+# arrastra 100 px; se guarda al soltar.
+arrastre 800 259 800 359
+guardado ui/trackBrowserHeight=311
+captura alta
+# Al volver a abrir: la elección y la altura.
+clic 1300 13
+reiniciar
+estado filters=Rock|| 5
+estado rows=3
+# Apagado desde Ajustes: la lista sola, con todas las pistas.
+clic 1074 795
+ventanas 2
+foco last
+esperar 0.8
+clic 100 550                # «Solo la lista»
+guardado ui/trackBrowser=false
+estado filters=
+estado rows=12

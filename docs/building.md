@@ -19,7 +19,11 @@ target/release/sonkore
 ```
 
 PipeWire is not needed to build: `libpipewire-0.3` is loaded at run time when
-it is there.
+it is there. Neither is FFmpeg: its libraries (FFmpeg 5 to 8) are loaded at
+run time to play Opus, APE, WavPack, TTA, TAK, Musepack, WMA, AC-3 and DTS
+(the `ffmpeg` package of any distribution brings them; on
+Windows, FFmpeg's shared build's `avformat-*.dll`, `avcodec-*.dll` and
+`avutil-*.dll` next to `sonkore.exe` or on the PATH).
 
 For day-to-day work, `cargo build -p sonkore` (the dev profile is optimized
 enough to play music) and `--profile diario` (optimized, without the release
@@ -59,6 +63,12 @@ reaches your speakers. Optional extras:
   check the HDCD decoder against the md5 sums libhdcd expects.
 - `crates/dsd/tests/reference/make_reference.sh DIR`, then
   `SONKORE_DSD_CORPUS=DIR`, compares DSD and DST decoding with FFmpeg.
+- The FFmpeg tests (`crates/ffmpeg`, and the engine's and library's
+  `tests/ffmpeg*.rs`) use the corpus's `ffmpeg/` folder and the system's
+  FFmpeg libraries, and are skipped without them. With FFmpeg's headers
+  installed (`libavformat-dev`…) they also check the struct offsets Sonkore
+  reads against them; `tools/ffmpeg-offsets.sh` prints those offsets for
+  every supported release (run it when a new FFmpeg major comes out).
 - `tests/pipewire/run.sh` runs a small PipeWire daemon of its own with a null
   sink, to test the PipeWire output without touching the desktop's sound.
 

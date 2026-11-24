@@ -1,0 +1,13 @@
+[package]
+name = "sonkore-ffmpeg"
+description = "FFmpeg, loaded at run time when it is installed: the formats symphonia does not decode"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+# dlopen / LoadLibrary: no link-time dependency on FFmpeg.
+libloading = "0.8"

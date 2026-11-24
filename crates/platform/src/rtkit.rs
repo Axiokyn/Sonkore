@@ -89,11 +89,7 @@ pub fn make_realtime_on(bus: &Bus, rt: Service, tid: i64) -> i32 {
     if priority <= 0 || rt_time <= 0 {
         return 0;
     }
-    // rtkit only serves processes whose real-time CPU time is capped: a
-    // runaway real-time thread then gets SIGXCPU instead of freezing the system.
-    let limit = libc::rlimit { rlim_cur: rt_time as libc::rlim_t, rlim_max: rt_time as libc::rlim_t };
-    // SAFETY: `limit` is a valid rlimit.
-    if unsafe { libc::setrlimit(libc::RLIMIT_RTTIME, &limit) } != 0 {
+    if !cap_rt_time(rt_time) {
         return 0;
     }
     let pid = u64::from(std::process::id());
@@ -113,9 +109,44 @@ pub fn make_realtime_on(bus: &Bus, rt: Service, tid: i64) -> i32 {
     current_priority(tid)
 }
 
+/// RLIMIT_RTTIME for rtkit's `RTTimeUSecMax`: rtkit only serves processes
+/// whose real-time CPU time is capped (a runaway real-time thread then gets
+/// SIGXCPU instead of freezing the system), at most at its maximum. The hard
+/// limit can only come down: one already lower is kept.
+pub fn rt_time_limit(rt_time_usec: i64, current: libc::rlimit) -> libc::rlimit {
+    let wanted = rt_time_usec.max(0) as libc::rlim_t;
+    let max = if current.rlim_max == libc::RLIM_INFINITY { wanted } else { current.rlim_max.min(wanted) };
+    libc::rlimit { rlim_cur: max, rlim_max: max }
+}
+
+/// Sets the process's RLIMIT_RTTIME as [`rt_time_limit`] says; false when it
+/// cannot be read or set.
+fn cap_rt_time(rt_time_usec: i64) -> bool {
+    let mut current = libc::rlimit { rlim_cur: 0, rlim_max: 0 };
+    // SAFETY: `current` is a valid out pointer.
+    if unsafe { libc::getrlimit(libc::RLIMIT_RTTIME, &mut current) } != 0 {
+        return false;
+    }
+    let limit = rt_time_limit(rt_time_usec, current);
+    // SAFETY: `limit` is a valid rlimit.
+    unsafe { libc::setrlimit(libc::RLIMIT_RTTIME, &limit) == 0 }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_rt_time_limit_only_comes_down() {
+        let unlimited = libc::rlimit { rlim_cur: libc::RLIM_INFINITY, rlim_max: libc::RLIM_INFINITY };
+        let l = rt_time_limit(200_000, unlimited);
+        assert_eq!((l.rlim_cur, l.rlim_max), (200_000, 200_000));
+        let lower = libc::rlimit { rlim_cur: 50_000, rlim_max: 100_000 };
+        let l = rt_time_limit(200_000, lower);
+        assert_eq!((l.rlim_cur, l.rlim_max), (100_000, 100_000), "a lower hard limit is kept");
+        let l = rt_time_limit(-1, unlimited);
+        assert_eq!(l.rlim_max, 0);
+    }
 
     #[test]
     fn an_ordinary_thread_has_no_rt_priority() {

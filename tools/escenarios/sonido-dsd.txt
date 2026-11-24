@@ -21,12 +21,12 @@ foco last
 esperar 0.8
 clic 578 67
 esperar 0.8
-sonido dsd=NativeU32Be tasa=88200
+sonido dsd=NativeU32Be tasa=88200 frec-i=1000±2 nivel-i=-6±0.3 nivel-d=-6±0.3
 clic 807 1241
 esperar 0.4
 clic 807 1348
 guardado playback/dsdOutput=2
-sonido dsd=Dop dop=1 tasa=176400
+sonido dsd=Dop dop=1 tasa=176400 frec-i=1000±2 nivel-i=-6±0.3
 clic 807 1241
 esperar 0.4
 clic 807 1284

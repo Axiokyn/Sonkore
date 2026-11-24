@@ -132,6 +132,9 @@ pub struct Library {
     /// search (lower-casing 4 fields of every track on each key was 200,000
     /// allocations for 50,000 tracks).
     pub search_keys: Vec<String>,
+    /// Bumped when the tracks or the folders change (what is derived from
+    /// them, like the folder tree's counts, is computed again).
+    pub generation: u64,
 }
 
 /// What a change to the library means for the interface.
@@ -157,6 +160,7 @@ impl Library {
             revision: u64::MAX,
             index: HashMap::new(),
             search_keys: Vec::new(),
+            generation: 0,
         };
         lib.sync();
         lib
@@ -181,7 +185,13 @@ impl Library {
             revision: 0,
             index: HashMap::new(),
             search_keys,
+            generation: 0,
         }
+    }
+
+    /// A track's row by its path.
+    pub fn index_of(&self, path: &str) -> Option<usize> {
+        self.index.get(path).copied()
     }
 
     /// The library itself (browse, playlists, covers…).
@@ -190,7 +200,11 @@ impl Library {
     }
 
     fn sync(&mut self) {
+        if self.folders != self.inner.folders() {
+            self.generation += 1;
+        }
         if self.revision != self.inner.revision() {
+            self.generation += 1;
             self.revision = self.inner.revision();
             self.tracks = self.inner.tracks().iter().map(Track::from_meta).collect();
             self.index = self.tracks.iter().enumerate().map(|(i, t)| (t.path.clone(), i)).collect();
@@ -242,6 +256,12 @@ impl Library {
 
     pub fn toggle_favorite(&mut self, path: &str) -> Changed {
         let events = self.inner.toggle_favorite(path);
+        self.apply(events)
+    }
+
+    /// Several favourites off (or on) with one write.
+    pub fn set_favorites(&mut self, paths: &[String], on: bool) -> Changed {
+        let events = self.inner.set_favorites(paths, on);
         self.apply(events)
     }
 

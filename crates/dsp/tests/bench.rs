@@ -73,9 +73,21 @@ fn throughput() {
         (44100, 192000, Filter::Linear),
         (44100, 705600, Filter::LinearSteep),
         (192000, 44100, Filter::LinearSteep),
+        (44100, 48000, Filter::Minimum),
+        (44100, 192000, Filter::Minimum),
+        (44100, 192000, Filter::Intermediate),
+        (48000, 44100, Filter::Minimum),
+        (192000, 44100, Filter::Minimum),
+        (44100, 705600, Filter::Minimum),
+        (11025, 768000, Filter::Minimum),
+        (44100, 2822400, Filter::Linear),
+        (44100, 2822400, Filter::Minimum),
+        (44100, 22579200, Filter::Minimum),
     ] {
         let x = noise(2 * i as usize * SECONDS, 4);
+        let t = Instant::now();
         let mut r = Resampler::new(i, o, 2, f).unwrap();
+        println!("resampler {i} -> {o} {f:?}: built in {:.1} ms", t.elapsed().as_secs_f64() * 1000.0);
         let mut out = Vec::with_capacity(r.max_output_frames(block) * 2);
         let t = Instant::now();
         for c in x.chunks(block * 2) {

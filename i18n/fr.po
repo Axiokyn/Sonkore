@@ -496,7 +496,7 @@ msgstr "PCM → DSD"
 
 msgctxt "DspController"
 msgid "SoX VHQ, {0} · {1} kHz → {2} MHz · 8th-order sigma-delta modulator"
-msgstr "SoX VHQ, {0} · {1} kHz → {2} MHz · modulateur sigma-delta d'ordre 7"
+msgstr "SoX VHQ, {0} · {1} kHz → {2} MHz · modulateur sigma-delta du 8e ordre"
 
 msgctxt "DspController"
 msgid "Modulator"
@@ -3597,4 +3597,40 @@ msgstr "Redémarrez Sonkore pour l'afficher dans la nouvelle langue."
 msgctxt "DspController"
 msgid "The audio output stopped"
 msgstr "La sortie audio s'est arrêtée"
+
+msgctxt "Drops"
+msgid "Drop music files or folders"
+msgstr "Déposez des fichiers ou dossiers de musique"
+
+msgctxt "Drops"
+msgid "Nothing here Sonkore can play"
+msgstr "Rien ici que Sonkore puisse lire"
+
+msgctxt "Drops"
+msgid "Drop to add to the queue"
+msgstr "Déposez pour ajouter à la file"
+
+msgctxt "Drops"
+msgid "Drop to add to “{0}”"
+msgstr "Déposez pour ajouter à « {0} »"
+
+msgctxt "Drops"
+msgid "Drop to play"
+msgstr "Déposez pour lire"
+
+msgctxt "Drops"
+msgid "Drop to add to the library"
+msgstr "Déposez pour ajouter à la bibliothèque"
+
+msgctxt "Drops"
+msgid "Drop to play the files and add the folders to the library"
+msgstr "Déposez pour lire les fichiers et ajouter les dossiers à la bibliothèque"
+
+msgctxt "Drops"
+msgid "Adding to the library: {0}"
+msgstr "Ajout à la bibliothèque : {0}"
+
+msgctxt "DspController"
+msgid "Playing {0} needs FFmpeg, which is not installed"
+msgstr "La lecture de {0} nécessite FFmpeg, qui n'est pas installé"
 

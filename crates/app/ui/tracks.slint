@@ -22,10 +22,11 @@ component Header inherits Rectangle {
     in property <bool> joined: true;
     in property <bool> sortable: true;
     in property <length> origin;       // the rows' left edge
+    in property <length> corner: 14px; // joined: the panel's corner (0 under the filters)
     height: Theme.list-density == "list" ? 28px : 34px;
     if root.joined: Rectangle {
         background: Theme.surface;
-        border-top-left-radius: 14px;
+        border-top-left-radius: root.corner;
         Rectangle {
             y: parent.height - 1px;
             height: 1px;
@@ -423,6 +424,7 @@ component Row inherits Rectangle {
 export component TrackTable inherits Rectangle {
     in property <bool> joined: true;
     in property <bool> sortable: true;
+    in property <length> corner: 14px;     // the joined header's top-left corner
     property <length> inset: root.joined ? 8px : 0px;
     property <length> leading: 36px; // in every density
     property <length> cover: App.cover-width;
@@ -447,6 +449,7 @@ export component TrackTable inherits Rectangle {
         cover: root.cover;
         joined: root.joined;
         sortable: root.sortable;
+        corner: root.corner;
     }
     property <length> top: header.y + header.height + 4px;
     // The library's empty state (the other lists show nothing).
