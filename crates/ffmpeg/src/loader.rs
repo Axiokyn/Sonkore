@@ -123,7 +123,10 @@ fn load() -> Result<Api, String> {
         return Err("only 64-bit FFmpeg builds are supported".into());
     }
     let mut missing = Vec::new();
-    for &(f, c, u) in &abi::RELEASES {
+    // SONKORE_FFMPEG_MAJOR=60: only that libavformat (the tests with older
+    // releases, tools/ffmpeg-versiones.sh).
+    let only = std::env::var("SONKORE_FFMPEG_MAJOR").ok().and_then(|v| v.parse::<u32>().ok());
+    for &(f, c, u) in abi::RELEASES.iter().filter(|r| only.is_none_or(|m| r.0 == m)) {
         match load_release(f, c, u) {
             Ok(api) => return Ok(api),
             Err(why) => missing.push(why),

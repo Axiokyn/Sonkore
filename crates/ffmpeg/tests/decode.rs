@@ -17,6 +17,7 @@ fn corpus() -> Option<PathBuf> {
         eprintln!("skipped: FFmpeg's libraries are not installed");
         return None;
     }
+    eprintln!("FFmpeg: {}", sonkore_ffmpeg::versions().unwrap_or_default());
     Some(dir)
 }
 

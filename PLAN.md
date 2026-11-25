@@ -11,7 +11,8 @@ configuración) está en `docs/engine.md`; las funciones, en
   AAC/ALAC en MP4, Vorbis, MKV) y con FFmpeg cargado en tiempo de ejecución
   si está instalado (Opus, APE, WavPack, TTA, TAK, Musepack, WMA, Wave64,
   AC-3, DTS; `crates/ffmpeg`), bit-exacta y con búsquedas exactas a la
-  muestra; gapless con empalme exacto (lista de edición de MP4, longitud real
+  muestra (probado con FFmpeg 6.1, 7.0, 7.1 y 8, `tools/ffmpeg-versiones.sh`;
+  FFmpeg 5 solo contra sus headers, ya no está en PyPI); gapless con empalme exacto (lista de edición de MP4, longitud real
   de AIFF); anillo sin bloqueos; fundido anti-clic de 8 ms con dither;
   bit-perfect por bloque.
 - **Salidas:** ALSA directa (`alsa|hw:…`: S32 / S24 / S24_3 / S16, periodos de

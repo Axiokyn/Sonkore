@@ -16,6 +16,7 @@ Reproductor de música hi-fi en Rust, con interfaz en Slint, para Linux y Window
 | Compilar mientras se itera | `cargo build -p sonkore` (dev) | ~2 s si cambia el Rust de la app; ~13 s si cambia un `.slint` o un `.po`; 0,3 s sin cambios |
 | Revisar todo antes de entregar | `tools/check.sh` (`--todo`: 6 escalas + interfaz 110 %): build sin warnings (también los de Slint), clippy, tests con los dos corpus, Windows, textos, vistas, escenarios | ~3 min; ver resumen al final |
 | Opciones de Ajustes que ningún escenario prueba con `guardado` | `tools/cobertura-ajustes.py [--todas]` (`check.sh` muestra el total; las excepciones, con su motivo, en el script) | <1 s |
+| Tests de FFmpeg con FFmpeg 6.1, 7.0 y 7.1 (acá hay 8; Ubuntu 24.04 trae 6.1, el Flatpak 7.1) | `tools/ffmpeg-versiones.sh [args de cargo test]`: las librerías de PyAV (PyPI), solo dentro de los tests (`SONKORE_FFMPEG_MAJOR`) | ~15 s |
 | Offsets de las estructuras de FFmpeg por versión (al salir un FFmpeg nuevo) | `tools/ffmpeg-offsets.sh` → `crates/ffmpeg/src/abi.rs` | |
 | Capturas del README (`docs/screenshots/*.webp`) | `tools/readme/capturas.sh`: la ventana real a 200 % con la biblioteca inventada de `tools/readme/biblioteca.py` | ~45 s la primera vez |
 | Código muerto tapado por `#[allow(dead_code)]` | `cargo clippy --workspace -- -A clippy::all --force-warn dead_code` (lo de `win/` y `file_dialog.rs` es de Windows) | ~40 s |

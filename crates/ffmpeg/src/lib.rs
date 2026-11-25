@@ -193,6 +193,8 @@ pub struct Stream {
     stream: c_int,
     /// AVStream.time_base.
     time_base: (i64, i64),
+    /// The file's name, as opened (to open it again).
+    name: String,
     info: Info,
     pending: Pending, // interleaved, decoded and not read yet
     pending_pos: usize,
@@ -279,6 +281,7 @@ impl Stream {
             frame: null_mut(),
             stream: -1,
             time_base: (1, 1),
+            name: name.to_string(),
             info: Info {
                 rate: 0,
                 channels: 0,
@@ -758,6 +761,9 @@ impl Stream {
         // (A frame past any length: the end.)
         let frame = frame.min(i64::MAX as u64 / 4);
         let target = self.origin.saturating_add(frame as i64);
+        if target.saturating_sub(self.preroll) <= self.origin {
+            return self.from_the_start(frame);
+        }
         // A demuxer that lands after the target (timestamps rounded to the
         // millisecond, a first packet before zero) is sent further back, up
         // to a few seconds before the start.
@@ -800,6 +806,34 @@ impl Stream {
                 _ => break,
             }
         }
+        Ok(frame)
+    }
+
+    /// A seek near the start, with no room before it for the decoder to
+    /// settle: the file opened again, as at first, and read up to `frame`.
+    /// A flush is not a new decoder: FFmpeg 5 to 7's AC-3 decoder kept the
+    /// last block's overlap (the first 224 samples came out wrong), and Opus
+    /// drops its pre-skip only in a new one.
+    fn from_the_start(&mut self, frame: u64) -> Result<u64> {
+        // SAFETY: io_state is this stream's own until it is dropped.
+        let source = unsafe {
+            std::mem::replace(&mut (*self.io_state).source, Box::new(std::io::Cursor::new(Vec::<u8>::new())))
+        };
+        let mut fresh = Stream::open(source, &self.name)?;
+        std::mem::swap(self, &mut fresh);
+        drop(fresh);
+        let ch = self.info.channels.max(1);
+        let mut scratch = vec![0.0f64; 4096 * ch];
+        let mut left = frame;
+        while left > 0 {
+            let n = (left as usize).min(4096);
+            let got = self.read_f64(&mut scratch[..n * ch])?;
+            if got == 0 {
+                break;
+            }
+            left -= got as u64;
+        }
+        self.position = frame;
         Ok(frame)
     }
 }
