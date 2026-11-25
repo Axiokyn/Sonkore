@@ -67,7 +67,8 @@ configuración) está en `docs/engine.md`; las funciones, en
   - con un búfer más largo que una pista corta (2000 ms), esa unión no es sin
     pausas (el motor llega al final antes de `set_next`).
 - **Windows:** compila y corre en la CI (con todos los tests desde el
-  2026-11-25); falta confirmar WASAPI exclusivo y el volumen del dispositivo
+  2026-11-25); falta confirmar WASAPI exclusivo, ASIO (PCM, DoP y DSD nativo;
+  `output/asio.rs`, probado solo con un driver falso) y el volumen del dispositivo
   con DACs reales, y si se puede renombrar una carpeta de música en el
   Explorador mientras Sonkore la vigila (un test no podía renombrarla:
   "Access is denied").
@@ -76,7 +77,7 @@ configuración) está en `docs/engine.md`; las funciones, en
     lo instala y lo deja correr 20 s en Xvfb) todavía no corrió con Rust.
     Para Flathub faltaría listar los crates (flatpak-cargo-generator) en vez
     de `--share=network`;
-  - antes de publicar: subir la versión en `Cargo.toml` (la 2.0.1 ya está
+  - antes de publicar: subir la versión en `Cargo.toml` (la 2.0.2 ya está
     publicada) y agregar la entrada en `<releases>` del metainfo;
   - `THIRD-PARTY.md` resume las licencias de los crates
     (`tools/licencias.py`), pero los paquetes todavía no llevan el texto de

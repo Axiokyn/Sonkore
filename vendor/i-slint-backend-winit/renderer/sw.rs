@@ -85,6 +85,75 @@ impl WinitSoftwareRenderer {
     }
 }
 
+// Sonkore: SONKORE_FRAME_DUMP=<dir> saves each frame as it goes to the
+// compositor (a PAM image, up to 10 a second per window and 400 in all) and
+// one line per frame in <dir>/frames.log: window, size, scale, buffer age and
+// the repainted regions. To see on a real desktop whether a garbled window
+// comes from the drawing or from the hand-over to the compositor.
+struct DumpFrame {
+    name: String,
+    width: usize,
+    height: usize,
+    pixels: Vec<u32>,
+}
+
+thread_local! {
+    static FRAME_DUMP: Option<(std::path::PathBuf, std::sync::mpsc::Sender<DumpFrame>)> =
+        std::env::var_os("SONKORE_FRAME_DUMP").map(|dir| {
+            let dir = std::path::PathBuf::from(dir);
+            let _ = std::fs::create_dir_all(&dir);
+            let (tx, rx) = std::sync::mpsc::channel::<DumpFrame>();
+            let out = dir.clone();
+            std::thread::spawn(move || {
+                use std::io::Write;
+                for f in rx {
+                    let Ok(mut file) = std::fs::File::create(out.join(&f.name)) else { continue };
+                    let _ = write!(
+                        file,
+                        "P7\nWIDTH {}\nHEIGHT {}\nDEPTH 4\nMAXVAL 255\nTUPLTYPE RGB_ALPHA\nENDHDR\n",
+                        f.width, f.height
+                    );
+                    let bytes: Vec<u8> = f
+                        .pixels
+                        .iter()
+                        .flat_map(|p| [(p >> 16) as u8, (p >> 8) as u8, *p as u8, (p >> 24) as u8])
+                        .collect();
+                    let _ = file.write_all(&bytes);
+                }
+            });
+            (dir, tx)
+        });
+    static FRAME_DUMP_STATE: RefCell<(u32, std::collections::HashMap<String, std::time::Instant>)> =
+        RefCell::new((0, std::collections::HashMap::new()));
+    static FULL_REPAINT: bool = std::env::var_os("SONKORE_FULL_REPAINT").is_some();
+}
+
+fn dump_frame(window: &str, scale: f32, age: u8, width: usize, height: usize, pixels: &[u32], rects: &str) {
+    FRAME_DUMP.with(|dump| {
+        let Some((dir, tx)) = dump else { return };
+        FRAME_DUMP_STATE.with(|state| {
+            let mut state = state.borrow_mut();
+            let now = std::time::Instant::now();
+            let seq = state.0;
+            state.0 += 1;
+            let slot: String = window.chars().filter(|c| c.is_alphanumeric()).collect();
+            let due = state.1.get(&slot).is_none_or(|t| now.duration_since(*t).as_millis() >= 100);
+            let image = if due && seq < 400 {
+                state.1.insert(slot.clone(), now);
+                let name = format!("{seq:05}-{slot}-age{age}.pam");
+                let _ = tx.send(DumpFrame { name: name.clone(), width, height, pixels: pixels.to_vec() });
+                name
+            } else {
+                String::new()
+            };
+            if let Ok(mut log) = std::fs::OpenOptions::new().create(true).append(true).open(dir.join("frames.log")) {
+                use std::io::Write;
+                let _ = writeln!(log, "{seq} {window:?} {width}x{height} scale {scale} age {age} {image} {rects}");
+            }
+        });
+    });
+}
+
 // Sonkore: SONKORE_FRAME_STATS=1 prints, every 2 s, how many frames were
 // drawn, how long they took (the whole present, and the renderer alone),
 // how many pixels the dirty regions covered and the buffer ages seen.
@@ -161,6 +230,10 @@ impl super::WinitCompatibleRenderer for WinitSoftwareRenderer {
             .map_err(|e| format!("Error retrieving softbuffer rendering buffer: {e}"))?;
 
         let age = target_buffer.age();
+        // Sonkore: SONKORE_FULL_REPAINT=1 draws and hands over the whole window
+        // every frame (a test: whether a garbled window comes from partial repaints).
+        let full = FULL_REPAINT.with(|f| *f);
+        let age = if full { 0 } else { age };
         self.renderer.set_repaint_buffer_type(match age {
             1 => RepaintBufferType::ReusedBuffer,
             2 => RepaintBufferType::SwappedBuffers,
@@ -244,6 +317,9 @@ impl super::WinitCompatibleRenderer for WinitSoftwareRenderer {
             })
             .collect::<Vec<_>>();
         let mut damage = damage;
+        if full && !damage.is_empty() {
+            damage = vec![softbuffer::Rect { x: 0, y: 0, width, height }];
+        }
         if !damage.is_empty() {
             for (x, y, w, h) in edges {
                 if let (Some(width), Some(height)) =
@@ -254,6 +330,15 @@ impl super::WinitCompatibleRenderer for WinitSoftwareRenderer {
             }
         }
         if !damage.is_empty() {
+            dump_frame(
+                &winit_window.title(),
+                window.scale_factor(),
+                age,
+                width.get() as usize,
+                height.get() as usize,
+                &target_buffer,
+                &format!("{:?}", damage.iter().map(|d| (d.x, d.y, d.width, d.height)).collect::<Vec<_>>()),
+            );
             winit_window.pre_present_notify();
             target_buffer
                 .present_with_damage(&damage)

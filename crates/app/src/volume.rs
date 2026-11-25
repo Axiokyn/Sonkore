@@ -82,10 +82,11 @@ pub fn direct_output(key: &str) -> bool {
     key.starts_with("alsa|hw:") || key.starts_with("alsa|plughw:")
 }
 
-/// Played to without the Windows mixer between: WASAPI in exclusive mode.
+/// Played to without the Windows mixer between: WASAPI in exclusive mode,
+/// or an ASIO driver.
 #[cfg(windows)]
 pub fn direct_output(key: &str) -> bool {
-    (key.is_empty() || key.starts_with("wasapi|")) && STATE.with(|s| s.borrow().exclusive)
+    key.starts_with("asio|") || ((key.is_empty() || key.starts_with("wasapi|")) && STATE.with(|s| s.borrow().exclusive))
 }
 
 /// The digital volume the engine starts with (playback/volume).
@@ -118,7 +119,8 @@ pub fn update(settings: &Settings, engine: &Engine) {
         // The card's own control (DAC mode on an ALSA output; on Windows on
         // an exclusive WASAPI one).
         let card = if cfg!(windows) {
-            direct.then(|| key.strip_prefix("wasapi|").unwrap_or("").to_owned())
+            // (An ASIO driver has no Windows volume control of its own.)
+            (direct && !key.starts_with("asio|")).then(|| key.strip_prefix("wasapi|").unwrap_or("").to_owned())
         } else {
             key.strip_prefix("alsa|").map(|d| d.split(',').next().unwrap_or(d).to_owned())
         };

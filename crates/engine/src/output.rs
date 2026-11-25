@@ -4,7 +4,8 @@
 //! saved choice carries over: on Linux `alsa|hw:CARD=DX1,DEV=0` is a sound
 //! card's own endpoint (exclusive, bit-perfect), `pipewire|<node>` a PipeWire
 //! sink; on Windows `wasapi|<name>` an endpoint, shared or exclusive as
-//! playback/exclusive says; "" the system's default. A device thread asks the engine for interleaved
+//! playback/exclusive says, and `asio|<driver>` a DAC's own ASIO driver;
+//! "" the system's default. A device thread asks the engine for interleaved
 //! left-justified s32 (`Render::render`) and writes them in the device's own
 //! format.
 
@@ -15,6 +16,9 @@ use std::time::Duration;
 
 pub use sonkore_dsd::DsdPacking;
 
+// Builds everywhere: its tests drive it with a fake driver.
+#[cfg_attr(not(windows), allow(dead_code))]
+pub mod asio;
 #[cfg(target_os = "linux")]
 pub mod pipewire;
 #[cfg(windows)]
@@ -117,10 +121,11 @@ pub trait Output: Send {
 }
 
 /// A key DSD can reach: a card's own endpoint (ALSA hw:), or on Windows a
-/// WASAPI endpoint, which is opened exclusively for DSD.
+/// WASAPI endpoint, which is opened exclusively for DSD, or an ASIO driver.
 pub fn is_direct_key(key: &str) -> bool {
     let key = resolve_key(key);
-    key.starts_with("alsa|") || (cfg!(windows) && (key.is_empty() || key.starts_with("wasapi|")))
+    key.starts_with("alsa|")
+        || (cfg!(windows) && (key.is_empty() || key.starts_with("wasapi|") || key.starts_with("asio|")))
 }
 
 /// The backend and the device name the default output shows (Settings,
@@ -142,10 +147,13 @@ pub fn default_label(devices: &[DeviceInfo], format: &DeviceFormat) -> (String, 
     }
 }
 
-/// Every device to play to: the system's endpoints (WASAPI).
+/// Every device to play to: the system's endpoints (WASAPI), then the
+/// installed ASIO drivers.
 #[cfg(windows)]
 pub fn devices() -> Vec<DeviceInfo> {
-    wasapi::devices()
+    let mut list = wasapi::devices();
+    list.extend(asio::devices());
+    list
 }
 
 /// Opens the device `key` ("" = the default) for `request`.
@@ -169,6 +177,9 @@ pub fn open(key: &str, request: Request, render: Arc<dyn Render>) -> Result<Box<
             1.0,
             0,
         )));
+    }
+    if let Some(driver) = key.strip_prefix("asio|") {
+        return Ok(Box::new(asio::AsioOutput::open(&key, driver, request, render)?));
     }
     let name = key.strip_prefix("wasapi|").unwrap_or("");
     if !key.is_empty() && name.is_empty() {

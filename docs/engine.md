@@ -82,8 +82,9 @@ What the engine (`crates/engine`, with `crates/dsp`, `crates/dsd`, `crates/eq`, 
 - `pipewire|<node.name>`, with WirePlumber's ".N" suffix stripped (a second sink with the same base name keeps its full name); opening matches the current node by base name;
 - `alsa|hw:CARD=<id>,DEV=<n>`, from `/proc/asound/cards` and `cardN/pcmNp/info`;
 - `wasapi|<friendly name>` on Windows (`wasapi|<endpoint id>` for a second endpoint with the same name).
+- `asio|<driver name>` on Windows: a driver listed under `HKLM\SOFTWARE\ASIO`.
 
-`auto_null` is skipped. A saved `pulse|X` maps to `pipewire|X`. `""` means the system default: PipeWire's default sink, else ALSA's `default` (on Windows, the default endpoint). DSD needs a direct `alsa|hw:` device (or WASAPI exclusive, as DoP).
+`auto_null` is skipped. A saved `pulse|X` maps to `pipewire|X`. `""` means the system default: PipeWire's default sink, else ALSA's `default` (on Windows, the default endpoint). DSD needs a direct `alsa|hw:` device (or WASAPI exclusive, as DoP, or ASIO).
 
 **ALSA**
 
@@ -138,6 +139,14 @@ What the engine (`crates/engine`, with `crates/dsp`, `crates/dsd`, `crates/eq`, 
 - **Exclusive** (`playback/exclusive`, and always for DSD): the endpoint directly, in an integer format; bit-perfect when the rate matches; carries DoP.
 - The WAVEFORMATEXTENSIBLE channel mask is the WAVE layout for the channel count (5.1 = 0x3F, 7.1 = 0x63F), so the samples need no reordering.
 - Both are event driven on a thread of their own.
+
+**ASIO** (Windows, `output/asio.rs`)
+
+- The driver interface is declared from its published binary layout (no Steinberg SDK). A driver is made, used and released on a COM single-threaded thread of its own, which handles window messages while it plays; the driver fills its buffers from its own thread through the callbacks, which carry no context: one ASIO stream at a time.
+- PCM at the track's rate, else the driver's closest rate (`pick_rate`); every ASIO sample type (16/24/32-bit integers in both byte orders, 32-bit containers of 16–24 bits, float); always direct (`exclusive` in the format).
+- DoP at exactly its rate in an integer type of 24 bits or more; native DSD in the driver's DSD mode (`kAsioSetIoFormat`), at the 1-bit rate, both bit orders, back to PCM on close.
+- A mono track goes out on both sides. A reset request from the driver (its settings changed) fails the output, which the engine closes.
+- Tested with a fake driver on every system (`cargo test -p sonkore-engine asio`); a real driver only on Windows.
 
 **PCM → DSD** (`playback/pcmToDsd`, see §4): a PCM track on a direct output, with `playback/dsdOutput` native or DoP and no fixed output rate, opens the device for DSD at the highest wanted DSD rate it takes (native: whichever endianness the card takes; DoP: the same checks as for DSD files). Nothing taken: the track plays as PCM, and later tracks on the same device and channel count do not ask again until the device or a DSD setting changes. Never on PipeWire.
 

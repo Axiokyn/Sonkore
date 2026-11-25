@@ -1,0 +1,23 @@
+# Una ventana que pasa a un monitor con otra escala se dibuja entera en su
+# primer cuadro con el tamaño nuevo. softbuffer conservaba la edad del búfer al
+# cambiarle el tamaño: Sonkore repintaba solo lo que había cambiado sobre la
+# imagen vieja leída con otro ancho, y en KWin, con un monitor al 100 % y otro
+# al 150 %, Ajustes quedaba rayado y con copias encimadas (2026-11-25).
+entorno SONKORE_FRAME_DUMP={rt}/cuadros
+ajuste appearance/language=es
+ventanas 1
+tecla ctrl+comma
+ventanas 2
+foco last
+esperar 1
+# Algo que cambie, para que haya cuadros parciales antes del cambio de escala.
+clic 365 67
+esperar 0.6
+escala 100
+esperar 1
+clic 120 67
+esperar 0.6
+escala 150
+esperar 1
+captura ajustes
+sh python3 {repo}/tools/cuadros-enteros.py {rt}/cuadros/frames.log

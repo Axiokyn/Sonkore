@@ -1611,6 +1611,9 @@ impl Engine {
         if let Some(name) = key.strip_prefix("wasapi|") {
             return ("WASAPI".into(), name.to_owned());
         }
+        if let Some(name) = key.strip_prefix("asio|") {
+            return ("ASIO".into(), name.to_owned());
+        }
         output::default_label(&devices, format)
     }
 

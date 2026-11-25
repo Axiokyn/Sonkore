@@ -29,6 +29,14 @@ and these:
 | [ebur128](https://github.com/sdroege/ebur128) — EBU R128 loudness and true peak (a port of libebur128) | MIT | |
 | [rubato](https://github.com/HEnquist/rubato), [rustfft](https://github.com/ejmahler/RustFFT) / realfft — resampling and the convolution engine's FFT | MIT / MIT OR Apache-2.0 | |
 
+## ASIO
+
+ASIO is a trademark and software of Steinberg Media Technologies GmbH.
+Sonkore does not include Steinberg's SDK: `crates/engine/src/output/asio.rs`
+declares the driver interface (types, constants and the IASIO call table)
+from its published binary layout, and the drivers are the ones installed on
+the user's computer.
+
 ## Used at run time
 
 | Component | License | Notes |

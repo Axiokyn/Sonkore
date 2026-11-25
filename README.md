@@ -18,7 +18,7 @@ Linux · Windows 10/11 · Free software (GPL-3.0)
 
 ## Why Sonkore
 
-- **Truly bit-perfect.** Direct ALSA `hw:`, native PipeWire (follows each track's sample rate) and WASAPI exclusive. Leave volume and DSP alone and every bit of the file reaches the DAC.
+- **Truly bit-perfect.** Direct ALSA `hw:`, native PipeWire (follows each track's sample rate), WASAPI exclusive and ASIO. Leave volume and DSP alone and every bit of the file reaches the DAC.
 - **Native DSD, DoP or conversion to PCM**, DST included, with its own double-precision converter.
 - **Reference DSP.** Graphic or parametric equalizer, optionally linear-phase, with AutoEQ for about 7,000 headphones; FIR convolution, crossfeed, oversampling, true-peak limiter, noise-shaped dither, ReplayGain 2.0 and HDCD.
 - **Signal path** in plain sight: every stage from the file to the DAC, with its quality.

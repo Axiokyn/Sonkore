@@ -145,6 +145,11 @@ impl WaylandBuffer {
             );
             self.width = width;
             self.height = height;
+            // Sonkore: a new buffer holds no earlier frame. Keeping the age made
+            // the renderer repaint only what changed on top of the old image read
+            // with another width (a window moved to a monitor with another scale
+            // came out striped, with shifted copies of itself).
+            self.age = 0;
         }
     }
 

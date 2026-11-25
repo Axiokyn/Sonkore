@@ -61,6 +61,16 @@
     <control>pointing</control>
   </supports>
   <releases>
+    <release version="2.0.2" date="2026-11-25">
+      <description>
+        <ul>
+          <li>Windows: ASIO output again, with each installed driver listed in Settings › Audio: bit-perfect PCM,
+          DoP, and native DSD where the driver has a DSD mode.</li>
+          <li>Linux: a window moved to a monitor with another scale is drawn whole again, instead of striped and with
+          shifted copies of itself.</li>
+        </ul>
+      </description>
+    </release>
     <release version="2.0.1" date="2026-11-25">
       <description>
         <p>Fixes for the Flatpak.</p>
