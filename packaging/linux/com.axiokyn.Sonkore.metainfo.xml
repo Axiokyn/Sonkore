@@ -61,7 +61,7 @@
     <control>pointing</control>
   </supports>
   <releases>
-    <release version="2.0.0" date="2026-11-24">
+    <release version="2.0.0" date="2026-11-25">
       <description>
         <p>Sonkore is rewritten in Rust, with a new interface drawn by Slint; Qt is gone. The look, the pages and the
         settings carry over.</p>
