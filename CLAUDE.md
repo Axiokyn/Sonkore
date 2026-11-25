@@ -137,6 +137,7 @@ Sacar coordenadas de una `captura` de ui-live, no de ui-tour. Con salida PipeWir
   - El formato es "FLAC 16-bit · 44.1 kHz", y el artista y el álbum van separados por "  ·  ".
   - Junto a un espacio fijo, el espaciado del layout se pone una sola vez.
   - Una etiqueta con padding y borde suma 6 px de ancho y 2 de alto.
+- **Columnas la primera vez** (pedido del usuario, medido en su captura a 165 %): Nombre de archivo · Formato 113 · Tiempo 86 · ♥. Formato solo crece si una etiqueta no entra. Mientras el nombre no tenga un ancho guardado, el espacio que sobra va al nombre, no a Tiempo (`tracklist.rs`, test `first_launch_columns`).
 - **Lista:** en la densidad Lista las filas no dejan el píxel de separación (`Theme.row-pitch`), y la columna del número mide 36 en todas las densidades. Si cambian la densidad o las carátulas, la lista vuelve a distribuir las columnas (`list-look-changed`); si no, la columna de carátulas quedaba y las carátulas se encimaban.
 
 - **Sonido, opciones que antes no hacían nada** (2026-11-23):

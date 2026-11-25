@@ -43,6 +43,19 @@ no_warnings() { # cargo subcommand, arguments... (--message-format goes
     echo "$out" | grep -E '^(crates|tools|vendor)/|^(warning|error)' | grep -v '^warning: build failed' | sort -u
     [ $status = 0 ] && ! echo "$out" | grep -qE '^(crates|tools)/[^ ]*: (warning|error)|^warning: sonkore'
 }
+# Scripts executable in git (the CI runs them by path). This repository has
+# core.fileMode=false: a chmod never reaches a commit, and a checkout writes
+# the files with the mode git has.
+executable_scripts() {
+    local bad
+    bad=$(git ls-files -s | awk '$1 == "100644" { print $4 }' | grep -v '^vendor/' |
+        while read -r f; do [ -f "$f" ] && [ "$(head -c2 "$f" | tr -d '\0')" = '#!' ] && echo "$f"; done)
+    [ -z "$bad" ] && return 0
+    echo "$bad"
+    echo "arreglar: git update-index --chmod=+x ARCHIVO… (y chmod +x)"
+    return 1
+}
+step "scripts ejecutables en git" executable_scripts
 step "formato (cargo fmt)" cargo fmt --all --check
 step "build" no_warnings build -p sonkore
 # Clippy: which lints count is in Cargo.toml ([workspace.lints]).

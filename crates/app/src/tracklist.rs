@@ -31,8 +31,11 @@ pub const CATALOG: [ColumnDef; 21] = [
     ColumnDef { key: "year", title: "Year", width: 60.0, fixed: false, badge: false },
     ColumnDef { key: "trackNo", title: "Track", width: 60.0, fixed: false, badge: false },
     ColumnDef { key: "discNo", title: "Disc", width: 52.0, fixed: false, badge: false },
-    ColumnDef { key: "duration", title: "Time", width: 64.0, fixed: false, badge: false },
-    ColumnDef { key: "format", title: "Format", width: 119.0, fixed: false, badge: true },
+    // Time and Format start out as the user set them (2026-11-24, measured
+    // on their screenshot at 165 %): Format 113, never under its widest
+    // badge, and Time 86.
+    ColumnDef { key: "duration", title: "Time", width: 86.0, fixed: false, badge: false },
+    ColumnDef { key: "format", title: "Format", width: 113.0, fixed: false, badge: true },
     ColumnDef { key: "codec", title: "Codec", width: 70.0, fixed: false, badge: false },
     ColumnDef { key: "sampleRate", title: "Sample rate", width: 96.0, fixed: false, badge: false },
     ColumnDef { key: "bits", title: "Bit depth", width: 80.0, fixed: false, badge: false },
@@ -377,7 +380,15 @@ pub fn layout_columns(
     let primary_shrink = primary_full - primary_width;
     let rest_ratio = if rest_slack > 0.0 { ((shortfall - primary_shrink).max(0.0) / rest_slack).min(1.0) } else { 0.0 };
     let rest_shrink = rest_slack * rest_ratio;
-    let flex_width = flex_own.max(available_flex + primary_shrink + rest_shrink);
+    let mut flex_width = flex_own.max(available_flex + primary_shrink + rest_shrink);
+    // Room to spare goes to the first column until the user sizes it (the
+    // first launch: the name wide, Format and Time as they are); after that,
+    // to the last one.
+    let mut primary_width = primary_width;
+    if !primary.is_empty() && !saved.contains_key(&primary) && flex_width > flex_own {
+        primary_width += flex_width - flex_own;
+        flex_width = flex_own;
+    }
     let mut left = 0.0f32;
     let columns = keys
         .iter()
@@ -417,5 +428,33 @@ mod tests {
         assert_eq!(readable_file_name("1999.flac"), "1999");
         assert_eq!(format_time(3725.0), "1:02:05");
         assert_eq!(format_time(65.0), "1:05");
+    }
+
+    /// The first launch: Format 113 px (wider only for a wider badge), Time
+    /// 86 px, the name the rest.
+    #[test]
+    fn first_launch_columns() {
+        let keys: Vec<String> = DEFAULT_KEYS.iter().map(|k| k.to_string()).collect();
+        let badge = 69.0; // "FLAC 16/44.1": a minimum of 105
+        let layout = layout_columns(&keys, &serde_json::Map::new(), 1300.0, true, true, badge);
+        let width = |k: &str| layout.columns.iter().find(|c| c.key == k).unwrap().width;
+        assert_eq!(width("format"), 113.0);
+        let wide = layout_columns(&keys, &serde_json::Map::new(), 1300.0, true, true, 90.0);
+        let wide_format = wide.columns.iter().find(|c| c.key == "format").unwrap().width;
+        assert_eq!(wide_format as f64, min_width_of("format", 90.0));
+        assert_eq!(width("duration"), 86.0);
+        // The window's width left goes to the name.
+        assert_eq!(width("fileName"), 1300.0 - 14.0 - 36.0 - 62.0 - 113.0 - 86.0 - 44.0 - 8.0);
+        // Narrower than that, the name gives way and the rest stays.
+        let narrow = layout_columns(&keys, &serde_json::Map::new(), 900.0, true, true, badge);
+        let narrow_width = |k: &str| narrow.columns.iter().find(|c| c.key == k).unwrap().width;
+        assert_eq!((narrow_width("format"), narrow_width("duration")), (113.0, 86.0));
+        // Once the user sized the name, the last column takes what is left.
+        let mut saved = serde_json::Map::new();
+        saved.insert("fileName".into(), serde_json::json!(700));
+        let sized = layout_columns(&keys, &saved, 1300.0, true, true, badge);
+        let sized_width = |k: &str| sized.columns.iter().find(|c| c.key == k).unwrap().width;
+        assert_eq!(sized_width("fileName"), 700.0);
+        assert!(sized_width("duration") > 86.0);
     }
 }
