@@ -68,10 +68,10 @@ configuración) está en `docs/engine.md`; las funciones, en
 - **Windows:** compila y corre en la CI; falta confirmar WASAPI exclusivo y el
   volumen del dispositivo con DACs reales.
 - **Entrega:**
-  - Flatpak: el job de la CI (`flatpak`) todavía no corrió nunca; su paso
-    «Installs and draws a screenshot» es informativo (`continue-on-error`)
-    hasta ver que `flatpak run` anda en ese contenedor. Para Flathub faltaría
-    listar los crates (flatpak-cargo-generator) en vez de `--share=network`;
+  - Flatpak: el job de la CI (`flatpak`, como el de la versión C++: lo arma,
+    lo instala y lo deja correr 20 s en Xvfb) todavía no corrió con Rust.
+    Para Flathub faltaría listar los crates (flatpak-cargo-generator) en vez
+    de `--share=network`;
   - antes de publicar: subir la versión en `Cargo.toml` (la 1.0.7 ya está
     publicada) y agregar la entrada en `<releases>` del metainfo;
   - `THIRD-PARTY.md` resume las licencias de los crates

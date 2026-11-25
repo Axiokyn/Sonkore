@@ -25,16 +25,30 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  # A cached target/ without incremental caches (they never help a CI build).
+  CARGO_INCREMENTAL: 0
+
+# Only actions from GitHub (actions/*) and the repository's allowed list run
+# here (Settings › Actions): Rust and cargo-deny are installed by hand.
 
 jobs:
   linux:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - name: Rust
+        run: |
+          rustup toolchain install stable --profile minimal --component rustfmt
+          rustup default stable
+      - uses: actions/cache@v4
         with:
-          components: rustfmt
-      - uses: Swatinem/rust-cache@v2
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            target
+          key: linux-cargo-${{ hashFiles('Cargo.lock') }}
+          restore-keys: linux-cargo-
       - name: Tools and libraries
         run: |
           sudo apt-get update -q
@@ -42,7 +56,13 @@ jobs:
       - name: Formatting
         run: cargo fmt --all --check
       - name: Dependencies (licenses, advisories, sources)
-        uses: EmbarkStudios/cargo-deny-action@v2
+        # cargo-deny's own release, checked against its published checksum.
+        run: |
+          v=0.22.1
+          curl -sSfL -o /tmp/deny.tgz "https://github.com/EmbarkStudios/cargo-deny/releases/download/$v/cargo-deny-$v-x86_64-unknown-linux-musl.tar.gz"
+          echo "13f7e825e9cb811c2f8de63f29b0f45851dfb53004029f0f2501af524728364d  /tmp/deny.tgz" | sha256sum -c -
+          tar xzf /tmp/deny.tgz -C /tmp
+          "/tmp/cargo-deny-$v-x86_64-unknown-linux-musl/cargo-deny" --log-level error check
       - name: Corpus
         run: |
           tests/make_corpus.sh "$PWD/target/test-corpus" > /dev/null
@@ -137,35 +157,41 @@ jobs:
           [ "${status:-0}" = 124 ] || [ "${status:-0}" = 0 ] || exit 1
           ! grep -iE "panicked|cannot open shared object|failed to (load|open)" run.log
 
-  # The Flatpak bundle. Installing it takes the runtime from Flathub (the
+  # The Flatpak bundle (packaging/flatpak/build.sh), then installed and
+  # started for real. Installing it takes the runtime from Flathub (the
   # bundle names the repository).
   flatpak:
     runs-on: ubuntu-24.04
-    container:
-      image: ghcr.io/flathub-infra/flatpak-github-actions:freedesktop-25.08
-      options: --privileged
     steps:
       - uses: actions/checkout@v4
-      - uses: flatpak/flatpak-github-actions/flatpak-builder@v6
-        with:
-          manifest-path: packaging/flatpak/com.axiokyn.Sonkore.yml
-          bundle: Sonkore-x86_64.flatpak
-          upload-artifact: false
-      - name: Checksum
-        run: sha256sum Sonkore-x86_64.flatpak > Sonkore-x86_64.flatpak.sha256
-      # Informative for now: whether flatpak run works inside this container
-      # has not been tried yet.
-      - name: Installs and draws a screenshot (offscreen)
-        continue-on-error: true
+      - name: Tools
         run: |
-          flatpak install --user -y --noninteractive Sonkore-x86_64.flatpak
-          mkdir -p "$PWD/shot"
-          timeout 120 flatpak run --filesystem="$PWD/shot" --env=SONKORE_SCREENSHOT="$PWD/shot/main.png" com.axiokyn.Sonkore
-          test -s shot/main.png
+          sudo apt-get update -q
+          sudo apt-get install -y -q flatpak flatpak-builder xvfb dbus
+          # bubblewrap needs unprivileged user namespaces, which Ubuntu 24.04 restricts.
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/sonkore-flatpak/state
+          key: flatpak-${{ hashFiles('packaging/flatpak/com.axiokyn.Sonkore.yml') }}
+          restore-keys: flatpak-
+      - name: Build
+        run: packaging/flatpak/build.sh
+      - name: Starts and keeps running
+        run: |
+          flatpak install --user -y --noninteractive dist/Sonkore-x86_64.flatpak
+          dbus-run-session -- xvfb-run -a -s "-screen 0 1600x1000x24" \
+            timeout -s TERM 20 flatpak run com.axiokyn.Sonkore > run.log 2>&1 || status=$?
+          cat run.log
+          # 124: still running after 20 s (stopped by timeout), as wanted.
+          [ "${status:-0}" = 124 ] || [ "${status:-0}" = 0 ] || exit 1
+          ! grep -iE "panicked|cannot open shared object|failed to (load|open)" run.log
       - uses: actions/upload-artifact@v4
         with:
           name: flatpak
-          path: Sonkore-x86_64.flatpak*
+          path: |
+            dist/*.flatpak
+            dist/*.sha256
           if-no-files-found: error
 
   windows:
@@ -176,8 +202,19 @@ jobs:
         shell: pwsh
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
+      - name: Rust
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup default stable
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            target
+          key: windows-cargo-${{ hashFiles('Cargo.lock') }}
+          restore-keys: windows-cargo-
       - uses: actions/download-artifact@v4
         with:
           name: test-corpus

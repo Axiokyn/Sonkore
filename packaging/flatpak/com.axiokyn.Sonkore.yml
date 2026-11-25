@@ -1,5 +1,5 @@
-# Sonkore as a Flatpak bundle (Sonkore-x86_64.flatpak, built by the CI):
-#   flatpak-builder --user --install --force-clean build packaging/flatpak/com.axiokyn.Sonkore.yml
+# Sonkore as a Flatpak bundle: packaging/flatpak/build.sh writes
+# dist/Sonkore-x86_64.flatpak (the CI's flatpak job runs it).
 # Since 25.08 the runtime brings FFmpeg with every codec (codecs-extra, which
 # replaced ffmpeg-full and installs along with it): Opus, WavPack, APE, TTA,
 # WMA, AC-3 and DTS play through it, loaded at run time (crates/ffmpeg).
