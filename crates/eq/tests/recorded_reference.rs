@@ -5,7 +5,9 @@
 //! Tolerances: the biquad path (coefficients, the graphic solve, peak gain,
 //! the response curve, processing) comes out bit for bit the reference's (the
 //! printed figures, `--nocapture`, count the values that are not); it is
-//! checked to 1e-12 so another libm stays within the test. The linear-phase
+//! checked to 1e-12 so another libm stays within the test. Windows' libm
+//! differs more: the graphic solve (Newton, which amplifies it) by 2e-8 dB
+//! and the controller's response by 4e-12 (`windows_libm`). The linear-phase
 //! FIR uses another FFT (realfft vs pocketfft): its taps differ by < 1e-16
 //! and its output by < 1e-15, checked to 1e-13.
 
@@ -44,6 +46,12 @@ impl Data {
     fn done(&self) {
         assert_eq!(self.at, self.values.len(), "unread reference data");
     }
+}
+
+/// 1e-12, or `windows` on Windows (its libm rounds pow, exp and log
+/// otherwise; measured on the CI runner).
+fn windows_libm(windows: f64) -> f64 {
+    if cfg!(windows) { windows } else { 1e-12 }
 }
 
 /// Largest absolute difference; also counts the values not bit-identical.
@@ -190,7 +198,7 @@ fn graphic_solve() {
         want.extend(d.take(20));
     }
     d.done();
-    check("graphic Newton gains + response (30 slider sets)", &got, &want, 1e-12);
+    check("graphic Newton gains + response (30 slider sets)", &got, &want, windows_libm(1e-7));
 }
 
 #[test]
@@ -502,7 +510,7 @@ fn controller_response() {
         }
     }
     d.done();
-    check("controller response (192 points) + peakGain + autoPreamp, 15 curves", &got, &want, 1e-12);
+    check("controller response (192 points) + peakGain + autoPreamp, 15 curves", &got, &want, windows_libm(1e-10));
     check("controller graphic fit", &fits_got, &fits_want, 0.0);
     let _ = std::fs::remove_dir_all(&dir);
 }

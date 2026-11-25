@@ -248,12 +248,20 @@ fn hidden_skipped_short_and_extra_files() {
 fn missing_folder_keeps_what_was_known() {
     let dir = scratch("missing");
     let m = music(&dir);
+    // Windows refuses to rename a folder with anything open inside (a watch,
+    // a reader still finishing): no watch here, and a few tries.
+    fs::write(dir.join("sonkore.conf"), "[library]\nrescanOnStartup=false\nwatchFolders=false\n").unwrap();
     let mut lib = library(&dir);
     lib.add_folder(&s(&m));
     wait(&mut lib);
     let n = lib.count();
     let moved = dir.join("Unplugged");
-    fs::rename(&m, &moved).unwrap();
+    let mut tries = 0;
+    while let Err(e) = fs::rename(&m, &moved) {
+        tries += 1;
+        assert!(tries < 50, "{e}");
+        std::thread::sleep(std::time::Duration::from_millis(100));
+    }
     lib.rescan();
     wait(&mut lib);
     assert_eq!(lib.count(), n, "an unplugged drive does not empty the library");

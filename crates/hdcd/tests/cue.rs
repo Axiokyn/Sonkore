@@ -208,9 +208,14 @@ fn windows_paths_resolve_by_stem() {
     let dir = scratch("winpath");
     touch(&dir.join("disc.flac"));
     let s = CueSheet::parse_bytes(b"FILE \"D:\\Music\\disc.wav\" WAVE\nTRACK 1 AUDIO\nINDEX 01 00:00:00\n", &dir);
-    // the whole "D:\Music\disc.wav" is taken as a file name: its stem
-    // is "D:\Music\disc", which no file has
-    assert!(s.is_none());
+    if cfg!(windows) {
+        // '\' separates there: the sheet's "disc", in the sheet's folder
+        assert_eq!(s.unwrap().track(1).unwrap().file, dir.join("disc.flac"));
+    } else {
+        // the whole "D:\Music\disc.wav" is taken as a file name: its stem
+        // is "D:\Music\disc", which no file has
+        assert!(s.is_none());
+    }
 }
 
 #[test]

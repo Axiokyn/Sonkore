@@ -114,7 +114,15 @@ fn lossy_sources_are_float_and_trimmed() {
 }
 
 /// An engine on a memory device at `speed` × real time, keeping what it plays.
+/// The simulated device's speed (times real time). Windows' CI runner
+/// can't keep up at 6x and 8x (underruns: silence in the capture); 1x is what
+/// a real device asks.
+fn test_speed(speed: f64) -> f64 {
+    if cfg!(windows) { speed.min(2.0) } else { speed }
+}
+
 fn memory_engine(speed: f64, bits: u32) -> (Engine, Arc<Mutex<Option<Arc<Mutex<Vec<i32>>>>>>) {
+    let speed = test_speed(speed);
     let captured = Arc::new(Mutex::new(None));
     let slot = captured.clone();
     let engine = Engine::with_outputs(Box::new(move |_key: &str, req: Request, render: Arc<dyn Render>| {
@@ -317,6 +325,7 @@ fn cue_tracks_are_their_part_of_the_image() {
 
 /// An engine whose device only takes `device_rate`.
 fn fixed_rate_engine(device_rate: u32, speed: f64) -> (Engine, Arc<Mutex<Option<Arc<Mutex<Vec<i32>>>>>>) {
+    let speed = test_speed(speed);
     let captured = Arc::new(Mutex::new(None));
     let slot = captured.clone();
     let engine = Engine::with_outputs(Box::new(move |_key: &str, req: Request, render: Arc<dyn Render>| {

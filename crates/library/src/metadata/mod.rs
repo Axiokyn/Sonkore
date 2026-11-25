@@ -330,7 +330,9 @@ pub fn cue_tracks(sheet: &str, mut images: Option<&mut Vec<String>>) -> Vec<Stri
         return paths;
     };
     for t in &cue.tracks {
-        let file = t.file.to_string_lossy().into_owned();
+        // As the library names files ('/' on Windows too): Path::join put a
+        // '\\' there, and on Windows the image showed as a track of its own.
+        let file = sonkore_core::paths::stored_path(&t.file.to_string_lossy());
         if !is_audio_file(&file) {
             continue;
         }

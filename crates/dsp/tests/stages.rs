@@ -108,7 +108,8 @@ fn convolver_unit_impulse_is_a_delay() {
     c.process(&mut y);
     assert!(y[..3 * BLOCK].iter().all(|&v| v == 0.0));
     let worst = y[3 * BLOCK..].iter().zip(&x).map(|(a, b)| (a - b).abs()).fold(0.0, f64::max);
-    assert!(worst < 1e-15, "{worst}");
+    // FFT rounding (1.05e-15 with Windows' sin and cos for the twiddles).
+    assert!(worst < 1e-14, "{worst}");
     c.reset();
     let mut z = x.clone();
     c.process(&mut z);

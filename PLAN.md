@@ -66,8 +66,11 @@ configuración) está en `docs/engine.md`; las funciones, en
     audio: ya reutiliza buffers y se espacia, falta llevarlo a otro hilo;
   - con un búfer más largo que una pista corta (2000 ms), esa unión no es sin
     pausas (el motor llega al final antes de `set_next`).
-- **Windows:** compila y corre en la CI; falta confirmar WASAPI exclusivo y el
-  volumen del dispositivo con DACs reales.
+- **Windows:** compila y corre en la CI (con todos los tests desde el
+  2026-11-25); falta confirmar WASAPI exclusivo y el volumen del dispositivo
+  con DACs reales, y si se puede renombrar una carpeta de música en el
+  Explorador mientras Sonkore la vigila (un test no podía renombrarla:
+  "Access is denied").
 - **Entrega:**
   - Flatpak: el job de la CI (`flatpak`, como el de la versión C++: lo arma,
     lo instala y lo deja correr 20 s en Xvfb) todavía no corrió con Rust.

@@ -225,6 +225,8 @@ jobs:
         with:
           name: test-corpus
           path: target/test-corpus
+      - name: FFmpeg's command (the engine's tests decode the corpus with it too)
+        run: choco install ffmpeg -y --no-progress
       - name: Tests
         run: |
           $env:SONKORE_TEST_CORPUS = "$PWD\target\test-corpus"
