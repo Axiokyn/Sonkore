@@ -32,6 +32,11 @@ finish-args:
   # over); `.instance<pid>` when the name is taken.
   - --own-name=org.mpris.MediaPlayer2.sonkore
   - --own-name=org.mpris.MediaPlayer2.sonkore.*
+  # Device reservation, to take a card from PipeWire for hw: output: without
+  # it the DAC stays "in use by another application". Owning a name includes
+  # talking to its holder; a --talk-name for the same name would replace this
+  # permission (one policy per name). crates/platform/tests/flatpak_names.rs.
+  - --own-name=org.freedesktop.ReserveDevice1.*
   # The tray icon (it goes by its unique name: crates/platform/src/tray.rs).
   - --talk-name=org.kde.StatusNotifierWatcher
 modules:

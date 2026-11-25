@@ -58,9 +58,19 @@ pub fn ask(request: Request, done: impl FnOnce(Vec<String>) + 'static) {
     });
 }
 
-#[cfg(target_os = "linux")]
-fn local_path(uri: &str) -> String {
-    sonkore_platform::portal::local_path(uri)
+/// The paths the portal answered. A file to save keeps the document
+/// portal's path (`/run/user/<uid>/doc/<id>/<name>`): in the Flatpak the real
+/// one is read-only (`--filesystem=host:ro`), and overwriting a file that
+/// already existed failed. What is opened goes to the real path (`to_host`),
+/// so that an M3U's relative entries start from its true folder.
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
+fn chosen_paths(uris: &[String], save: bool, to_host: impl Fn(&str) -> String) -> Vec<String> {
+    uris.iter()
+        .map(|u| match sonkore_platform::url::to_local_file(u) {
+            Some(path) if save => path.to_string_lossy().into_owned(),
+            _ => to_host(u),
+        })
+        .collect()
 }
 
 /// The portal's dialog; None when there is no portal to ask.
@@ -119,7 +129,7 @@ fn portal(request: &Request) -> Option<Vec<String>> {
     }
     let uris: Vec<String> =
         results.get("uris").and_then(|v| Vec::<String>::try_from(v.clone()).ok()).unwrap_or_default();
-    Some(uris.iter().map(|u| local_path(u)).collect())
+    Some(chosen_paths(&uris, request.save_name.is_some(), sonkore_platform::portal::local_path))
 }
 
 /// zenity, else kdialog.
@@ -281,5 +291,16 @@ mod tests {
         assert_eq!(windows_spec(&r.filters[0].1), "*.m3u8;*.m3u");
         assert_eq!(default_extension(&r).as_deref(), Some("m3u8"));
         assert_eq!(default_extension(&Request::default()), None);
+    }
+
+    #[test]
+    fn a_file_to_save_keeps_the_portals_writable_path() {
+        // The portal knows the real file: /home/u/list.m3u8, read-only in the Flatpak.
+        let to_host = |u: &str| u.replace("file:///run/user/1000/doc/ab12", "/home/u");
+        let uris = vec!["file:///run/user/1000/doc/ab12/my%20list.m3u8".to_string()];
+        assert_eq!(chosen_paths(&uris, true, to_host), vec!["/run/user/1000/doc/ab12/my list.m3u8"]);
+        assert_eq!(chosen_paths(&uris, false, to_host), vec!["/home/u/my%20list.m3u8"]);
+        let plain = vec!["file:///home/u/a.m3u8".to_string()];
+        assert_eq!(chosen_paths(&plain, true, to_host), vec!["/home/u/a.m3u8"]);
     }
 }

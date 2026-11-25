@@ -183,6 +183,18 @@ jobs:
       - name: Starts and keeps running
         run: |
           flatpak install --user -y --noninteractive dist/Sonkore-x86_64.flatpak
+          # The DAC is taken from PipeWire through D-Bus: without this name
+          # it stayed "in use by another application" (2.0.0).
+          flatpak info --show-permissions com.axiokyn.Sonkore | tee perms.txt
+          grep -qx 'org.freedesktop.ReserveDevice1.\*=own' perms.txt
+          # FFmpeg (Opus, APE, WavPack…) comes from the runtime and its
+          # codecs-extra: what the sandbox sees, as a notice of the run
+          # (tools/ci-fallas.py --corrida ID --avisos reads it).
+          libs=$(flatpak run --command=sh com.axiokyn.Sonkore -c \
+            'ls /usr/lib/x86_64-linux-gnu/libav*.so.* /usr/lib/x86_64-linux-gnu/*/lib/libav*.so.* /usr/lib/extensions/*/lib/libav*.so.* 2>/dev/null' | tr '\n' ' ')
+          echo "::notice title=FFmpeg in the Flatpak::${libs:-none}"
+          flatpak list --runtime --columns=application,branch | tee runtimes.txt
+          grep -qi codecs-extra runtimes.txt || echo "::warning title=Flatpak::the codecs-extra extension is not installed"
           dbus-run-session -- xvfb-run -a -s "-screen 0 1600x1000x24" \
             timeout -s TERM 20 flatpak run com.axiokyn.Sonkore > run.log 2>&1 || status=$?
           cat run.log

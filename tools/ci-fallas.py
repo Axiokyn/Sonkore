@@ -8,8 +8,11 @@ the sandbox without downloading the log.
 
     tools/ci-fallas.py -- cargo test --workspace --no-fail-fast
     tools/ci-fallas.py --log LOG          (only reads a saved log)
-    tools/ci-fallas.py --corrida [ID]     (a run's failed jobs and their
-                                           annotations; the latest without ID)
+    tools/ci-fallas.py --corrida [ID] [--avisos]
+                                          (a run's failed jobs and their
+                                           annotations; the latest without ID;
+                                           --avisos: also every job's notices
+                                           and warnings)
 
 The command's output goes through unchanged and its exit code is returned.
 Without GITHUB_ACTIONS the annotations are printed all the same, to try it.
@@ -144,7 +147,10 @@ def api(path):
         return json.load(r)
 
 
-def show_run(run_id):
+NOISE = ("Node.js 20 is deprecated", "No files were found with the provided path")
+
+
+def show_run(run_id, notices=False):
     if run_id is None:
         run = api("/actions/runs?per_page=1")["workflow_runs"][0]
     else:
@@ -158,10 +164,13 @@ def show_run(run_id):
         print(f"  {j['conclusion'] or j['status']:<10} {j['name'][:70]}"
               + (f"  ← {', '.join(bad)}" if bad else ""))
     for j in jobs:
-        if j["conclusion"] not in ("failure", "cancelled", "timed_out"):
+        failed = j["conclusion"] in ("failure", "cancelled", "timed_out")
+        if not failed and not notices:
             continue
         for a in api(f"/check-runs/{j['id']}/annotations?per_page=50"):
-            if a["annotation_level"] != "failure":
+            if a["annotation_level"] != "failure" and not notices:
+                continue
+            if any(n in a["message"] for n in NOISE):
                 continue
             where = f"{a['path']}:{a['start_line']}" if a["path"] != ".github" else ""
             print(f"\n── {j['name'][:40]}: {a.get('title') or ''} {where}")
@@ -174,7 +183,8 @@ REPO = "Axiokyn/Sonkore"
 def main():
     args = sys.argv[1:]
     if args[:1] == ["--corrida"]:
-        show_run(args[1] if len(args) > 1 else None)
+        rest = [a for a in args[1:] if a != "--avisos"]
+        show_run(rest[0] if rest else None, notices="--avisos" in args)
         return
     p = Parser()
     out = sys.stdout.buffer

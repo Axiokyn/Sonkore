@@ -76,7 +76,7 @@ configuración) está en `docs/engine.md`; las funciones, en
     lo instala y lo deja correr 20 s en Xvfb) todavía no corrió con Rust.
     Para Flathub faltaría listar los crates (flatpak-cargo-generator) en vez
     de `--share=network`;
-  - antes de publicar: subir la versión en `Cargo.toml` (la 2.0.0 ya está
+  - antes de publicar: subir la versión en `Cargo.toml` (la 2.0.1 ya está
     publicada) y agregar la entrada en `<releases>` del metainfo;
   - `THIRD-PARTY.md` resume las licencias de los crates
     (`tools/licencias.py`), pero los paquetes todavía no llevan el texto de

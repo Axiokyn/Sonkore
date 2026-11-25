@@ -61,6 +61,16 @@
     <control>pointing</control>
   </supports>
   <releases>
+    <release version="2.0.1" date="2026-11-25">
+      <description>
+        <p>Fixes for the Flatpak.</p>
+        <ul>
+          <li>A DAC chosen as a direct output plays again: the sound server is asked to let go of it, instead of the
+          card staying "in use by another application".</li>
+          <li>A playlist or an equalizer preset can be exported over a file that already exists.</li>
+        </ul>
+      </description>
+    </release>
     <release version="2.0.0" date="2026-11-25">
       <description>
         <p>Sonkore is rewritten in Rust, with a new interface drawn by Slint; Qt is gone. The look, the pages and the
