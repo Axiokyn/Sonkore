@@ -61,6 +61,25 @@
     <control>pointing</control>
   </supports>
   <releases>
+    <release version="2.0.0" date="2026-11-24">
+      <description>
+        <p>Sonkore is rewritten in Rust, with a new interface drawn by Slint; Qt is gone. The look, the pages and the
+        settings carry over.</p>
+        <ul>
+          <li>PCM tracks can play as DSD on a direct output (native DSD or DoP).</li>
+          <li>The resampler's filter offers minimum and intermediate phase besides linear: no pre-ringing, or much
+          less.</li>
+          <li>Opus, WavPack, TTA, APE, WMA, AC-3 and DTS play through the system's FFmpeg when it is installed; the
+          lossless ones stay bit-perfect.</li>
+          <li>The Tracks page can show Genre, Artist and Album filters above the list.</li>
+          <li>Files and folders dropped on the window play, join the library, the queue or a playlist.</li>
+          <li>The audio thread asks for real-time priority, multichannel files play in the right channel order on
+          ALSA, and the volume follows the PipeWire sink Sonkore plays to.</li>
+          <li>A damaged file is skipped instead of closing the app.</li>
+          <li>The Flatpak runs on the freedesktop runtime, which brings FFmpeg with every codec.</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.0.7" date="2026-11-10">
       <description>
         <p>The icon looks the same at every size: KDE's task manager now shows the two sound waves too.</p>
