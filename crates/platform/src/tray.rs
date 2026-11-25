@@ -282,12 +282,19 @@ impl Tray {
             let n = INSTANCES.fetch_add(1, Ordering::Relaxed) + 1;
             let name = item_service_name(std::process::id(), n);
             let dbus = zbus::blocking::fdo::DBusProxy::new(&tray.conn)?;
-            match dbus.request_name(WellKnownName::try_from(name.as_str())?, RequestNameFlags::DoNotQueue.into())? {
-                RequestNameReply::PrimaryOwner | RequestNameReply::AlreadyOwner => {}
-                _ => return Err(zbus::Error::NameTaken),
+            match dbus.request_name(WellKnownName::try_from(name.as_str())?, RequestNameFlags::DoNotQueue.into()) {
+                Ok(RequestNameReply::PrimaryOwner | RequestNameReply::AlreadyOwner) => {
+                    tray.name = Some(name.clone());
+                    name
+                }
+                // A Flatpak may own only the names its manifest lists (and
+                // the pid is the sandbox's): the item goes by the
+                // connection's unique name, which watchers take as well.
+                _ => match tray.conn.unique_name() {
+                    Some(unique) => unique.to_string(),
+                    None => return Err(zbus::Error::NameTaken),
+                },
             }
-            tray.name = Some(name.clone());
-            name
         } else {
             // No names on a peer-to-peer connection: the watcher takes an
             // object path and the sender instead (as KDE's does).
@@ -785,6 +792,18 @@ mod tests {
     #[test]
     fn service_names() {
         assert_eq!(item_service_name(1234, 1), "org.kde.StatusNotifierItem-1234-1");
+    }
+
+    /// Only inside a Flatpak (as in the sandbox these tests run in): its bus
+    /// proxy refuses `org.kde.StatusNotifierItem-<pid>-<n>`, and the icon
+    /// still starts, by its unique name.
+    #[test]
+    fn starts_in_a_flatpak_without_its_own_name() {
+        if !std::path::Path::new("/.flatpak-info").exists() || Bus::Session.connect(Duration::from_secs(2)).is_err() {
+            return;
+        }
+        let tray = Tray::start(Bus::Session, TrayLabels::default()).unwrap().0;
+        assert!(tray.name.is_none());
     }
 
     #[test]

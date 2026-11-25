@@ -1,0 +1,55 @@
+# Sonkore as a Flatpak bundle (Sonkore-x86_64.flatpak, built by the CI):
+#   flatpak-builder --user --install --force-clean build packaging/flatpak/com.axiokyn.Sonkore.yml
+# Since 25.08 the runtime brings FFmpeg with every codec (codecs-extra, which
+# replaced ffmpeg-full and installs along with it): Opus, WavPack, APE, TTA,
+# WMA, AC-3 and DTS play through it, loaded at run time (crates/ffmpeg).
+# Cargo fetches the crates during the build (--share=network), which is fine
+# for this bundle; Flathub would want them listed (flatpak-cargo-generator).
+id: com.axiokyn.Sonkore
+runtime: org.freedesktop.Platform
+runtime-version: '25.08'
+sdk: org.freedesktop.Sdk
+sdk-extensions:
+  - org.freedesktop.Sdk.Extension.rust-stable
+command: sonkore
+finish-args:
+  - --share=ipc
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --device=dri
+  # Sound: PipeWire itself (the volume follows its sink), PulseAudio, and the
+  # sound cards for ALSA's hw: devices (bit-perfect, native DSD, a DAC
+  # plugged in while it runs): --device=all is the only way to /dev/snd.
+  - --filesystem=xdg-run/pipewire-0
+  - --socket=pulseaudio
+  - --device=all
+  # The library may be anywhere (other disks, /run/media…), and it is only
+  # read; lists and presets are saved through the file chooser portal.
+  - --filesystem=host:ro
+  # Covers from the internet (Ajustes › Biblioteca).
+  - --share=network
+  # MPRIS, which is also the single instance (a second launch hands its files
+  # over); `.instance<pid>` when the name is taken.
+  - --own-name=org.mpris.MediaPlayer2.sonkore
+  - --own-name=org.mpris.MediaPlayer2.sonkore.*
+  # The tray icon (it goes by its unique name: crates/platform/src/tray.rs).
+  - --talk-name=org.kde.StatusNotifierWatcher
+modules:
+  - name: sonkore
+    buildsystem: simple
+    build-options:
+      append-path: /usr/lib/sdk/rust-stable/bin
+      build-args:
+        - --share=network
+      env:
+        CARGO_HOME: /run/build/sonkore/cargo
+    build-commands:
+      - cargo build --release --locked -p sonkore
+      - packaging/linux/install-files.sh target/release/sonkore /app
+    sources:
+      - type: dir
+        path: ../..
+        skip:
+          - target
+          - dist
+          - .git

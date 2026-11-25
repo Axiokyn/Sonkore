@@ -24,24 +24,10 @@ CARGO_TARGET_DIR="$root/target" cargo build --release --manifest-path "$root/too
 
 rm -rf "$work" && mkdir -p "$work"
 app="$work/AppDir"
-install -Dm755 "$root/target/$profile/sonkore" "$app/usr/bin/sonkore"
-install -Dm644 "$root/packaging/linux/$id.desktop" "$app/usr/share/applications/$id.desktop"
+"$root/packaging/linux/install-files.sh" "$root/target/$profile/sonkore" "$app/usr"
 install -Dm644 "$root/packaging/linux/$id.desktop" "$app/$id.desktop"
-install -Dm644 "$root/packaging/linux/$id.metainfo.xml" "$app/usr/share/metainfo/$id.metainfo.xml"
-install -Dm644 "$root/packaging/icons/sonkore.svg" "$app/usr/share/icons/hicolor/scalable/apps/$id.svg"
-install -Dm644 "$root/packaging/icons/sonkore-symbolic.svg" "$app/usr/share/icons/hicolor/symbolic/apps/$id-symbolic.svg"
-for size in 16 22 24 32 48 64 128 256 512; do
-    install -Dm644 "$root/packaging/icons/png/$size.png" "$app/usr/share/icons/hicolor/${size}x${size}/apps/$id.png"
-done
 install -Dm644 "$root/packaging/icons/sonkore.svg" "$app/$id.svg"
 install -Dm644 "$root/packaging/icons/png/256.png" "$app/.DirIcon"
-docs="$app/usr/share/doc/sonkore"
-install -Dm644 "$root/LICENSE" "$docs/LICENSE"
-install -Dm644 "$root/THIRD-PARTY.md" "$docs/THIRD-PARTY.md"
-for lic in "$root"/licenses/*; do install -Dm644 "$lic" "$docs/licenses/$(basename "$lic")"; done
-for font in "$root"/fonts/*/; do
-    [ -f "$font/OFL.txt" ] && install -Dm644 "$font/OFL.txt" "$docs/fonts/$(basename "$font")/OFL.txt"
-done
 cat > "$app/AppRun" <<'RUN'
 #!/bin/sh
 here="$(dirname "$(readlink -f "$0")")"

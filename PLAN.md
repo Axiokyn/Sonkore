@@ -45,7 +45,9 @@ configuración) está en `docs/engine.md`; las funciones, en
   `wl_data_device` propio, `dropped.rs`).
 - **Entrega:** AppImage (`packaging/appimage.sh`, sin appimagetool: el
   runtime es `target/appimage-runtime-x86_64` y el squashfs lo escribe
-  `tools/mkappimage`) y zip de Windows. La CI (`.github/workflows/build.yml`)
+  `tools/mkappimage`), Flatpak (`packaging/flatpak`, runtime freedesktop
+  25.08, que trae FFmpeg completo con `codecs-extra`) y zip de Windows. Los
+  dos paquetes de Linux instalan lo mismo (`packaging/linux/install-files.sh`). La CI (`.github/workflows/build.yml`)
   compila y prueba en Linux y Windows, arma la AppImage en AlmaLinux 9
   (glibc 2.34), la prueba en Ubuntu 22.04 y 24.04, Debian 12, Fedora, Arch y
   openSUSE, y publica con `[release]` o un tag `v*`.
@@ -66,7 +68,10 @@ configuración) está en `docs/engine.md`; las funciones, en
 - **Windows:** compila y corre en la CI; falta confirmar WASAPI exclusivo y el
   volumen del dispositivo con DACs reales.
 - **Entrega:**
-  - Flatpak;
+  - Flatpak: el job de la CI (`flatpak`) todavía no corrió nunca; su paso
+    «Installs and draws a screenshot» es informativo (`continue-on-error`)
+    hasta ver que `flatpak run` anda en ese contenedor. Para Flathub faltaría
+    listar los crates (flatpak-cargo-generator) en vez de `--share=network`;
   - antes de publicar: subir la versión en `Cargo.toml` (la 1.0.7 ya está
     publicada) y agregar la entrada en `<releases>` del metainfo;
   - `THIRD-PARTY.md` resume las licencias de los crates

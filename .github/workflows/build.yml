@@ -7,6 +7,8 @@
 #            on any distribution from 2021 on
 #   appimage-distros  it, on six distributions: libraries, a screenshot,
 #            started on X11
+#   flatpak  Sonkore-x86_64.flatpak (packaging/flatpak), on the freedesktop
+#            runtime, which comes from Flathub when it is installed
 #   windows  the tests, a release build, offscreen screenshots, the app
 #            started for real (and a second launch handing it a quick action,
 #            the single instance), and Sonkore-windows-x64.zip
@@ -135,6 +137,37 @@ jobs:
           [ "${status:-0}" = 124 ] || [ "${status:-0}" = 0 ] || exit 1
           ! grep -iE "panicked|cannot open shared object|failed to (load|open)" run.log
 
+  # The Flatpak bundle. Installing it takes the runtime from Flathub (the
+  # bundle names the repository).
+  flatpak:
+    runs-on: ubuntu-24.04
+    container:
+      image: ghcr.io/flathub-infra/flatpak-github-actions:freedesktop-25.08
+      options: --privileged
+    steps:
+      - uses: actions/checkout@v4
+      - uses: flatpak/flatpak-github-actions/flatpak-builder@v6
+        with:
+          manifest-path: packaging/flatpak/com.axiokyn.Sonkore.yml
+          bundle: Sonkore-x86_64.flatpak
+          upload-artifact: false
+      - name: Checksum
+        run: sha256sum Sonkore-x86_64.flatpak > Sonkore-x86_64.flatpak.sha256
+      # Informative for now: whether flatpak run works inside this container
+      # has not been tried yet.
+      - name: Installs and draws a screenshot (offscreen)
+        continue-on-error: true
+        run: |
+          flatpak install --user -y --noninteractive Sonkore-x86_64.flatpak
+          mkdir -p "$PWD/shot"
+          timeout 120 flatpak run --filesystem="$PWD/shot" --env=SONKORE_SCREENSHOT="$PWD/shot/main.png" com.axiokyn.Sonkore
+          test -s shot/main.png
+      - uses: actions/upload-artifact@v4
+        with:
+          name: flatpak
+          path: Sonkore-x86_64.flatpak*
+          if-no-files-found: error
+
   windows:
     needs: linux
     runs-on: windows-2022
@@ -215,7 +248,7 @@ jobs:
 
   release:
     if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'push' && contains(github.event.head_commit.message, '[release]'))
-    needs: [linux, appimage, appimage-distros, windows]
+    needs: [linux, appimage, appimage-distros, flatpak, windows]
     runs-on: ubuntu-24.04
     # Pushing one commit to two branches must not publish it twice at once.
     concurrency: release-${{ github.sha }}
@@ -259,11 +292,14 @@ jobs:
             Sonkore ${{ steps.version.outputs.tag }}
 
             - **Linux x86_64:** `Sonkore-x86_64.AppImage` — make it executable and run it; nothing else to install (glibc 2.34 or newer).
+            - **Linux, Flatpak:** `Sonkore-x86_64.flatpak` — `flatpak install --user Sonkore-x86_64.flatpak` (the runtime comes from Flathub).
             - **Windows 64-bit:** `Sonkore-windows-x64.zip` — unzip and run `Sonkore.exe`.
 
             Each file has a `.sha256` next to it.
           files: |
             artifacts/appimage/*.AppImage
             artifacts/appimage/*.sha256
+            artifacts/flatpak/*.flatpak
+            artifacts/flatpak/*.sha256
             artifacts/windows-x64/*.zip
             artifacts/windows-x64/*.sha256

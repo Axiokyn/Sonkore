@@ -26,6 +26,7 @@ Reproductor de música hi-fi en Rust, con interfaz en Slint, para Linux y Window
 | CPU de la app | escenario con `cpu NOMBRE S [MAX]`, con `--app target/diario/sonkore` (el build dev exagera) | |
 | AppImage para que pruebe el usuario | `packaging/appimage.sh --rapido` (perfil `diario`) | ~22 s |
 | AppImage para publicar | `packaging/appimage.sh` (release, LTO fat) | ~4–5 min |
+| Flatpak | lo arma la CI (job `flatpak`, `packaging/flatpak/com.axiokyn.Sonkore.yml`): acá no hay `flatpak-builder` (VS Code corre en un Flatpak) | |
 | Borrar compilaciones viejas de `target/` | `tools/limpiar-target.py` | ~1 min |
 | Tests del motor | `SONKORE_TEST_CORPUS=target/test-corpus cargo test --workspace` (corpus: `tests/make_corpus.sh`) | |
 
@@ -77,6 +78,7 @@ Sacar coordenadas de una `captura` de ui-live, no de ui-tour. Con salida PipeWir
 - La interfaz de Slint compila en su propio crate (`crates/ui`: ~290.000 líneas generadas a partir de `crates/app/ui/*.slint`), y la app la reexporta (`pub use sonkore_ui::*`). Con todo en un crate, rustc volvía a procesar el código generado en cada cambio (~12 s). Su `build.rs` escribe cada `.po` en `OUT_DIR/translations` solo si cambió: slint-build vigila esa carpeta, y rehacerla en cada corrida hacía que cualquier `cargo build`, aunque no cambiara nada, recompilara la interfaz entera (13 s; 2026-11-24).
 - El enlace tarda ~0,5 s (Rust ya enlaza con rust-lld): mold no acelera nada.
 - Los diálogos de archivos (Ajustes, Ecualizador, ventana principal) van todos por `file_dialog::ask`: portal en un hilo, respuesta en el de la interfaz. zenity bloqueante congelaba la app entera.
+- Dentro de un Flatpak solo se pueden tomar los nombres de D-Bus que lista el manifiesto: la bandeja no puede tener `org.kde.StatusNotifierItem-<pid>-<n>` y se registra con su nombre único (`tray.rs`; el test `starts_in_a_flatpak_without_its_own_name` corre de verdad acá, porque VS Code es un Flatpak). Un nombre nuevo en D-Bus va también en `finish-args`. Los archivos que se instalan van en `packaging/linux/install-files.sh`, que usan la AppImage y el Flatpak.
 - `Mpris` tiene dos implementaciones (`platform/src/mpris.rs` y `win/mpris.rs`): lo que se agregue a una va también en la otra, o falla `tools/check-windows.sh`.
 - ReplayGain: el reproductor pide la ganancia de cada pista antes de abrirla (`Player::set_gain_source`) y el motor la aplica en la muestra del empalme (`set_next_track_gain`); antes el primer búfer de cada pista sonaba con la ganancia de la anterior.
 - El código no está formateado con rustfmt (`cargo fmt --check` da ~1500 diferencias): no correr `cargo fmt` sin que lo pida el usuario.
