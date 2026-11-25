@@ -72,7 +72,7 @@ jobs:
         run: |
           export ALSA_CONFIG_PATH="$PWD/tests/pipewire/alsa-null.conf" SONKORE_TEST_CORPUS="$PWD/target/test-corpus"
           export SONKORE_LIBRARY_CORPUS="$PWD/target/library-corpus"
-          cargo test --workspace
+          cargo test --workspace --no-fail-fast
       - uses: actions/upload-artifact@v4
         with:
           name: test-corpus
@@ -228,7 +228,7 @@ jobs:
       - name: Tests
         run: |
           $env:SONKORE_TEST_CORPUS = "$PWD\target\test-corpus"
-          cargo test --workspace
+          cargo test --workspace --no-fail-fast
       - name: Output devices (WASAPI)
         # The runner may have no sound card: this only shows what is listed.
         run: cargo run --release -p sonkore-engine --example devices

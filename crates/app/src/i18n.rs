@@ -149,13 +149,23 @@ fn po_string(lines: &[&str]) -> String {
 /// (msgctxt, msgid) -> msgstr, with Slint's doubled braces made single, as
 /// the Rust texts write them. Untranslated entries are left out.
 fn parse(po: &str) -> HashMap<(String, String), String> {
+    // Entries end at a blank line. Line by line, so "\r\n" (a Windows
+    // checkout) reads as well: splitting on "\n\n" found a single entry.
+    let mut entries: Vec<Vec<&str>> = vec![Vec::new()];
+    for line in po.lines() {
+        let line = line.trim();
+        if line.is_empty() {
+            entries.push(Vec::new());
+        } else if let Some(entry) = entries.last_mut() {
+            entry.push(line);
+        }
+    }
     let mut table = HashMap::new();
-    for entry in po.split("\n\n") {
+    for entry in entries {
         let (mut ctx, mut id, mut text) = (Vec::new(), Vec::new(), Vec::new());
         let mut field = None;
-        for line in entry.lines() {
-            let line = line.trim();
-            if line.starts_with('#') || line.is_empty() {
+        for line in entry {
+            if line.starts_with('#') {
                 continue;
             }
             if line.starts_with("msgctxt ") {
@@ -211,6 +221,8 @@ mod tests {
             let t = parse(po);
             assert!(t.len() > 800, "{lang}: {}", t.len());
             assert!(t.contains_key(&("TracksPage".into(), "Add music folder".into())), "{lang}");
+            // As a Windows checkout has it (git's autocrlf).
+            assert_eq!(parse(&po.replace('\n', "\r\n")), t, "{lang} with CRLF");
         }
     }
 }

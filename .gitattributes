@@ -1,0 +1,3 @@
+# The translations are read by Sonkore and by Slint's compiler: LF on every
+# checkout (Windows' autocrlf turned them into CRLF).
+*.po text eol=lf
