@@ -1,3 +1,5 @@
-# The translations are read by Sonkore and by Slint's compiler: LF on every
-# checkout (Windows' autocrlf turned them into CRLF).
-*.po text eol=lf
+# The same bytes on every checkout: no CRLF on Windows (git's autocrlf).
+# Sonkore and Slint's compiler read the .po files, and the tests compare
+# against text data (tests/data/*.txt, .json); with CRLF they failed only
+# there. Readers of the user's files take CRLF anyway.
+* -text
