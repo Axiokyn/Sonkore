@@ -9,7 +9,7 @@ use serde_json::{Map, Value};
 use sonkore_core::paths;
 
 use crate::json_out;
-use crate::library::{Library, PathMapper, clean_path, local_path, write_file};
+use crate::library::{Library, PathMapper, clean_path, local_path, path_root, write_file};
 use crate::meta::TrackMeta;
 use crate::metadata;
 
@@ -233,7 +233,8 @@ impl Playlists {
                 continue;
             }
             let mut entry = if line.starts_with("file:") { local_path(line) } else { line.to_string() };
-            if !entry.starts_with('/') {
+            // On Windows also C:\x, C:/x and \\server\x (path_root).
+            if path_root(&paths::stored_path(&entry)).is_empty() {
                 entry = format!("{base}/{entry}");
             }
             entries.push(clean_path(&entry));

@@ -223,7 +223,7 @@ pub fn clean_path(path: &str) -> String {
 
 /// What `clean_path` keeps before the first part: "/" on Unix; on Windows
 /// also "C:/" ("C:" alone is relative to that drive) and "//" (UNC).
-fn path_root(path: &str) -> &str {
+pub(crate) fn path_root(path: &str) -> &str {
     let b = path.as_bytes();
     if cfg!(windows) {
         if path.starts_with("//") {
@@ -236,11 +236,17 @@ fn path_root(path: &str) -> &str {
     if path.starts_with('/') { "/" } else { "" }
 }
 
-/// A local path from a path or a file:// URL.
+/// A local path from a path or a file:// URL. On Windows, file:///C:/x is
+/// C:/x.
 pub fn local_path(url_or_path: &str) -> String {
     if let Some(rest) = url_or_path.strip_prefix("file://") {
         let rest = rest.strip_prefix("localhost").unwrap_or(rest);
-        return percent_encoding::percent_decode_str(rest).decode_utf8_lossy().into_owned();
+        let path = percent_encoding::percent_decode_str(rest).decode_utf8_lossy().into_owned();
+        let b = path.as_bytes();
+        if cfg!(windows) && b.len() >= 3 && b[0] == b'/' && b[1].is_ascii_alphabetic() && b[2] == b':' {
+            return path[1..].to_owned();
+        }
+        return path;
     }
     url_or_path.to_string()
 }
@@ -1427,7 +1433,7 @@ impl Drop for Library {
 
 #[cfg(test)]
 mod tests {
-    use super::clean_path;
+    use super::{clean_path, local_path};
 
     #[test]
     fn clean_path_like_qdir() {
@@ -1446,5 +1452,21 @@ mod tests {
         assert_eq!(clean_path("C:/"), "C:/");
         assert_eq!(clean_path(r"\\nas\music\a"), "//nas/music/a");
         assert_eq!(clean_path(r"\\?\D:\x"), "D:/x");
+    }
+
+    #[test]
+    #[cfg(windows)]
+    fn file_urls_on_windows_start_at_the_drive() {
+        assert_eq!(local_path("file:///C:/Music/a%20b.flac"), "C:/Music/a b.flac");
+        assert_eq!(local_path("file://localhost/C:/x"), "C:/x");
+        assert_eq!(local_path("file://C:/x"), "C:/x");
+        assert_eq!(local_path(r"D:\x"), r"D:\x");
+    }
+
+    #[test]
+    fn file_urls_keep_the_root_on_unix() {
+        if cfg!(not(windows)) {
+            assert_eq!(local_path("file:///home/a/b%20c.flac"), "/home/a/b c.flac");
+        }
     }
 }

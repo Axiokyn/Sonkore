@@ -72,7 +72,7 @@ jobs:
         run: |
           export ALSA_CONFIG_PATH="$PWD/tests/pipewire/alsa-null.conf" SONKORE_TEST_CORPUS="$PWD/target/test-corpus"
           export SONKORE_LIBRARY_CORPUS="$PWD/target/library-corpus"
-          cargo test --workspace --no-fail-fast
+          python3 tools/ci-fallas.py -- cargo test --workspace --no-fail-fast
       - uses: actions/upload-artifact@v4
         with:
           name: test-corpus
@@ -228,9 +228,11 @@ jobs:
       - name: FFmpeg's command (the engine's tests decode the corpus with it too)
         run: choco install ffmpeg -y --no-progress
       - name: Tests
+        # Each failure also becomes an annotation of the run, which the API
+        # shows without signing in (the log does not): tools/ci-fallas.py.
         run: |
           $env:SONKORE_TEST_CORPUS = "$PWD\target\test-corpus"
-          cargo test --workspace --no-fail-fast
+          python tools/ci-fallas.py -- cargo test --workspace --no-fail-fast
       - name: Output devices (WASAPI)
         # The runner may have no sound card: this only shows what is listed.
         run: cargo run --release -p sonkore-engine --example devices

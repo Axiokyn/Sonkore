@@ -424,13 +424,16 @@ fn playlists_file_and_m3u() {
     let none = Playlists::open(dir.join("none.json"), None);
     assert_eq!(none.to_json(), fs::read_to_string(empty).unwrap());
 
-    // M3U: relative entries, file:// URLs, comments.
+    // M3U: relative and absolute entries (C:\… on Windows), file:// URLs
+    // (file:///C:/… on Windows), comments.
     let m = music(&dir);
     let mut lib = library(&dir);
     lib.add_folder(&s(&m));
     wait(&mut lib);
     let m3u = m.join("Band/mix.m3u8");
-    fs::write(&m3u, format!("\u{feff}#EXTM3U\r\n#EXTINF:1,x\r\nRecord/01.wav\r\nfile://{}/Loose/track%202.wav\r\n\r\n../Band/./Record/03.wav\n", s(&m))).unwrap();
+    let url = if cfg!(windows) { format!("file:///{}", s(&m)) } else { format!("file://{}", s(&m)) };
+    let native = m.join("Band").join("Record").join("02.wav").to_string_lossy().into_owned();
+    fs::write(&m3u, format!("\u{feff}#EXTM3U\r\n#EXTINF:1,x\r\nRecord/01.wav\r\n{url}/Loose/track%202.wav\r\n\r\n../Band/./Record/03.wav\n{native}\n")).unwrap();
     let (name, _) = p.import_m3u(&s(&m3u)).unwrap();
     assert_eq!(name, "mix");
     assert_eq!(
@@ -438,14 +441,15 @@ fn playlists_file_and_m3u() {
         vec![
             format!("{}/Band/Record/01.wav", s(&m)),
             format!("{}/Loose/track 2.wav", s(&m)),
-            format!("{}/Band/Record/03.wav", s(&m))
+            format!("{}/Band/Record/03.wav", s(&m)),
+            format!("{}/Band/Record/02.wav", s(&m))
         ]
     );
     let out = dir.join("out.m3u");
     assert!(p.export_m3u("mix", &s(&out), &lib));
     let text = fs::read_to_string(out).unwrap();
     assert!(text.starts_with(&format!("#EXTM3U\n#EXTINF:1,Band - Song 1\n{}/Band/Record/01.wav\n", s(&m))), "{text}");
-    assert!((p.duration("mix", &lib) - 3.0).abs() < 1e-9);
+    assert!((p.duration("mix", &lib) - 4.0).abs() < 1e-9);
 }
 
 #[test]

@@ -30,6 +30,7 @@ Reproductor de música hi-fi en Rust, con interfaz en Slint, para Linux y Window
 | Flatpak | `packaging/flatpak/build.sh` → `dist/Sonkore-x86_64.flatpak` (lo corre la CI; acá no hay `flatpak-builder`, VS Code corre en un Flatpak) | |
 | Borrar compilaciones viejas de `target/` | `tools/limpiar-target.py` | ~1 min |
 | Tests del motor | `SONKORE_TEST_CORPUS=target/test-corpus cargo test --workspace` (corpus: `tests/make_corpus.sh`) | |
+| Cómo salió la CI y qué tests fallaron (los logs piden cuenta y no hay `gh`; las anotaciones son públicas) | `tools/ci-fallas.py --corrida [ID]`: jobs, pasos que fallaron y cada test con su mensaje y archivo:línea. En la CI, los tests corren con `ci-fallas.py -- cargo test …`, que publica esas anotaciones (resumen + 9) | ~2 s |
 
 - Nunca usar `--release` para iterar o sacar capturas: ~253 s por build.
 - Si `du -sh target/` pasa de ~16 GB, correr `tools/limpiar-target.py` (~1 min si está compilado): cargo nunca borra las copias viejas, y antes `target/` llegó a 59 GB. Compila lo que usan las herramientas y borra el resto, sin recompilar nada; queda en ~11 GB. `--probar` solo dice cuánto liberaría; `--release` conserva el build de publicar. Lo que más pesa después son las cachés `incremental` de `sonkore-ui` y `sonkore`. `limpiar-target.py` conserva también lo de clippy (con los mismos argumentos que `check.sh`).
