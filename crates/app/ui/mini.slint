@@ -107,7 +107,6 @@ export global Mini {
     in-out property <bool> bar-recent;        // the scroll bar shows a moment after a scroll
     callback list-scrolled(length);           // the rows' viewport scrolled to y
     in-out property <length> scrolled-to;     // kept while the list is away (the full view)
-    in property <bool> scrollable;
     in property <string> sort-key: "path";
     in property <bool> sort-desc;
     in property <bool> sort-active;           // the sort button lit: not the folder's order
@@ -881,7 +880,7 @@ component MiniListRow inherits Rectangle {
     property <bool> hovered: area.has-hover;
     property <bool> artist-shown: false;
     Rectangle {
-        x: 0;
+        x: 1px;
         width: root.line-width;
         border-radius: root.list-mode ? 0 : Theme.radius-small;
         background: root.data.current ? Theme.accent-soft : root.hovered ? Theme.hover
@@ -1025,18 +1024,28 @@ component OverlayBar inherits Rectangle {
     property <length> thumb-w: lit || pressed ? 8px : 6px;
     property <length> thumb-y: root.track-top + root.f * (root.track-h - root.length);
     property <length> grab: -1px;
+    // On whole screen pixels, the thumb centred in its track (as in
+    // OverlayScrollBar of controls.slint).
+    // (Anchored at its right edge, the one that meets the window's outline
+    // or the list's frame: rounded on its own, the width could reach a
+    // pixel under the outline.)
+    property <float> x-px: root.absolute-position.x / 1phx;
+    property <float> track-px: round(root.width / 1phx);
+    property <length> snap: (round(root.x-px + root.width / 1phx) - root.track-px - root.x-px) * 1phx;
+    property <float> thumb-round: round(root.thumb-w / 1phx);
+    property <float> thumb-px: mod(root.track-px - root.thumb-round, 2) == 0 ? root.thumb-round : root.thumb-round - 1;
     if root.lit || root.pressed: Rectangle {
-        x: 0;
+        x: root.snap;
         y: 4px;
-        width: root.width;
+        width: root.track-px * 1phx;
         height: root.height - 8px;
         border-radius: 5px;
         background: Theme.text.with-alpha(0.07);
     }
     if root.shown: Rectangle {
-        x: root.width - 2px - root.thumb-w;
+        x: root.snap + (root.track-px - root.thumb-px) / 2 * 1phx;
         y: root.thumb-y;
-        width: root.thumb-w;
+        width: root.thumb-px * 1phx;
         height: root.length;
         border-radius: self.width / 2;
         background: root.pressed ? Theme.accent : root.lit ? Theme.text-dim : Theme.text-faint;
@@ -1291,13 +1300,17 @@ component MiniList inherits Rectangle {
             data: row;
             index: Mini.first-row + i;
             row-height: root.rh;
-            line-width: view.width - (Mini.scrollable ? 12px : 0);
+            // 4 px from the list's border on both sides (the view is 4 px in
+            // from its outer edge, and the border is 1 px); with a scroll bar,
+            // 4 px before its 10 px (the bar never over the row). The
+            // columns end inside it (mini_ui.rs).
+            line-width: view.width - (root.content-h > view.height ? 12px : 2px);
             cover-side: root.cover-side;
             menu(index, x, y) => { root.row-menu(index, x, y); }
         }
     }
     if root.content-h > view.height: OverlayBar {
-        x: view.x + view.width - 10px;
+        x: view.x + view.width + 3px - 10px;
         y: view.y;
         width: 10px;
         height: view.height;

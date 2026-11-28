@@ -1129,6 +1129,19 @@ impl Controller {
         self.refresh_sidebar();
     }
 
+    /// A change to the library made here (not by the scan), shown at once. A
+    /// folder removed with no tracks under it (one that no longer exists)
+    /// changes nothing else the poll would notice: it stayed in the tree.
+    pub(crate) fn change_library(&self, f: impl FnOnce(&mut sonkore_library::Library) -> Vec<sonkore_library::Event>) {
+        let changed = self.library.borrow_mut().with(f);
+        if changed.rows {
+            self.library_changed();
+        } else if changed.favorites {
+            self.list.refresh_all();
+            self.refresh_sidebar();
+        }
+    }
+
     pub fn after(&self, changes: sonkore_engine::Changes) {
         if changes.track {
             self.apply_track_gain();
@@ -1146,7 +1159,7 @@ impl Controller {
                 // A file only FFmpeg decodes, and it is not installed.
                 let e = match sonkore_engine::decode::ffmpeg_missing_file(&e) {
                     Some(name) => trf("DspController", "Playing {0} needs FFmpeg, which is not installed", &[name]),
-                    None => e,
+                    None => self.output_error(e),
                 };
                 self.show_message(&e);
             }
@@ -1340,6 +1353,12 @@ impl Controller {
             ("crossfeed", self.settings.borrow().int("playback/crossfeed", 0).to_string()),
             ("eq", self.ctx.equalizer.borrow().enabled().to_string()),
             ("tracks", self.library.borrow().tracks.len().to_string()),
+            // The watched folders the sidebar's tree shows (names, '|').
+            ("tree-roots", {
+                use slint::Model;
+                let rows = &self.sidebar_models.folders;
+                rows.iter().filter(|r| r.depth == 0).map(|r| r.name.to_string()).collect::<Vec<_>>().join("|")
+            }),
             // The rows the list shows, and the Tracks page's filters (genre|artist|album).
             ("rows", self.list.state.borrow().indices.len().to_string()),
             ("filters", self.filters_probe()),
@@ -1676,6 +1695,35 @@ impl Controller {
         self.after(changes);
         self.update_volume();
         self.refresh_player();
+    }
+
+    /// The output did not open because another program holds it (or Windows
+    /// does not allow exclusive mode): said with the output's name and what
+    /// to do. Anything else as it came.
+    fn output_error(&self, message: String) -> String {
+        use sonkore_engine::output::{exclusive_not_allowed_device, in_use_parts};
+        let key = self.player.borrow().engine().device_key().to_owned();
+        let name = |fallback: &str| crate::settings_ui::device_name(&key).unwrap_or_else(|| fallback.to_owned());
+        if let Some((device, holder)) = in_use_parts(&message) {
+            let name = name(device);
+            return if holder.is_empty() {
+                trf(
+                    "DspController",
+                    "{0} is in use by another application. Close it or choose another output.",
+                    &[&name],
+                )
+            } else {
+                trf("DspController", "{0} is in use by {1}. Close it or choose another output.", &[&name, holder])
+            };
+        }
+        if let Some(device) = exclusive_not_allowed_device(&message) {
+            return trf(
+                "DspController",
+                "Windows does not let apps take {0} exclusively: turn it on in the device's properties (Advanced) or choose WASAPI shared.",
+                &[&name(device)],
+            );
+        }
+        message
     }
 
     /// Sound devices plugged in or out (hotplug.rs): said in the status line.

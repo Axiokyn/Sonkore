@@ -814,7 +814,6 @@ pub struct Engine {
     resync_ms: u32,
     last_output_rate: u32,
     follow_rate: bool,
-    exclusive: bool,
     hdcd: bool,
     /// playback/dsdOutput: 0 PCM, 1 native, 2 DoP.
     dsd_output: u8,
@@ -923,7 +922,6 @@ impl Engine {
             resync_ms: 0,
             last_output_rate: 0,
             follow_rate: false,
-            exclusive: true,
             hdcd: false,
             dsd_output: 1,
             pcm_to_dsd: 0,
@@ -971,15 +969,6 @@ impl Engine {
     /// HDCD decoding of the discs that carry it (playback/hdcd); at the next load.
     pub fn set_hdcd(&mut self, on: bool) {
         self.hdcd = on;
-    }
-
-    /// WASAPI: play past the Windows mixer (playback/exclusive). Reopens
-    /// the device at the next load.
-    pub fn set_exclusive(&mut self, on: bool) {
-        if on != self.exclusive {
-            self.exclusive = on;
-            self.close_output();
-        }
     }
 
     /// PipeWire: hold the graph at each track's rate (playback/followTrackRate).
@@ -1100,7 +1089,7 @@ impl Engine {
         // (DSD opens at its own rate or not at all: the ring is sized
         // before, and the device's silence is the DSD idle pattern.)
         let shared = Arc::new(Shared::new(rate, channels, self.buffer_ms, 0, need, Some(packing)));
-        let request = Request { rate, channels, follow_rate: false, exclusive: true, dsd: Some(packing) };
+        let request = Request { rate, channels, follow_rate: false, dsd: Some(packing) };
         let Ok(output) = (self.factory)(&self.device_key, request, shared.clone()) else { return false };
         let f = output.format();
         let usable = f.rate == rate
@@ -1377,13 +1366,7 @@ impl Engine {
             let mut opened = None;
             for (i, &rate) in wanted.iter().enumerate() {
                 let pending = Arc::new(Pending::default());
-                let request = Request {
-                    rate,
-                    channels: info.channels,
-                    follow_rate: self.follow_rate,
-                    exclusive: self.exclusive,
-                    dsd: None,
-                };
+                let request = Request { rate, channels: info.channels, follow_rate: self.follow_rate, dsd: None };
                 match (self.factory)(&self.device_key, request, pending.clone()) {
                     Ok(output) if output.format().rate == rate || i + 1 == wanted.len() => {
                         opened = Some((pending, output));
@@ -1600,7 +1583,9 @@ impl Engine {
         }
         let devices = output::devices();
         if let Some(d) = devices.iter().find(|d| d.key == key) {
-            return (d.backend.clone(), d.name.clone());
+            // (Exclusive or shared, the format says: "WASAPI" is enough.)
+            let backend = if d.backend.starts_with("WASAPI") { "WASAPI" } else { d.backend.as_str() };
+            return (backend.to_owned(), d.name.clone());
         }
         if let Some(name) = key.strip_prefix("pipewire|") {
             return ("PipeWire".into(), name.to_owned());
@@ -1608,7 +1593,7 @@ impl Engine {
         if let Some(hw) = key.strip_prefix("alsa|") {
             return ("ALSA".into(), hw.to_owned());
         }
-        if let Some(name) = key.strip_prefix("wasapi|") {
+        if let Some(name) = key.strip_prefix("wasapi|").or_else(|| key.strip_prefix("wasapi-shared|")) {
             return ("WASAPI".into(), name.to_owned());
         }
         if let Some(name) = key.strip_prefix("asio|") {

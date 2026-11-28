@@ -728,20 +728,34 @@ fn an_output_error_does_not_try_the_whole_queue() {
 
 #[test]
 fn the_bit_perfect_badge_follows_the_whole_chain() {
+    // Back to neutral, the badge waits for the worker to process a neutral
+    // block: what already went through the chain plays first. Paused with
+    // the ring full, that is when playing resumes; playing, within a period.
+    fn comes_back(engine: &Engine) -> bool {
+        let deadline = Instant::now() + Duration::from_secs(3);
+        while !engine.bit_perfect() && Instant::now() < deadline {
+            std::thread::sleep(Duration::from_millis(5));
+        }
+        engine.bit_perfect()
+    }
     let path = tmp("badge.wav");
-    write_wav(&path, 44100, 2, 44100);
+    write_wav(&path, 44100, 2, 44100 * 20);
     let (mut engine, _captured) = memory_engine(4.0, 32);
     engine.load(&path, 0.0).unwrap();
     assert!(engine.bit_perfect(), "neutral");
+    engine.play();
     engine.dsp().update(|s| s.crossfeed = 1);
     assert!(!engine.bit_perfect(), "crossfeed");
     engine.dsp().update(|s| s.crossfeed = 0);
-    assert!(engine.bit_perfect());
+    assert!(comes_back(&engine), "crossfeed off");
     engine.dsp().stretch.set_enabled(true);
     engine.dsp().stretch.set_pitch_semitones(1.0);
     assert!(!engine.bit_perfect(), "pitch");
+    // The worker processes blocks with the pitch on (on a loaded machine it
+    // did; then the badge only comes back once it processes neutral ones).
+    std::thread::sleep(Duration::from_millis(300));
     engine.dsp().stretch.set_pitch_semitones(0.0);
-    assert!(engine.bit_perfect());
+    assert!(comes_back(&engine), "pitch back to 0");
     let ir = sonkore_dsp::convolver::ImpulseResponse {
         path: PathBuf::from("ir.wav"),
         sample_rate: 44100,
@@ -757,7 +771,7 @@ fn the_bit_perfect_badge_follows_the_whole_chain() {
         s.impulse = None;
         s.impulse_generation += 1;
     });
-    assert!(engine.bit_perfect());
+    assert!(comes_back(&engine), "convolver off");
     // HDCD decoding changes the samples.
     if let Some(hdcd) = corpus().map(|c| c.join("libhdcd/hdcd.wav")).filter(|p| p.exists()) {
         engine.set_hdcd(true);

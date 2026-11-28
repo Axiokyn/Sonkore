@@ -37,6 +37,9 @@ chmod 755 "$app/AppRun"
 
 mkdir -p "$root/dist"
 out="$root/dist/Sonkore-x86_64.AppImage"
-"$root/target/release/mkappimage" "$app" "$runtime" "$out"
+# Written aside and renamed over: an AppImage still running (being tried)
+# cannot be written to ("Text file busy"), but it can be replaced.
+"$root/target/release/mkappimage" "$app" "$runtime" "$out.part"
+mv -f "$out.part" "$out"
 (cd "$root/dist" && sha256sum "$(basename "$out")" > "$(basename "$out").sha256")
 echo "$out"

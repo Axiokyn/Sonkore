@@ -10,6 +10,7 @@ import { App, Column, TrackRow, Cell } from "data.slint";
 import { Menus } from "pagedata.slint";
 import { TurnedIcons } from "pagekit.slint";
 import { PlayingBars } from "sidebar.slint";
+import { WindowActions } from "chrome.slint";
 import { ListView } from "std-widgets.slint";
 
 // The column header: at the top of the page's panel the
@@ -417,7 +418,8 @@ component Row inherits Rectangle {
 }
 
 // `joined`: at the top of the page's panel (Tracks, Favorites, Folders):
-// the header edge to edge, the rows 8 px in. Elsewhere the header is a band
+// the header edge to edge, the rows 4 px in (and 4 px short of the right
+// edge). Elsewhere the header is a band
 // 2 px down, 12 px short of the right edge, the rows from the left edge.
 // `sortable`: the lists with a filter sort by their header and the sort
 // button; the queue and the playlists keep their order.
@@ -425,15 +427,28 @@ export component TrackTable inherits Rectangle {
     in property <bool> joined: true;
     in property <bool> sortable: true;
     in property <length> corner: 14px;     // the joined header's top-left corner
-    property <length> inset: root.joined ? 8px : 0px;
+    property <length> inset: root.joined ? 4px : 0px;
     property <length> leading: 36px; // in every density
     property <length> cover: App.cover-width;
-    // The rows' viewport: the view less its inset. The columns share it less
-    // 14 px, the row's ground as wide as they are.
+    // The rows' viewport: the view less its inset. Joined, the row's ground
+    // goes on to 4 px from the right edge, as from the left (that edge is
+    // the window's, under its outline: 4 px from the outline); with a scroll
+    // bar, it stops 4 px before the bar's 10 px instead (the bar never over
+    // the row), and the cells fill it. Else the ground stops 14 px short and
+    // the cells 8 px before it.
     property <length> viewport: root.width - root.inset;
+    // The outline as drawn: each ring's border is whole screen pixels
+    // (vendor/i-slint-renderer-software, at least 1). Counted as 1 px, the
+    // scroll bar's last pixel went under it at 150 %.
+    property <length> ring: max(1phx, round(1px / 1phx) * 1phx);
+    property <length> edge: WindowActions.maximized || Theme.window-outline-width == 0 ? 0px
+        : Theme.window-outline == "bold" ? max(1phx, round(2px / 1phx) * 1phx)
+        : Theme.window-outline-width - 1px + root.ring;
+    property <length> ground: max(0px, root.viewport - (root.joined ? (root.range > 0 ? 14px : 4px) + root.edge : 14px));
+    property <length> cells: root.joined ? root.ground : max(0px, root.ground - 8px);
     property <length> list-offset;           // the list's content-y
-    changed width => { App.list-resized(self.viewport); }
-    init => { App.list-resized(self.viewport); }
+    changed cells => { App.list-resized(self.cells); }
+    init => { App.list-resized(self.cells); }
     // A new density or the covers switched lays
     // the columns out again (the cover column comes and goes with them).
     property <bool> look-covers: Theme.list-covers;
@@ -528,7 +543,7 @@ export component TrackTable inherits Rectangle {
         }
         for row[i] in App.rows: Row {
             x: root.inset;
-            width: max(0px, root.viewport - 14px);
+            width: root.ground;
             track: row;
             index: i;
             leading: root.leading;
@@ -562,8 +577,9 @@ export component TrackTable inherits Rectangle {
         }
     }
     // The overlay scroll bar.
+    // (Joined, inside the window's outline.)
     if root.range > 0: OverlayScrollBar {
-        x: root.width - 10px;
+        x: root.width - (root.joined ? root.edge : 0px) - 10px;
         y: list.y;
         width: 10px;
         height: list.height;
@@ -578,7 +594,7 @@ export component TrackTable inherits Rectangle {
     // Where carried rows would land.
     if App.dragging && App.drop-area == "list" && App.drop-item == "": Rectangle {
         x: root.inset;
-        width: max(0px, root.viewport - 14px);
+        width: root.ground;
         y: root.top + root.list-offset + App.drop-row * (Theme.row-pitch) - 1px;
         height: 2px;
         border-radius: 1px;

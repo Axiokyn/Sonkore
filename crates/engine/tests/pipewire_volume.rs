@@ -115,7 +115,7 @@ fn sink_volume_follows_the_sink_the_stream_is_linked_to() {
     }
     let target = std::path::PathBuf::from(std::env::var_os("XDG_RUNTIME_DIR").unwrap()).join("test-link-target");
     let _ = std::fs::remove_file(&target);
-    let request = Request { rate: 48000, channels: 2, follow_rate: false, exclusive: false, dsd: None };
+    let request = Request { rate: 48000, channels: 2, follow_rate: false, dsd: None };
     let _stream = output::open("pipewire|test-sink", request, std::sync::Arc::new(Silence)).expect("a stream");
     let volume = SinkVolume::open(SINK).expect("test-sink");
     assert!(wait_for(|| volume.sink_name() == SINK), "watching {}", volume.sink_name());

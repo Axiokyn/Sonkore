@@ -394,8 +394,7 @@ impl SettingsHooks for Hooks {
                 let on = settings.borrow().int("playback/replayGain", 0) != 0;
                 ctx.library.borrow_mut().with(|l| l.set_auto_analyze_loudness(on));
             }
-            // Windows: exclusive mode is what makes an output direct there.
-            if key == "playback/volumeMode" || key == "playback/exclusive" {
+            if key == "playback/volumeMode" {
                 e.controller.update_volume();
             }
             return;
@@ -582,7 +581,7 @@ impl SettingsHooks for Hooks {
             let Some(e) = weak.upgrade() else { return };
             let changes = e.controller.ctx.player.borrow_mut().forget_folder(&path);
             e.controller.after(changes);
-            e.controller.ctx.library.borrow_mut().with(move |l| l.remove_folder(&path));
+            e.controller.change_library(move |l| l.remove_folder(&path));
         });
     }
 

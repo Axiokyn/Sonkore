@@ -10,7 +10,7 @@
 //! shared output: Sonkore's own, in the engine.
 //!
 //! On Windows a
-//! direct output is WASAPI in exclusive mode (playback/exclusive), and the
+//! direct output is WASAPI in exclusive mode (`wasapi|`) or ASIO, and the
 //! DAC's control is the endpoint's own volume (IAudioEndpointVolume, when
 //! the device implements it in hardware). There is no sound server volume.
 
@@ -67,9 +67,6 @@ struct State {
     digital: f64,
     /// Runs when the volume changes elsewhere (the desktop, the DAC's knob).
     on_change: Option<std::rc::Rc<dyn Fn()>>,
-    /// Windows: WASAPI exclusive mode (playback/exclusive), what makes an
-    /// output direct there.
-    exclusive: bool,
 }
 
 thread_local! {
@@ -86,7 +83,7 @@ pub fn direct_output(key: &str) -> bool {
 /// or an ASIO driver.
 #[cfg(windows)]
 pub fn direct_output(key: &str) -> bool {
-    key.starts_with("asio|") || ((key.is_empty() || key.starts_with("wasapi|")) && STATE.with(|s| s.borrow().exclusive))
+    key.starts_with("asio|") || key.starts_with("wasapi|")
 }
 
 /// The digital volume the engine starts with (playback/volume).
@@ -112,7 +109,6 @@ fn changed_elsewhere() {
 pub fn update(settings: &Settings, engine: &Engine) {
     let mode = settings.int("playback/volumeMode", AUTO).clamp(0, 2);
     let key = engine.device_key().to_owned();
-    STATE.with(|s| s.borrow_mut().exclusive = settings.flag("playback/exclusive", true));
     let direct = direct_output(&key);
     STATE.with(|s| {
         let mut s = s.borrow_mut();

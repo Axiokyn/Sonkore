@@ -60,6 +60,18 @@ fn key_for(device: &str) -> String {
     format!("{GROUP}/{}", name.replace(['/', '\\'], "|"))
 }
 
+/// `from`'s profile now belongs to `to` (an output whose key changed).
+pub fn rename(settings: &mut Settings, from: &str, to: &str) {
+    let (old, new) = (key_for(from), key_for(to));
+    // (As stored: bytes when written here, text when read from the file.)
+    if let Some(value) = settings.value(&old).cloned() {
+        if !settings.contains(&new) {
+            settings.set(&new, value);
+        }
+        settings.remove(&old);
+    }
+}
+
 /// The sound in use, as a profile.
 pub fn snapshot(settings: &Settings, eq: &EqController) -> Value {
     let mut m = Map::new();

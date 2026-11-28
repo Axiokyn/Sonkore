@@ -27,7 +27,6 @@ APPEARANCE_EDIT = re.compile(r'\bAppearance\.edit\(\s*"([A-Za-z0-9]+)"')
 APPEARANCE_KEY = {"visualizer": "ui/visualizer"}
 # Options no scenario can click here, and why.
 EXCEPTIONS = {
-    "playback/exclusive": "solo Windows (WASAPI)",
     "library/onlineCovers": "saldría a internet (MusicBrainz)",
 }
 KEY_SAVED = re.compile(r'^\s*guardado\s+([a-zA-Z]+/[A-Za-z0-9/]+)', re.M)

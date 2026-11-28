@@ -84,7 +84,7 @@ What the engine (`crates/engine`, with `crates/dsp`, `crates/dsd`, `crates/eq`, 
 - `wasapi|<friendly name>` on Windows (`wasapi|<endpoint id>` for a second endpoint with the same name).
 - `asio|<driver name>` on Windows: a driver listed under `HKLM\SOFTWARE\ASIO`.
 
-`auto_null` is skipped. A saved `pulse|X` maps to `pipewire|X`. `""` means the system default: PipeWire's default sink, else ALSA's `default` (on Windows, the default endpoint). DSD needs a direct `alsa|hw:` device (or WASAPI exclusive, as DoP, or ASIO).
+`auto_null` is skipped. A saved `pulse|X` maps to `pipewire|X`. `""` means the system default: PipeWire's default sink, else ALSA's `default` (on Windows, the default endpoint, shared). On Windows `wasapi|X` is endpoint X in exclusive mode and `wasapi-shared|X` the same endpoint through the mixer; until 2.0.2 one switch (`playback/exclusive`) chose the mode for every WASAPI output, and `audio::migrate_exclusive` turns it into the output's key at start. DSD needs a direct `alsa|hw:` device (or WASAPI exclusive, as DoP, or ASIO).
 
 **ALSA**
 

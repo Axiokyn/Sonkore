@@ -61,6 +61,21 @@
     <control>pointing</control>
   </supports>
   <releases>
+    <release version="2.0.3" date="2026-11-28">
+      <description>
+        <ul>
+          <li>Windows: each output is listed twice, as WASAPI exclusive (bit-perfect, DoP) and as WASAPI shared, and
+          "System default" goes through the Windows mixer; the "Exclusive mode" switch is gone (the old setting
+          carries over). WASAPI exclusive no longer falls back to shared without saying so.</li>
+          <li>A DAC held by another program is said by name ("in use by …"), on Linux and on Windows.</li>
+          <li>Linux: playing to a DAC directly no longer says "Sound device disconnected" on the first track.</li>
+          <li>The playing row is highlighted with the same margin on both sides, the scroll bar sits centered in its
+          lane, and the columns reach the end of the row. The columns start out narrower for Time.</li>
+          <li>The window's outline is a lighter line by default, with small corners.</li>
+          <li>A library folder that no longer exists leaves the folder tree as soon as it is removed.</li>
+        </ul>
+      </description>
+    </release>
     <release version="2.0.2" date="2026-11-25">
       <description>
         <ul>

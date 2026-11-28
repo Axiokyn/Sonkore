@@ -4645,7 +4645,7 @@ dependencies = [
 
 [[package]]
 name = "sonkore"
-version = "2.0.2"
+version = "2.0.3"
 dependencies = [
  "embed-resource",
  "image",
@@ -4673,18 +4673,18 @@ dependencies = [
 
 [[package]]
 name = "sonkore-core"
-version = "2.0.2"
+version = "2.0.3"
 
 [[package]]
 name = "sonkore-dsd"
-version = "2.0.2"
+version = "2.0.3"
 dependencies = [
  "rubato",
 ]
 
 [[package]]
 name = "sonkore-dsp"
-version = "2.0.2"
+version = "2.0.3"
 dependencies = [
  "realfft",
  "rubato",
@@ -4694,7 +4694,7 @@ dependencies = [
 
 [[package]]
 name = "sonkore-engine"
-version = "2.0.2"
+version = "2.0.3"
 dependencies = [
  "alsa",
  "libc",
@@ -4711,7 +4711,7 @@ dependencies = [
 
 [[package]]
 name = "sonkore-eq"
-version = "2.0.2"
+version = "2.0.3"
 dependencies = [
  "libc",
  "realfft",
@@ -4723,21 +4723,21 @@ dependencies = [
 
 [[package]]
 name = "sonkore-ffmpeg"
-version = "2.0.2"
+version = "2.0.3"
 dependencies = [
  "libloading",
 ]
 
 [[package]]
 name = "sonkore-hdcd"
-version = "2.0.2"
+version = "2.0.3"
 dependencies = [
  "md-5",
 ]
 
 [[package]]
 name = "sonkore-library"
-version = "2.0.2"
+version = "2.0.3"
 dependencies = [
  "base64 0.22.1",
  "ebur128",
@@ -4756,7 +4756,7 @@ dependencies = [
 
 [[package]]
 name = "sonkore-platform"
-version = "2.0.2"
+version = "2.0.3"
 dependencies = [
  "alsa-sys",
  "futures-lite",
@@ -4771,11 +4771,11 @@ dependencies = [
 
 [[package]]
 name = "sonkore-soundtouch"
-version = "2.0.2"
+version = "2.0.3"
 
 [[package]]
 name = "sonkore-ui"
-version = "2.0.2"
+version = "2.0.3"
 dependencies = [
  "slint",
  "slint-build",

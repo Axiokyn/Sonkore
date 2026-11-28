@@ -295,7 +295,7 @@ export component WindowOutline inherits Rectangle {
     if style == "line" || style == "bold" || style == "accent": Rectangle {
         border-radius: root.radius;
         border-width: style == "bold" ? 2px : 1px;
-        border-color: style == "accent" ? Theme.accent : style == "bold" ? Theme.text-faint : Theme.border;
+        border-color: style == "accent" ? Theme.accent : style == "bold" ? Theme.text-faint : Theme.outline-line;
     }
     if style == "highlight": Rectangle {
         border-radius: root.radius;

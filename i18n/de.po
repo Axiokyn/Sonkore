@@ -3634,3 +3634,35 @@ msgctxt "DspController"
 msgid "Playing {0} needs FFmpeg, which is not installed"
 msgstr "Zum Abspielen von {0} wird FFmpeg benötigt, das nicht installiert ist"
 
+msgctxt "DspController"
+msgid "WASAPI exclusive"
+msgstr "WASAPI exklusiv"
+
+msgctxt "DspController"
+msgid "WASAPI shared"
+msgstr "WASAPI geteilt"
+
+msgctxt "SettingsPage"
+msgid "The output chosen in Windows' sound settings, through the Windows mixer — shared with other apps."
+msgstr "Der in den Windows-Soundeinstellungen gewählte Ausgang, über den Windows-Mixer — mit anderen Apps geteilt."
+
+msgctxt "SettingsPage"
+msgid "Each output held by Sonkore alone, past the Windows mixer — bit-perfect capable, DoP too."
+msgstr "Jeder Ausgang gehört Sonkore allein, am Windows-Mixer vorbei — bit-perfect möglich, auch DoP."
+
+msgctxt "SettingsPage"
+msgid "Through the Windows mixer, shared with other apps — at the rate set in Windows' sound settings."
+msgstr "Über den Windows-Mixer, mit anderen Apps geteilt — mit der Rate aus den Windows-Soundeinstellungen."
+
+msgctxt "DspController"
+msgid "{0} is in use by another application. Close it or choose another output."
+msgstr "{0} wird von einer anderen Anwendung verwendet. Schließen Sie sie oder wählen Sie einen anderen Ausgang."
+
+msgctxt "DspController"
+msgid "{0} is in use by {1}. Close it or choose another output."
+msgstr "{0} wird von {1} verwendet. Schließen Sie es oder wählen Sie einen anderen Ausgang."
+
+msgctxt "DspController"
+msgid "Windows does not let apps take {0} exclusively: turn it on in the device's properties (Advanced) or choose WASAPI shared."
+msgstr "Windows erlaubt Anwendungen nicht, {0} exklusiv zu nutzen: in den Geräteeigenschaften (Erweitert) aktivieren oder WASAPI geteilt wählen."
+

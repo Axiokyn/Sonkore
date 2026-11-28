@@ -36,8 +36,9 @@ const WAIT_MS: u32 = 100;
 
 // --- Devices -------------------------------------------------------------------
 
-/// Every active render endpoint, keyed by its friendly name as earlier
-/// versions keyed them.
+/// Every active render endpoint twice: in exclusive mode (keyed by its
+/// friendly name as earlier versions keyed them, which played exclusively
+/// by default), then through the Windows mixer (`wasapi-shared|`).
 pub fn devices() -> Vec<DeviceInfo> {
     let _com = Com::init(); // dropped last, after every interface below
     let Ok(enumerator) = enumerator() else { return Vec::new() };
@@ -45,18 +46,21 @@ pub fn devices() -> Vec<DeviceInfo> {
     let default_id = unsafe { enumerator.GetDefaultAudioEndpoint(eRender, eConsole) }.ok().and_then(|d| device_id(&d));
     let list = endpoints(&enumerator);
     let keys = endpoint_keys(list.iter().map(|e| (e.id.as_str(), e.name.as_str())));
-    list.iter()
-        .zip(keys)
-        .map(|(e, key)| DeviceInfo {
-            key,
-            backend: "WASAPI".into(),
-            name: e.name.clone(),
-            detail: String::new(),
-            is_default: default_id.as_deref() == Some(e.id.as_str()),
-            direct: false,
-            alsa_card: -1,
-        })
-        .collect()
+    let mut out = Vec::with_capacity(2 * list.len());
+    for exclusive in [true, false] {
+        for (e, key) in list.iter().zip(&keys) {
+            out.push(DeviceInfo {
+                key: if exclusive { key.clone() } else { key.replacen("wasapi|", "wasapi-shared|", 1) },
+                backend: if exclusive { super::WASAPI_EXCLUSIVE } else { super::WASAPI_SHARED }.into(),
+                name: e.name.clone(),
+                detail: String::new(),
+                is_default: default_id.as_deref() == Some(e.id.as_str()),
+                direct: exclusive,
+                alsa_card: -1,
+            });
+        }
+    }
+    out
 }
 
 /// Each endpoint's key: "wasapi|<name>"; a second endpoint of the same name
@@ -269,6 +273,12 @@ fn hresult_name(code: HRESULT) -> Option<&'static str> {
 }
 
 fn win_error(label: &str, what: &str, e: &WinError) -> OutputError {
+    // (Said in the interface's language: who holds it, what to change.)
+    match e.code() {
+        AUDCLNT_E_DEVICE_IN_USE => return super::in_use(label, ""),
+        AUDCLNT_E_EXCLUSIVE_MODE_NOT_ALLOWED => return super::exclusive_not_allowed(label),
+        _ => {}
+    }
     match hresult_name(e.code()) {
         Some(name) => OutputError(format!("{label}: {what}: {name} ({})", e.code())),
         None => OutputError(format!("{label}: {what}: {e}")),
@@ -384,17 +394,13 @@ impl Stream {
                 .ok_or_else(|| OutputError(format!("{name}: output not found")))?;
             list.swap_remove(index).device
         };
-        if !exclusive {
-            return Self::open_shared(&device, request, label);
-        }
-        match Self::open_exclusive(&device, request, label) {
-            Ok(stream) => Ok(stream),
-            // DSD only exclusively: the mixer would turn DoP into noise.
-            Err(e) if request.dsd.is_some() => Err(e),
-            // Busy (another application holds it exclusively), or no format
-            // fits: share it.
-            Err(exclusive_error) => Self::open_shared(&device, request, label)
-                .map_err(|e| OutputError(format!("{e} (exclusive: {exclusive_error})"))),
+        // Exclusive is what was chosen: held by another program (or not
+        // allowed), it says so instead of going through the mixer unasked
+        // (WASAPI shared is an output of its own).
+        if exclusive {
+            Self::open_exclusive(&device, request, label)
+        } else {
+            Self::open_shared(&device, request, label)
         }
     }
 
@@ -442,11 +448,23 @@ impl Stream {
         let client = Self::activate(device, label)?;
         let dop = request.dsd.is_some();
         let samples = if dop { &EXCLUSIVE_SAMPLES[..3] } else { &EXCLUSIVE_SAMPLES[..] };
+        // Held by another program, or exclusive mode not allowed: every
+        // format is refused, and that is the reason to give, not the format.
+        let refused: std::cell::Cell<Option<HRESULT>> = std::cell::Cell::new(None);
         let supported = |sample: Sample, rate: u32, channels: usize| {
             let format = wave_format(sample, rate, channels);
             // SAFETY: `format` outlives the call; exclusive mode takes no
             // closest-match pointer.
-            unsafe { client.IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, as_waveformatex(&format), None) }.is_ok()
+            let answer =
+                unsafe { client.IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, as_waveformatex(&format), None) };
+            if matches!(answer, AUDCLNT_E_DEVICE_IN_USE | AUDCLNT_E_EXCLUSIVE_MODE_NOT_ALLOWED) {
+                refused.set(Some(answer));
+            }
+            answer.is_ok()
+        };
+        let no_format = |request: Request| match refused.get() {
+            Some(code) => win_error(label, "exclusive mode", &WinError::from(code)),
+            None => Self::no_format(label, request),
         };
         // The exact rate in any depth first (resampling costs more than a
         // smaller container), then the best rate the deepest format takes.
@@ -466,9 +484,9 @@ impl Stream {
             Some(found) => (request.channels, false, found),
             None if request.channels == 1 => match choose(2) {
                 Some(found) => (2, true, found),
-                None => return Err(Self::no_format(label, request)),
+                None => return Err(no_format(request)),
             },
-            None => return Err(Self::no_format(label, request)),
+            None => return Err(no_format(request)),
         };
         let format = wave_format(sample, rate, channels);
         let mut period = 0i64;

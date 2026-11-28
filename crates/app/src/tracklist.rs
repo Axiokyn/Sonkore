@@ -31,10 +31,10 @@ pub const CATALOG: [ColumnDef; 21] = [
     ColumnDef { key: "year", title: "Year", width: 60.0, fixed: false, badge: false },
     ColumnDef { key: "trackNo", title: "Track", width: 60.0, fixed: false, badge: false },
     ColumnDef { key: "discNo", title: "Disc", width: 52.0, fixed: false, badge: false },
-    // Time and Format start out as the user set them (2026-11-24, measured
-    // on their screenshot at 165 %): Format 113, never under its widest
-    // badge, and Time 86.
-    ColumnDef { key: "duration", title: "Time", width: 86.0, fixed: false, badge: false },
+    // Time and Format start out as the user set them (measured on their
+    // screenshots at 165 %, 2026-11-24 and 11-28): Format 113, never under
+    // its widest badge, and Time 79.
+    ColumnDef { key: "duration", title: "Time", width: 79.0, fixed: false, badge: false },
     ColumnDef { key: "format", title: "Format", width: 113.0, fixed: false, badge: true },
     ColumnDef { key: "codec", title: "Codec", width: 70.0, fixed: false, badge: false },
     ColumnDef { key: "sampleRate", title: "Sample rate", width: 96.0, fixed: false, badge: false },
@@ -309,7 +309,6 @@ pub struct Layout {
 }
 
 const LEADING: f64 = 36.0;
-const TRAILING: f64 = 8.0;
 const CELL_PADDING: f64 = 12.0;
 
 /// A column's least width: never under the header's title (with room for
@@ -336,7 +335,9 @@ fn width_of(key: &str, keys: &[String], saved: &serde_json::Map<String, serde_js
     if keys.len() > 1 && keys.first().map(String::as_str) == Some(key) { base.max(829.0) } else { base }
 }
 
-/// The columns laid out for a viewport `list_w` px wide.
+/// The columns laid out for rows whose cells share `list_w` px (from the
+/// row's left edge: the number, the cover, the columns; tracks.slint keeps
+/// what is right of them).
 pub fn layout_columns(
     keys: &[String],
     saved: &serde_json::Map<String, serde_json::Value>,
@@ -360,7 +361,7 @@ pub fn layout_columns(
     let primary_full = if primary.is_empty() { 0.0 } else { wof(&primary) };
     let primary_min =
         if primary.is_empty() { 0.0 } else { primary_full.min(mof(&primary).max(200f64.min((list_w / 4.0).round()))) };
-    let mut narrowest = 14.0 + LEADING + TRAILING + if flex.is_empty() { 0.0 } else { wof(&flex) };
+    let mut narrowest = LEADING + if flex.is_empty() { 0.0 } else { wof(&flex) };
     let (mut fixed, mut rest_slack) = (0.0, 0.0);
     for k in keys {
         if *k == flex {
@@ -374,7 +375,7 @@ pub fn layout_columns(
     }
     let cover = if covers && list_w >= narrowest + cover_full { cover_full } else { 0.0 };
     let flex_own = if flex.is_empty() { 0.0 } else { wof(&flex) };
-    let available_flex = list_w - 14.0 - LEADING - cover - fixed - TRAILING;
+    let available_flex = list_w - LEADING - cover - fixed;
     let shortfall = (flex_own - available_flex).max(0.0);
     let primary_width = primary_min.max(primary_full - shortfall);
     let primary_shrink = primary_full - primary_width;
@@ -431,7 +432,7 @@ mod tests {
     }
 
     /// The first launch: Format 113 px (wider only for a wider badge), Time
-    /// 86 px, the name the rest.
+    /// 79 px, the name the rest.
     #[test]
     fn first_launch_columns() {
         let keys: Vec<String> = DEFAULT_KEYS.iter().map(|k| k.to_string()).collect();
@@ -442,19 +443,19 @@ mod tests {
         let wide = layout_columns(&keys, &serde_json::Map::new(), 1300.0, true, true, 90.0);
         let wide_format = wide.columns.iter().find(|c| c.key == "format").unwrap().width;
         assert_eq!(wide_format as f64, min_width_of("format", 90.0));
-        assert_eq!(width("duration"), 86.0);
+        assert_eq!(width("duration"), 79.0);
         // The window's width left goes to the name.
-        assert_eq!(width("fileName"), 1300.0 - 14.0 - 36.0 - 62.0 - 113.0 - 86.0 - 44.0 - 8.0);
+        assert_eq!(width("fileName"), 1300.0 - 36.0 - 62.0 - 113.0 - 79.0 - 44.0);
         // Narrower than that, the name gives way and the rest stays.
         let narrow = layout_columns(&keys, &serde_json::Map::new(), 900.0, true, true, badge);
         let narrow_width = |k: &str| narrow.columns.iter().find(|c| c.key == k).unwrap().width;
-        assert_eq!((narrow_width("format"), narrow_width("duration")), (113.0, 86.0));
+        assert_eq!((narrow_width("format"), narrow_width("duration")), (113.0, 79.0));
         // Once the user sized the name, the last column takes what is left.
         let mut saved = serde_json::Map::new();
         saved.insert("fileName".into(), serde_json::json!(700));
         let sized = layout_columns(&keys, &saved, 1300.0, true, true, badge);
         let sized_width = |k: &str| sized.columns.iter().find(|c| c.key == k).unwrap().width;
         assert_eq!(sized_width("fileName"), 700.0);
-        assert!(sized_width("duration") > 86.0);
+        assert!(sized_width("duration") > 79.0);
     }
 }

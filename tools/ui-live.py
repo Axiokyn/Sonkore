@@ -74,7 +74,13 @@ Scenario lines (coordinates in the app's logical pixels at Interface scale
                                 from X0 to X1: what differs from the colour at
                                 X0 must leave the same room on both sides
                                 (±1 screen px). E.g. a menu row's highlight
-                                inside the menu's border.
+                                inside the menu's border. With "bordes" after
+                                X1, X0 and X1 are the ground's edges (a panel
+                                on a ground of about its colour).
+    carril NOMBRE Y X0 X1       in capture NOMBRE, along row Y from X0 to X1:
+                                the scroll bar's thumb (the brightest run)
+                                leaves as much of its track (the colour next
+                                to it) on each side, to the screen pixel
                                 (k: 1 = main window, then in order of creation)
     revisar NOMBRE              fails if a surface has see-through holes or
                                 pixels outside the damage the app reported
@@ -760,6 +766,31 @@ def run_scenario(path, app, scale, ui_scale, audio, tag):
                     captures += sess.capture(a[0])
                 elif cmd == "se-reinicia":
                     sess.restarted_by_itself()
+                elif cmd == "carril":
+                    # The track and the panel beside it differ by a few
+                    # levels, too little for "centrado" (the mini's list frame is 3
+                    # off): the track is the flat colour next to the thumb, ±1.
+                    from PIL import Image
+                    k = scale / 100 * ui_scale
+                    img = Image.open(run_dir / f"{a[0]}-1.png").convert("RGB")
+                    y, x0, x1 = round(float(a[1]) * k), round(float(a[2]) * k), round(float(a[3]) * k)
+                    px = lambda x: img.getpixel((x, y))
+                    near = lambda p, q, d: max(abs(u - v) for u, v in zip(p, q)) <= d
+                    top = max(range(x0, x1), key=lambda x: sum(px(x)))
+                    first = last = top
+                    while first > x0 and near(px(first - 1), px(top), 8):
+                        first -= 1
+                    while last < x1 and near(px(last + 1), px(top), 8):
+                        last += 1
+                    track_l, track_r = px(first - 1), px(last + 1)
+                    left = right = 0
+                    while first - left - 1 > x0 and near(px(first - left - 1), track_l, 1):
+                        left += 1
+                    while last + right + 1 < x1 and near(px(last + right + 1), track_r, 1):
+                        right += 1
+                    say(f"    carril {a[0]}: barra de {last - first + 1} px, {left} px de carril a la izquierda, {right} a la derecha")
+                    if left != right or not near(track_l, track_r, 3):
+                        raise Fail(f"carril: {left} px a la izquierda y {right} a la derecha (en {run_dir / (a[0] + '-1.png')})")
                 elif cmd == "reiniciar":
                     sess.restart()
                 elif cmd == "centrado":
@@ -783,10 +814,14 @@ def run_scenario(path, app, scale, ui_scale, audio, tag):
                     last = mid
                     while last < img.width - 1 and not is_ground(last + 1):
                         last += 1
+                    # "bordes": X0 and X1 are the ground's own edges (a panel
+                    # on a ground of nearly its colour, nothing to stop at).
+                    walls = len(a) > 4 and a[4] == "bordes"
+                    lo, hi = (x0, x1 - 1) if walls else (0, img.width - 1)
                     edge0, edge1 = first, last
-                    while edge0 > 0 and is_ground(edge0 - 1):
+                    while edge0 > lo and is_ground(edge0 - 1):
                         edge0 -= 1
-                    while edge1 < img.width - 1 and is_ground(edge1 + 1):
+                    while edge1 < hi and is_ground(edge1 + 1):
                         edge1 += 1
                     left, right = first - edge0, edge1 - last
                     say(f"    centrado {a[0]}: {left} px a la izquierda, {right} a la derecha")

@@ -38,11 +38,21 @@ pub fn engine() -> Engine {
             let _ = wait.recv_timeout(std::time::Duration::from_secs(2));
         }
     });
+    // Tests: SONKORE_HELD_OUTPUT=<program> holds every direct output, as a
+    // player that would not let the card go (the tests' ALSA cannot be busy).
+    let held_by = std::env::var("SONKORE_HELD_OUTPUT").ok();
     let engine = Engine::with_outputs(Box::new(move |key, request, render| {
+        if let Some(holder) = &held_by
+            && sonkore_engine::output::is_direct_key(key)
+        {
+            return Err(sonkore_engine::output::in_use(key.strip_prefix("alsa|").unwrap_or(key), holder));
+        }
         let card = key.strip_prefix("alsa|").and_then(sonkore_platform::reservation::card_index_of);
         let given_back = card.is_none() && reservation.held();
         if let Err(busy) = reservation.acquire_with_retry(card) {
-            return Err(sonkore_engine::output::OutputError(busy.to_string()));
+            let device = key.strip_prefix("alsa|").unwrap_or(key);
+            let holder = if busy.holder == "another application" { "" } else { busy.holder.as_str() };
+            return Err(sonkore_engine::output::in_use(device, holder));
         }
         if given_back {
             wait_for_sink(key);
@@ -177,6 +187,36 @@ pub fn output_list(devices: &[sonkore_engine::output::DeviceInfo]) -> Vec<sonkor
     all
 }
 
+/// Windows: up to 2.0.2 exclusive mode was one switch for every WASAPI
+/// output (playback/exclusive, on by default); now each endpoint is listed
+/// twice, exclusive (`wasapi|`, the key it had) and shared
+/// (`wasapi-shared|`), and the system default is always shared. With the
+/// switch off, the endpoint chosen becomes its shared output, its sound
+/// profile with it.
+pub fn migrate_exclusive(settings: &mut Settings) {
+    if !settings.contains("playback/exclusive") {
+        return;
+    }
+    if !settings.flag("playback/exclusive", true) {
+        let device = settings.text("playback/device", "");
+        if let Some(name) = device.strip_prefix("wasapi|") {
+            let shared = format!("wasapi-shared|{name}");
+            crate::sound_profiles::rename(settings, &device, &shared);
+            settings.set_text("playback/device", shared);
+        }
+    }
+    settings.remove("playback/exclusive");
+}
+
+/// An output group's name as shown (the engine's are in English).
+pub fn backend_label(backend: &str) -> String {
+    match backend {
+        sonkore_engine::output::WASAPI_EXCLUSIVE => crate::i18n::tr("DspController", "WASAPI exclusive"),
+        sonkore_engine::output::WASAPI_SHARED => crate::i18n::tr("DspController", "WASAPI shared"),
+        b => b.to_owned(),
+    }
+}
+
 /// "Release DAC to the system": paused, the
 /// device closed and the card given back; the next play takes it again.
 pub fn release_output(player: &mut sonkore_engine::Player) {
@@ -195,8 +235,6 @@ pub fn set_player(player: &std::rc::Rc<std::cell::RefCell<sonkore_engine::Player
 pub fn apply(settings: &Settings, engine: &mut Engine) {
     let p = |k: &str| format!("playback/{k}");
     engine.set_follow_rate(settings.flag(&p("followTrackRate"), true));
-    // Windows: WASAPI exclusive mode (on by default).
-    engine.set_exclusive(settings.flag(&p("exclusive"), true));
     engine.set_hdcd(settings.flag(&p("hdcd"), false));
     sonkore_engine::decode::set_from_memory(settings.flag(&p("playFromMemory"), true));
     engine.set_buffer_ms(settings.int(&p("bufferMs"), 150).clamp(60, 2000) as u32);
@@ -316,4 +354,41 @@ pub fn track_gain(settings: &Settings, track: Option<&Track>) -> f64 {
         linear = linear.min(CEILING / peak);
     }
     linear
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn settings(text: &str) -> Settings {
+        let dir = std::env::temp_dir().join(format!("sonkore-exclusive-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join(format!("{}.conf", text.len()));
+        std::fs::write(&path, text).unwrap();
+        Settings::open(path)
+    }
+
+    /// The exclusive switch of 2.0.2 and before: off, the endpoint chosen
+    /// becomes its shared output (with its sound); on (or never set), it
+    /// stays the exclusive one. The switch is gone either way.
+    #[test]
+    fn the_exclusive_switch_becomes_the_output() {
+        let mut s = settings("[playback]\nexclusive=false\ndevice=wasapi|Speakers\n");
+        s.set_text("soundProfiles/wasapi|Speakers", "{\"crossfeed\":2}");
+        migrate_exclusive(&mut s);
+        assert_eq!(s.text("playback/device", ""), "wasapi-shared|Speakers");
+        assert!(!s.contains("playback/exclusive"));
+        assert!(!s.contains("soundProfiles/wasapi|Speakers"));
+        assert_eq!(s.text("soundProfiles/wasapi-shared|Speakers", ""), "{\"crossfeed\":2}");
+
+        let mut s = settings("[playback]\nexclusive=true\ndevice=wasapi|Speakers (DX1)\n");
+        migrate_exclusive(&mut s);
+        assert_eq!(s.text("playback/device", ""), "wasapi|Speakers (DX1)");
+        assert!(!s.contains("playback/exclusive"));
+
+        // The default and ASIO stay as they were.
+        let mut s = settings("[playback]\nexclusive=false\ndevice=asio|DX1 ASIO\n");
+        migrate_exclusive(&mut s);
+        assert_eq!(s.text("playback/device", ""), "asio|DX1 ASIO");
+    }
 }

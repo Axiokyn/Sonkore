@@ -1,0 +1,14 @@
+# Abrir un dispositivo de /dev/snd no es enchufar nada. Al reproducir con el
+# DAC directo, Sonkore abre su nodo y PipeWire suelta la placa y borra su sink:
+# la lista de salidas cambia sin que nada se desenchufe, y la barra de estado
+# decía «Dispositivo de sonido desconectado» con la primera canción. Acá un
+# nodo se abre y se cierra (sin crearse ni borrarse) mientras la DX1 sale de
+# la lista: no tiene que aparecer ningún aviso.
+preparar mkdir -p {rt}/snd && cp -r {repo}/tests/asound {rt}/asound && touch {rt}/snd/pcmC2D0p
+entorno SONKORE_DEV_SND={rt}/snd
+entorno SONKORE_ASOUND_ROOT={rt}/asound
+ventanas 1
+esperar 1
+sh head -4 {rt}/asound/cards > {rt}/cards && mv {rt}/cards {rt}/asound/cards && rm -r {rt}/asound/card2 && cat {rt}/snd/pcmC2D0p
+esperar 3
+estado message= 1

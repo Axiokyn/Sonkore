@@ -52,7 +52,7 @@ pub fn watch(report: impl Fn(&[String], &[String]) + 'static) {
             return;
         }
         let watcher = notify::recommended_watcher(|event: notify::Result<notify::Event>| {
-            if event.is_ok() {
+            if event.is_ok_and(|e| plugged(&e.kind)) {
                 let _ = slint::invoke_from_event_loop(changed);
             }
         });
@@ -61,6 +61,17 @@ pub fn watch(report: impl Fn(&[String], &[String]) + 'static) {
             WATCHER.with(|w| *w.borrow_mut() = Some(watcher));
         }
     }
+}
+
+/// A node made, removed or renamed: a card plugged in or out. Opening and
+/// closing one is playing (Sonkore, or PipeWire when its sink wakes up): with
+/// a DAC played to directly, PipeWire lets go of the card and its sink leaves
+/// the list, and the first track said "Sound device disconnected".
+#[cfg(target_os = "linux")]
+fn plugged(kind: &notify::EventKind) -> bool {
+    use notify::EventKind;
+    use notify::event::ModifyKind;
+    matches!(kind, EventKind::Create(_) | EventKind::Remove(_) | EventKind::Modify(ModifyKind::Name(_)))
 }
 
 /// Something moved in the folder: list the outputs once it settles.
@@ -81,7 +92,9 @@ pub fn listed(before: Option<&[DeviceInfo]>, after: &[DeviceInfo]) {
         return;
     }
     let Some(before) = before else { return };
-    let (added, removed) = changes(before, after);
+    // (The sinks of the card Sonkore holds count as there: PipeWire only
+    // hides them meanwhile.)
+    let (added, removed) = changes(before, &crate::audio::output_list(after));
     if added.is_empty() && removed.is_empty() {
         return;
     }

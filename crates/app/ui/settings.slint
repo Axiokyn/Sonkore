@@ -82,9 +82,8 @@ export global SettingsData {
     in property <string> hardware-volume-info;
     in property <string> volume-mode: "2";
     in property <bool> follow-rate: true;
-    // Windows: WASAPI exclusive mode instead of PipeWire's rate switching.
+    // Windows: no PipeWire rows (exclusive or shared is the output chosen).
     in property <bool> windows: false;
-    in property <bool> exclusive: true;
     in property <bool> play-from-memory: true;
     in property <string> buffer: "150";
     in property <int> rate-mode: 0;         // 0 original, 1 fixed rate, 2 upsampling
@@ -646,11 +645,6 @@ component AudioTab inherits VerticalLayout {
             description: @tr("SettingsPage" => "PipeWire switches to each track's sample rate while Sonkore plays.");
             details: @tr("SettingsPage" => "Without it, PipeWire runs at the desktop's rate (usually 48 kHz) and Sonkore converts every track to it with SoX VHQ. Other apps keep playing either way; PipeWire converts them instead. After a minute paused or stopped, PipeWire gets its own rate back.");
             SetToggle { key: "playback/followTrackRate"; checked: SettingsData.follow-rate; }
-        }
-        if SettingsData.windows: Row {
-            title: @tr("SettingsPage" => "WASAPI exclusive mode");
-            description: @tr("SettingsPage" => "Bypasses the Windows mixer for bit-perfect output.");
-            SetToggle { key: "playback/exclusive"; checked: SettingsData.exclusive; }
         }
         Row {
             title: @tr("SettingsPage" => "Play from memory");

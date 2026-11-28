@@ -1207,16 +1207,16 @@ impl MiniUi {
         let number_w =
             22f32.max((crate::metrics::width(&format!("{}.", "8".repeat(digits)), 11.0, 400, 0.0)).ceil() + 2.0);
         let cover = if w.global::<Theme>().get_list_covers() { rh - 8.0 } else { 0.0 };
-        let scrollable = count as f32 * rh > vh + 0.5;
-        mini.set_scrollable(scrollable);
         mini.set_number_width(number_w);
+        // With a scroll bar the rows' ground stops 10 px sooner (mini.slint).
+        let scrollable = count as f32 * rh > vh + 0.5;
         let space = list_w
             - 8.0
             - 12.0
             - number_w
             - GAP
             - if cover > 0.0 { cover + GAP } else { 0.0 }
-            - if scrollable { 12.0 } else { 0.0 };
+            - if scrollable { 10.0 } else { 0.0 };
         let keys = self.column_keys();
         let mut shown: Vec<String> = Vec::new();
         let mut widths: HashMap<String, f32> = HashMap::new();

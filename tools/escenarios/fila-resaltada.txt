@@ -1,0 +1,20 @@
+# La fila que suena, resaltada con el mismo margen a los dos lados (4 px; a la
+# derecha, 4 px desde el contorno de la ventana, que se dibuja encima del
+# borde del panel), en la lista grande y en la del mini (pedido del usuario,
+# 2026-11-27). Antes: 8 y 14 en la grande, 4 y 16 en el mini. Con barra de
+# desplazamiento la fila termina 4 px antes de ella (no la tapa nunca): por
+# eso la biblioteca queda en 4 pistas, que entran sin barra.
+preparar python3 -c "import json,sys; p=sys.argv[1]+'/p/data/sonkore/library.json'; d=json.load(open(p)); d['tracks']=d['tracks'][:4]; json.dump(d,open(p,'w'))" {rt}
+ajuste library/rescanOnStartup=false
+ajuste ui/compactPlaylist=true
+estado tracks=4 8
+dclic 900 113
+estado playing=true
+esperar 0.8
+captura grande
+centrado grande 90 256 1320 bordes
+clic 1028 797
+estado mini-on=true
+esperar 1.5
+captura mini
+centrado mini 237 8 472

@@ -1,0 +1,25 @@
+# Con barra de desplazamiento la fila que suena termina 4 px antes de ella:
+# con el puntero encima (la barra en su ancho mayor, 8 px, con su pista) queda
+# el mismo espacio entre la fila y la barra que entre el borde y la fila. El
+# usuario no quiso la barra encima del resaltado, ni una barra tan fina que
+# costara agarrarla (2026-11-27). 12 pistas: la grande y el mini tienen barra.
+# La barra, de 8 px con el puntero, va centrada en su carril de 10 px, en
+# píxeles de pantalla: crecía solo hacia la izquierda y quedaba pegada al
+# borde del carril (captura del usuario, 165 %).
+ajuste ui/compactPlaylist=true
+estado tracks=12 8
+dclic 900 113
+estado playing=true
+mover 1313 110
+esperar 0.5
+captura grande
+centrado grande 110 256 1320 bordes
+carril grande 110 1296 1320
+clic 1028 797
+estado mini-on=true
+esperar 1.5
+mover 470 237
+esperar 0.5
+captura mini
+centrado mini 237 8 472
+carril mini 237 452 480

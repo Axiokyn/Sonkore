@@ -120,7 +120,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             return Ok(());
         }
     }
-    let settings = Settings::open_default();
+    let mut settings = Settings::open_default();
+    if cfg!(windows) {
+        audio::migrate_exclusive(&mut settings);
+    }
 
     // Interface scale (Settings › Appearance) multiplies the screen's scale:
     // on top of the screen's own scale (the patched winit backend multiplies).

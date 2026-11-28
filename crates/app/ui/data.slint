@@ -93,7 +93,7 @@ export global App {
     in property <string> empty-text;
     in property <length> list-width;
     in property <length> cover-width;    // the cover column (0 when it does not fit)
-    callback list-resized(length);
+    callback list-resized(length);       // what the rows' cells share (tracks.slint)
     callback activate-row(int);
     callback select-row(int, bool, bool);   // row, ctrl, shift
     callback toggle-favorite(int);

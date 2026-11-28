@@ -3,9 +3,10 @@
 //! Devices are keyed as earlier versions keyed them ("<backend>|<id>"), so a
 //! saved choice carries over: on Linux `alsa|hw:CARD=DX1,DEV=0` is a sound
 //! card's own endpoint (exclusive, bit-perfect), `pipewire|<node>` a PipeWire
-//! sink; on Windows `wasapi|<name>` an endpoint, shared or exclusive as
-//! playback/exclusive says, and `asio|<driver>` a DAC's own ASIO driver;
-//! "" the system's default. A device thread asks the engine for interleaved
+//! sink; on Windows `wasapi|<name>` an endpoint in exclusive mode (past the
+//! Windows mixer), `wasapi-shared|<name>` the same endpoint through the mixer
+//! and `asio|<driver>` a DAC's own ASIO driver; "" the system's default
+//! (shared, on Windows). A device thread asks the engine for interleaved
 //! left-justified s32 (`Render::render`) and writes them in the device's own
 //! format.
 
@@ -40,6 +41,34 @@ impl std::fmt::Display for OutputError {
 }
 
 impl std::error::Error for OutputError {}
+
+/// Another program holds the output (`holder` "" when it is not known).
+pub fn in_use(device: &str, holder: &str) -> OutputError {
+    let holder = if holder.is_empty() { UNKNOWN_HOLDER } else { holder };
+    OutputError(format!("{device}: in use by {holder}"))
+}
+
+const UNKNOWN_HOLDER: &str = "another application";
+
+/// The device and the holder ("" when not known) of an [`in_use`] message,
+/// for the interface to say it in its language.
+pub fn in_use_parts(message: &str) -> Option<(&str, &str)> {
+    let (device, holder) = message.rsplit_once(": in use by ")?;
+    Some((device, if holder == UNKNOWN_HOLDER { "" } else { holder }))
+}
+
+/// Windows does not let programs take the output exclusively (the
+/// device's Advanced properties), and the output chosen is exclusive.
+pub fn exclusive_not_allowed(device: &str) -> OutputError {
+    OutputError(format!("{device}: {EXCLUSIVE_NOT_ALLOWED}"))
+}
+
+const EXCLUSIVE_NOT_ALLOWED: &str = "Windows does not allow exclusive mode";
+
+/// The device of an [`exclusive_not_allowed`] message.
+pub fn exclusive_not_allowed_device(message: &str) -> Option<&str> {
+    message.strip_suffix(EXCLUSIVE_NOT_ALLOWED)?.strip_suffix(": ")
+}
 
 pub type Result<T> = std::result::Result<T, OutputError>;
 
@@ -94,8 +123,6 @@ pub struct Request {
     pub channels: usize,
     /// PipeWire: hold the graph at the track's rate (playback/followTrackRate).
     pub follow_rate: bool,
-    /// WASAPI: exclusive mode, past the Windows mixer (playback/exclusive).
-    pub exclusive: bool,
     /// DSD to the device: DoP (a PCM format of 24+ bits at exactly `rate`)
     /// or native (DSD_U32, big or little endian, whichever the card takes).
     pub dsd: Option<DsdPacking>,
@@ -120,12 +147,30 @@ pub trait Output: Send {
     }
 }
 
+/// The backends of a Windows endpoint's two outputs (the interface
+/// translates them).
+pub const WASAPI_EXCLUSIVE: &str = "WASAPI exclusive";
+pub const WASAPI_SHARED: &str = "WASAPI shared";
+
 /// A key DSD can reach: a card's own endpoint (ALSA hw:), or on Windows a
-/// WASAPI endpoint, which is opened exclusively for DSD, or an ASIO driver.
+/// WASAPI endpoint in exclusive mode or an ASIO driver.
 pub fn is_direct_key(key: &str) -> bool {
     let key = resolve_key(key);
-    key.starts_with("alsa|")
-        || (cfg!(windows) && (key.is_empty() || key.starts_with("wasapi|") || key.starts_with("asio|")))
+    key.starts_with("alsa|") || (cfg!(windows) && (key.starts_with("wasapi|") || key.starts_with("asio|")))
+}
+
+/// A Windows key's endpoint ("" = the default) and whether it is played to
+/// in exclusive mode: `wasapi|` is, `wasapi-shared|` and the default go
+/// through the Windows mixer. `None`: not a WASAPI key.
+#[cfg_attr(not(windows), allow(dead_code))]
+fn wasapi_endpoint(key: &str) -> Option<(&str, bool)> {
+    if key.is_empty() {
+        return Some(("", false));
+    }
+    if let Some(name) = key.strip_prefix("wasapi|") {
+        return (!name.is_empty()).then_some((name, true));
+    }
+    key.strip_prefix("wasapi-shared|").filter(|n| !n.is_empty()).map(|name| (name, false))
 }
 
 /// The backend and the device name the default output shows (Settings,
@@ -181,12 +226,13 @@ pub fn open(key: &str, request: Request, render: Arc<dyn Render>) -> Result<Box<
     if let Some(driver) = key.strip_prefix("asio|") {
         return Ok(Box::new(asio::AsioOutput::open(&key, driver, request, render)?));
     }
-    let name = key.strip_prefix("wasapi|").unwrap_or("");
-    if !key.is_empty() && name.is_empty() {
+    let Some((name, exclusive)) = wasapi_endpoint(&key) else {
         return Err(OutputError(format!("{key}: not a Windows output")));
-    }
+    };
     // DSD goes out exclusively or not at all (the mixer would convert it).
-    let exclusive = request.exclusive || request.dsd.is_some();
+    if request.dsd.is_some() && !exclusive {
+        return Err(OutputError(format!("{key}: DSD needs WASAPI exclusive or ASIO")));
+    }
     Ok(Box::new(wasapi::WasapiOutput::open(&key, name, exclusive, request, render)?))
 }
 
@@ -607,6 +653,8 @@ mod alsa {
                         attempts += 1;
                         std::thread::sleep(Duration::from_millis(25));
                     }
+                    // Still held after a second: another program plays to it.
+                    Err(e) if e.errno() == libc::EBUSY => return Err(super::in_use(name, "")),
                     Err(e) => return Err(err("open", e)),
                 }
             };
@@ -1151,5 +1199,30 @@ mod tests {
         assert_eq!(pick_rate(r.clone(), 384000), Some(192000));
         assert_eq!(pick_rate(vec![44100, 48000], 352800), Some(44100));
         assert_eq!(pick_rate(vec![48000], 1000000), Some(48000));
+    }
+
+    /// The system default goes through the Windows mixer; `wasapi|` (what
+    /// earlier versions saved) is exclusive, `wasapi-shared|` is not.
+    #[test]
+    fn wasapi_keys_say_the_mode() {
+        assert_eq!(wasapi_endpoint(""), Some(("", false)));
+        assert_eq!(wasapi_endpoint("wasapi|Speakers (DX1)"), Some(("Speakers (DX1)", true)));
+        assert_eq!(wasapi_endpoint("wasapi-shared|Speakers (DX1)"), Some(("Speakers (DX1)", false)));
+        assert_eq!(wasapi_endpoint("wasapi|"), None);
+        assert_eq!(wasapi_endpoint("wasapi-shared|"), None);
+        assert_eq!(wasapi_endpoint("asio|DX1"), None);
+    }
+
+    /// A busy output's message carries the device and who holds it, for
+    /// the interface to translate.
+    #[test]
+    fn busy_outputs_say_who_holds_them() {
+        let e = in_use("hw:CARD=DX1,DEV=0", "Strawberry");
+        assert_eq!(in_use_parts(&e.0), Some(("hw:CARD=DX1,DEV=0", "Strawberry")));
+        assert_eq!(in_use_parts(&in_use("Speakers (DX1)", "").0), Some(("Speakers (DX1)", "")));
+        assert_eq!(in_use_parts("hw:0: open: No such device"), None);
+        let e = exclusive_not_allowed("Speakers (DX1)");
+        assert_eq!(exclusive_not_allowed_device(&e.0), Some("Speakers (DX1)"));
+        assert_eq!(exclusive_not_allowed_device("format not supported"), None);
     }
 }

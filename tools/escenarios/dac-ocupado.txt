@@ -1,0 +1,12 @@
+# El DAC directo tomado por otro programa (SONKORE_HELD_OUTPUT hace de un
+# reproductor que no lo suelta): la pista no suena y la barra de estado dice
+# quién lo tiene y qué hacer, con el nombre de la salida, en el idioma elegido.
+# Antes salía el error de ALSA o de D-Bus en inglés.
+ajuste playback/device="alsa|hw:CARD=DX1,DEV=0"
+entorno SONKORE_HELD_OUTPUT=Strawberry
+estado tracks=12 8
+esperar 1
+dclic 900 113
+estado message=Topping DX1 · USB Audio está en uso por Strawberry. Cerralo o elegí otra salida. 5
+estado loaded=false
+captura ocupado

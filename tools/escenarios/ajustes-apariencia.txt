@@ -6,7 +6,7 @@ pantalla 2546 4200
 ajuste widgets/windows/settings=@Size(920 2700)
 ajuste appearance/language=es
 ventanas 1
-estado look~icons=solid transport=sonkore slider=line volume=line buttons=windows radius=8 outline=highlight backdrop=plain visualizer=bars
+estado look~icons=solid transport=sonkore slider=line volume=line buttons=windows radius=4 outline=line backdrop=plain visualizer=bars
 clic 1074 795
 ventanas 2
 foco last
@@ -47,9 +47,9 @@ estado look~buttons=mac
 clic 460 2133
 guardado appearance/windowRadius=12
 estado look~radius=12
-clic 220 2260
-guardado appearance/windowOutline=line
-estado look~outline=line
+clic 420 2260
+guardado appearance/windowOutline=highlight
+estado look~outline=highlight
 # Fondo y visualizador.
 clic 220 2411
 guardado appearance/backdrop=aurora

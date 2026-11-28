@@ -38,8 +38,16 @@ export global Theme {
     in property <string> volume-style: "line";
     in property <string> transport-style: "sonkore";
     in property <string> window-buttons: "windows";
-    in property <length> window-radius: 8px;
-    in property <string> window-outline: "highlight";
+    in property <length> window-radius: 4px;
+    in property <string> window-outline: "line";
+    // The "Line" outline: lighter than the panels' borders on a dark theme
+    // (#25252c hardly showed against the ground), as Qt apps' frames.
+    out property <color> outline-line: dark ? #ffffff33 : border;
+    // How far its rings reach in from the window's edge (chrome.slint,
+    // WindowOutline), not maximized.
+    out property <length> window-outline-width: window-outline == "glow" ? 3px
+        : window-outline == "highlight" || window-outline == "bold" ? 2px
+        : window-outline == "line" || window-outline == "accent" ? 1px : 0px;
     in property <string> backdrop: "plain";
     // The decorated ground (aurora, gradient, glow: paint.rs::backdrop, at
     // the window's device pixels) under panels that let it through

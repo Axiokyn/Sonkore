@@ -1205,7 +1205,7 @@ mod tests {
     }
 
     fn request(rate: u32, channels: usize, dsd: Option<DsdPacking>) -> Request {
-        Request { rate, channels, follow_rate: false, exclusive: true, dsd }
+        Request { rate, channels, follow_rate: false, dsd }
     }
 
     /// The fake opened for `request`, fed by a Counter (DSD words when native).

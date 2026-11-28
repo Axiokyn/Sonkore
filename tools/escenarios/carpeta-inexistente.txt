@@ -1,0 +1,35 @@
+# Carpetas que ya no existen, heredadas de la biblioteca de una versión vieja
+# (0 pistas): quitarlas tiene que sacarlas del árbol en ese momento. Antes se
+# borraban de library.json pero la barra lateral las seguía mostrando hasta
+# reiniciar, porque el cambio no traía pistas que refrescaran la vista
+# (Controller::change_library). Una se quita desde el árbol y otra desde Ajustes.
+pantalla 2546 4200
+ajuste widgets/windows/settings=@Size(920 2700)
+ajuste library/rescanOnStartup=true
+preparar python3 -c "import json,sys; p=sys.argv[1]+'/p/data/sonkore/library.json'; d=json.load(open(p)); d['folders']+=['/no/existe/Viejo','/no/existe/Zeta']; json.dump(d,open(p,'w'))" {rt}
+estado tracks=12 8
+estado tree-roots=Viejo|Zeta|musica
+# Clic derecho en «Viejo» (la primera fila del árbol), «Quitar carpeta» y el aviso.
+rclic 70 390
+esperar 0.6
+clic 180 411
+esperar 0.6
+clic 791 459
+estado tree-roots=Zeta|musica
+# Ajustes › Biblioteca: la papelera de la segunda carpeta (Zeta) y «Quitar carpeta».
+tecla ctrl+comma
+ventanas 2
+foco last
+esperar 0.8
+clic 785 67
+esperar 0.8
+captura ajustes
+clic 860 366
+esperar 0.6
+clic 590 1390
+foco main
+estado tree-roots=musica
+clic 1300 13
+reiniciar
+esperar 3
+estado tree-roots=musica

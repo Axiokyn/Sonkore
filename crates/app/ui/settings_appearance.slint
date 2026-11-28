@@ -37,8 +37,8 @@ export global Appearance {
     in property <string> slider-style: "line";
     in property <string> volume-style: "line";
     in property <string> window-buttons: "windows";
-    in property <string> window-radius: "8";
-    in property <string> window-outline: "highlight";
+    in property <string> window-radius: "4";
+    in property <string> window-outline: "line";
     in property <string> backdrop: "plain";
     in property <string> visualizer: "bars";
     in property <string> density: "comfortable";
@@ -457,7 +457,7 @@ component OutlinePreview inherits Rectangle {
         border-width: root.value == "bold" ? 2px : 1px;
         border-color: root.value == "highlight" ? (i == 0 ? #000000.with-alpha(Theme.dark ? 0.7 : 0.28) : #ffffff.with-alpha(Theme.dark ? 0.13 : 0.55))
                     : root.value == "glow" ? Theme.accent.with-alpha(i == 0 ? 1 : i == 1 ? 0.45 : i == 2 ? 0.22 : 0.08)
-                    : root.value == "accent" ? Theme.accent : root.value == "bold" ? Theme.text-faint : Theme.border;
+                    : root.value == "accent" ? Theme.accent : root.value == "bold" ? Theme.text-faint : Theme.outline-line;
     }
 }
 

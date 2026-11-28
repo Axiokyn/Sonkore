@@ -180,6 +180,11 @@ pub fn list_devices() {
     });
 }
 
+/// An output's name as listed ("Topping DX1 · USB Audio"), if it was.
+pub fn device_name(key: &str) -> Option<String> {
+    KNOWN_DEVICES.with(|k| k.borrow().as_ref()?.iter().find(|d| d.key == key).map(|d| d.name.clone()))
+}
+
 /// The open settings window, if any (to refresh its status from outside).
 pub fn current() -> Option<Rc<SettingsUi>> {
     CURRENT.with(|c| c.borrow().clone())
@@ -459,8 +464,14 @@ impl SettingsUi {
                     key: d.key.clone().into(),
                     name: d.name.clone().into(),
                     detail: d.detail.clone().into(),
-                    backend: d.backend.clone().into(),
-                    hint: backend_hint(backend).into(),
+                    backend: crate::audio::backend_label(&d.backend).into(),
+                    hint: if cfg!(windows) && d.key.is_empty() {
+                        // (Shared: exclusive mode is an output of its own.)
+                        tr("SettingsPage", "The output chosen in Windows' sound settings, through the Windows mixer — shared with other apps.")
+                    } else {
+                        backend_hint(backend)
+                    }
+                    .into(),
                     first: i == 0,
                     direct: d.direct,
                     is_default: d.is_default,
@@ -474,7 +485,6 @@ impl SettingsUi {
         data.set_volume_mode(s.int("playback/volumeMode", 2).clamp(0, 2).to_string().into());
         data.set_follow_rate(s.flag("playback/followTrackRate", true));
         data.set_windows(cfg!(windows));
-        data.set_exclusive(s.flag("playback/exclusive", true));
         data.set_play_from_memory(s.flag("playback/playFromMemory", true));
         data.set_buffer(pick(s.int("playback/bufferMs", 150), &[100, 150, 250, 400, 750]).into());
         // Sample rate: a fixed rate wins over upsampling (as the engine does).
@@ -606,8 +616,8 @@ impl SettingsUi {
         a.set_slider_style(text_of(&edited("sliderStyle"), "line").into());
         a.set_volume_style(text_of(&edited("volumeStyle"), "line").into());
         a.set_window_buttons(text_of(&edited("windowButtons"), "windows").into());
-        a.set_window_radius(int_of(&edited("windowRadius"), 8).to_string().into());
-        a.set_window_outline(text_of(&edited("windowOutline"), "highlight").into());
+        a.set_window_radius(int_of(&edited("windowRadius"), 4).to_string().into());
+        a.set_window_outline(text_of(&edited("windowOutline"), "line").into());
         a.set_backdrop(text_of(&edited("backdrop"), "plain").into());
         a.set_visualizer(text_of(&edited("visualizer"), "bars").into());
         let density = text_of(&edited("density"), "comfortable");
@@ -827,7 +837,6 @@ impl SettingsUi {
             | "playback/releaseDacWhenIdle"
             | "playback/soundPerOutput"
             | "playback/followTrackRate"
-            | "playback/exclusive"
             | "playback/playFromMemory"
             | "playback/convolution"
             | "playback/headroomAuto"
@@ -1217,7 +1226,14 @@ fn backend_hint(backend: &str) -> String {
         b if b.starts_with("PipeWire") => {
             t("Desktop sound server — shared with other apps; sample rate follows PipeWire's clock settings.")
         }
-        "WASAPI" => t("Windows audio — exclusive mode bypasses the system mixer."),
+        sonkore_engine::output::WASAPI_EXCLUSIVE => tr(
+            "SettingsPage",
+            "Each output held by Sonkore alone, past the Windows mixer — bit-perfect capable, DoP too.",
+        ),
+        sonkore_engine::output::WASAPI_SHARED => tr(
+            "SettingsPage",
+            "Through the Windows mixer, shared with other apps — at the rate set in Windows' sound settings.",
+        ),
         "ASIO" => {
             t("The DAC's own ASIO driver — direct, bit-perfect capable, and native DSD where the driver offers it.")
         }
@@ -1262,7 +1278,7 @@ fn compact_values(s: &Settings) -> Map<String, Json> {
 fn default_of(key: &str) -> Json {
     match key {
         "skinIndex" => Json::from(0),
-        "windowRadius" => Json::from(8),
+        "windowRadius" => Json::from(4),
         "listCovers" => Json::Bool(true),
         "alternateRows" => Json::Bool(false),
         "iconStyle" => "solid".into(),
@@ -1270,7 +1286,7 @@ fn default_of(key: &str) -> Json {
         "sliderStyle" | "volumeStyle" => "line".into(),
         "backdrop" => "plain".into(),
         "windowButtons" => "windows".into(),
-        "windowOutline" => "highlight".into(),
+        "windowOutline" => "line".into(),
         "transportStyle" => "sonkore".into(),
         "visualizer" => "bars".into(),
         _ => Json::String(String::new()),

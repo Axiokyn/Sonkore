@@ -1258,7 +1258,12 @@ impl Controller {
         let current = self.settings.borrow().text("playback/device", "");
         let mut menu = Menu::default();
         for d in crate::audio::output_list(&sonkore_engine::output::devices()) {
-            let text = format!("{}{}   —   {}", if d.direct { "◆ " } else { "" }, d.name, d.backend);
+            let text = format!(
+                "{}{}   —   {}",
+                if d.direct { "◆ " } else { "" },
+                d.name,
+                crate::audio::backend_label(&d.backend)
+            );
             let key = d.key.clone();
             menu.push(Entry::check(text, d.key == current, move |c| c.select_output(&key)));
         }
@@ -1454,9 +1459,9 @@ impl Controller {
             c.after(changes);
             let f = folder.clone();
             if watched {
-                let _ = c.library.borrow_mut().with(move |l| l.remove_folder(&f));
+                c.change_library(move |l| l.remove_folder(&f));
             } else {
-                let _ = c.library.borrow_mut().with(move |l| l.exclude_folder(&f));
+                c.change_library(move |l| l.exclude_folder(&f));
             }
         });
     }
